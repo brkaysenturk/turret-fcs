@@ -1,0 +1,401 @@
+#VRML_SIM R2025a utf8
+
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackground.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/tables/protos/Desk.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/floors/protos/RectangleArena.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/appearances/protos/BrushedAluminium.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/appearances/protos/Parquetry.proto"
+
+WorldInfo {
+  basicTimeStep 4
+  contactProperties [
+    ContactProperties {
+      material1 "dart_foam"
+      material2 "can_metal"
+      coulombFriction [
+        0.5
+      ]
+      bounce 0.6
+    }
+    ContactProperties {
+      material1 "can_metal"
+      material2 "bench_wood"
+      coulombFriction [
+        0.7
+      ]
+      bounce 0.1
+    }
+    ContactProperties {
+      material1 "dart_foam"
+      coulombFriction [
+        0.6
+      ]
+      bounce 0.4
+    }
+  ]
+}
+Viewpoint {
+  orientation -0.06747468044217592 0.06013190606473932 0.9959072855302583 1.6796246900183938
+  position 0.08836862765165494 -3.3401001953095815 1.1329237945115511
+  followType "None"
+}
+TexturedBackground {
+}
+TexturedBackgroundLight {
+}
+Desk {
+}
+RectangleArena {
+  floorSize 8 8
+  floorAppearance Parquetry {
+    type "light strip"
+  }
+  wallHeight 2.5
+  wallAppearance BrushedAluminium {
+    colorOverride 1 0.933333 0.768627
+  }
+}
+Robot {
+  translation 0 0 0.71
+  children [
+    Solid {
+      translation 0 0 0.02
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.15 0.15 0.17
+            roughness 0.5
+            metalness 0.8
+          }
+          geometry Box {
+            size 0.16 0.14 0.04
+          }
+        }
+      ]
+      name "base_plate"
+    }
+    Solid {
+      translation 0 0.04 0.09
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.9 0.45 0.05
+            transparency 0.2
+            roughness 0.3
+          }
+          geometry Box {
+            size 0.11 0.12 0.05
+          }
+        }
+        Pose {
+          translation 0 0.075 0
+          rotation 1 0 0 1.5708
+          children [
+            Shape {
+              appearance PBRAppearance {
+                baseColor 0.1 0.1 0.12
+                roughness 0.4
+                metalness 0.6
+              }
+              geometry Cylinder {
+                height 0.06
+                radius 0.012
+              }
+            }
+          ]
+        }
+      ]
+      name "cage_housing"
+    }
+    HingeJoint {
+      jointParameters HingeJointParameters {
+        position 33414.129280001514
+        axis 0 0 1
+        anchor -0.021 0.04 0.09
+      }
+      device [
+        RotationalMotor {
+          name "left_motor"
+          acceleration 2000
+          maxVelocity 3000
+        }
+        PositionSensor {
+          name "left_sensor"
+        }
+      ]
+      endPoint Solid {
+        translation -0.021 0.04 0.09
+        rotation 0 0 1 0.1498164204735321
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.95 0.95 0.98
+              roughness 0.2
+              metalness 0.1
+            }
+            geometry Cylinder {
+              height 0.012
+              radius 0.017
+            }
+          }
+          Pose {
+            translation 0.008 0 0.007
+            children [
+              Shape {
+                appearance PBRAppearance {
+                  baseColor 1 0.1 0.1
+                }
+                geometry Box {
+                  size 0.004 0.008 0.002
+                }
+              }
+            ]
+          }
+        ]
+        name "left_flywheel"
+      }
+    }
+    HingeJoint {
+      jointParameters HingeJointParameters {
+        position -33414.129280001514
+        axis 0 0 1
+        anchor 0.021 0.04 0.09
+      }
+      device [
+        RotationalMotor {
+          name "right_motor"
+          acceleration 2000
+          maxVelocity 3000
+        }
+        PositionSensor {
+          name "right_sensor"
+        }
+      ]
+      endPoint Solid {
+        translation 0.021 0.04 0.09
+        rotation 0 0 -1 0.1498164204735321
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.95 0.95 0.98
+              roughness 0.2
+              metalness 0.1
+            }
+            geometry Cylinder {
+              height 0.012
+              radius 0.017
+            }
+          }
+          Pose {
+            translation -0.008 0 0.007
+            children [
+              Shape {
+                appearance PBRAppearance {
+                  baseColor 1 0.1 0.1
+                }
+                geometry Box {
+                  size 0.004 0.008 0.002
+                }
+              }
+            ]
+          }
+        ]
+        name "right_flywheel"
+      }
+    }
+    SliderJoint {
+      jointParameters JointParameters {
+        position 2.0816681711721685e-17
+        axis 0 1 0
+      }
+      device [
+        LinearMotor {
+          name "solenoid"
+          maxVelocity 2
+          maxPosition 0.06
+        }
+        PositionSensor {
+          name "solenoid_sensor"
+        }
+      ]
+      endPoint Solid {
+        translation 0 -0.03999999999999998 0.09
+        children [
+          Pose {
+            rotation 1 0 0 1.5708
+            children [
+              Shape {
+                appearance PBRAppearance {
+                  baseColor 0.2 0.2 0.22
+                  roughness 0.6
+                  metalness 0.7
+                }
+                geometry Cylinder {
+                  height 0.025
+                  radius 0.012
+                }
+              }
+            ]
+          }
+          Pose {
+            translation 0 0.025 0
+            rotation 1 0 0 1.5708
+            children [
+              Shape {
+                appearance PBRAppearance {
+                  baseColor 0.75 0.75 0.78
+                  roughness 0.3
+                  metalness 0.9
+                }
+                geometry Cylinder {
+                  height 0.05
+                  radius 0.005
+                }
+              }
+            ]
+          }
+          Pose {
+            translation 0 0.05 0
+            children [
+              Shape {
+                appearance PBRAppearance {
+                  baseColor 0.1 0.1 0.1
+                  roughness 0.9
+                }
+                geometry Sphere {
+                  radius 0.006
+                }
+              }
+            ]
+          }
+        ]
+        name "solenoid_plunger"
+        boundingObject Pose {
+          translation 0 0.025 0
+          rotation 1 0 0 1.5708
+          children [
+            Cylinder {
+              height 0.05
+              radius 0.005
+            }
+          ]
+        }
+        physics Physics {
+          density -1
+          mass 0.015
+        }
+        linearVelocity 0 -2.0816681711721685e-16 -1.1472304587793287e-14
+      }
+    }
+  ]
+  name "flywheel_blaster"
+  controller "flywheel_test"
+  supervisor TRUE
+}
+Solid {
+  translation 0 2 0.51
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.4 0.25 0.15
+        roughness 0.7
+      }
+      geometry Box {
+        size 0.8 0.35 0.44
+      }
+    }
+  ]
+  name "target_bench"
+  contactMaterial "bench_wood"
+  boundingObject Box {
+    size 0.8 0.35 0.44
+  }
+}
+DEF CAN_CENTER Solid {
+  translation 1.810591336062006e-18 2 0.7999995585499997
+  rotation -0.9141670734356672 0.13334689888050244 -0.3827756084248585 1.6767908704036306e-16
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.9 0.1 0.1
+        roughness 0.3
+        metalness 0.4
+      }
+      geometry Cylinder {
+        height 0.14
+        radius 0.035
+      }
+    }
+  ]
+  name "can_center"
+  contactMaterial "can_metal"
+  boundingObject Cylinder {
+    height 0.14
+    radius 0.035
+  }
+  physics Physics {
+    density -1
+    mass 0.018
+  }
+  linearVelocity -5.989402310835691e-18 1.1667556933899985e-17 1.3841040546204406e-14
+  angularVelocity -1.4906324175955216e-16 -8.695355769307276e-17 -6.859047007694816e-18
+}
+DEF CAN_LEFT Solid {
+  translation -0.16 2 0.7999995585499997
+  rotation -0.24596601511308336 0.9572098281839468 -0.15247971746251768 7.848112593517083e-16
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.1 0.8 0.2
+        roughness 0.3
+        metalness 0.4
+      }
+      geometry Cylinder {
+        height 0.14
+        radius 0.035
+      }
+    }
+  ]
+  name "can_left"
+  contactMaterial "can_metal"
+  boundingObject Cylinder {
+    height 0.14
+    radius 0.035
+  }
+  physics Physics {
+    density -1
+    mass 0.018
+  }
+  linearVelocity 4.4309916459884966e-18 6.313404705230901e-18 1.3851067279744733e-14
+  angularVelocity -7.453162087977666e-17 1.614851785728478e-16 1.9057676403144666e-18
+}
+DEF CAN_RIGHT Solid {
+  translation 0.16 2 0.7999995585499997
+  rotation 0.7715908154506501 0.6310408156101498 -0.08021909090906992 3.1180784864498445e-16
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.1 0.3 0.9
+        roughness 0.3
+        metalness 0.4
+      }
+      geometry Cylinder {
+        height 0.14
+        radius 0.035
+      }
+    }
+  ]
+  name "can_right"
+  contactMaterial "can_metal"
+  boundingObject Cylinder {
+    height 0.14
+    radius 0.035
+  }
+  physics Physics {
+    density -1
+    mass 0.018
+  }
+  linearVelocity 1.579361818455791e-18 -5.691575773110178e-18 1.3848592248101343e-14
+  angularVelocity 6.21096840664796e-17 -2.961309882489814e-30 -1.2061775850156841e-17
+}

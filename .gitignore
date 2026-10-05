@@ -1,0 +1,64 @@
+# Python & Virtual Environments
+venv/
+env/
+ENV/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+
+# Compiled Binaries & Executables
+*.exe
+*.dll
+*.so
+*.dylib
+*.obj
+*.o
+*.a
+*.lib
+
+# Operating System Files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+# IDEs & Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Recordings & Large Video Captures
+recordings/
+*.mp4
+*.avi
+*.mkv
+
+# Webots Generated Cache Files
+webots/worlds/.*.wbproj
+webots/worlds/.*.jpg
+webots/worlds/.*.png
+
+# Logs, Metrics & TensorBoard
+logs/
+*.tfevents.*
+*.log
+*.tmp
+temp/
+scratch/
+
+# Large 3D CAD models
+*.stl
+*.step
+
+# Checkpoints (Keep only final production models)
+turret_fcs/rl_sim/models/*_steps.zip
+
+# Keep only active trained weights and models
+!runs/detect/balon_detector_v3/weights/best.pt
+!turret_fcs/rl_sim/models/turret_ppo_final.zip
+!webots/worlds/red_ballonn/red ballon.obj
+!webots/worlds/tf_luna/TF-Luna 3D structure.obj
