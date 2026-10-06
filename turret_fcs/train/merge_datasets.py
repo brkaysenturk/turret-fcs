@@ -6,7 +6,7 @@ def merge_datasets():
     base_dir = Path(__file__).resolve().parents[2]
     old_dir = base_dir / "datasets" / "baloon_old"
     new_dir = base_dir / "datasets" / "baloon"
-    out_dir = base_dir / "datasets" / "baloon_merged"
+    out_dir = base_dir / "datasets" / "balloon"
 
     if out_dir.exists():
         shutil.rmtree(out_dir)

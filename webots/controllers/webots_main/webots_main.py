@@ -22,7 +22,7 @@ def main():
     logger = WebotsTelemetryLogger(hw.robot)
 
     # 2. YOLO Hedef Tespit Modelini Yukle
-    model_path = Path(__file__).resolve().parents[3] / "runs/detect/balon_detector_v3/weights/best.pt"
+    model_path = Path(__file__).resolve().parents[3] / "runs/detect/balloon_detector/weights/best.pt"
     model = YOLO(str(model_path))
 
     WINDOW_NAME = "Turret FCS - Webots Predictive"

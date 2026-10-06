@@ -12,7 +12,7 @@ from turret_hud import TurretHUD
 
 
 def main():
-    model_path = Path(__file__).resolve().parents[1] / "runs/detect/balon_detector_v3/weights/best.pt"
+    model_path = Path(__file__).resolve().parents[1] / "runs/detect/balloon_detector/weights/best.pt"
     model = YOLO(str(model_path))
 
     cap = CameraThread(src=0, width=1280, height=720)

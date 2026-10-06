@@ -9,11 +9,14 @@ class CameraThread:
     Kamera tamponundaki gecikmeyi sifirlar ve VideoCapture API'si ile tam uyumludur.
     """
 
-    def __init__(self, src=0, width=1280, height=720):
+    def __init__(self, src=0, width=1280, height=720, fps=30):
         self.src = src
         self.cap = cv2.VideoCapture(self.src, cv2.CAP_DSHOW)
+        self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+        self.cap.set(cv2.CAP_PROP_FPS, fps)
+        self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
         self.grabbed, self.frame = self.cap.read()
         self.running = False

@@ -58,7 +58,7 @@ scratch/
 turret_fcs/rl_sim/models/*_steps.zip
 
 # Keep only active trained weights and models
-!runs/detect/balon_detector_v3/weights/best.pt
+!runs/detect/balloon_detector/weights/best.pt
 !turret_fcs/rl_sim/models/turret_ppo_final.zip
 !webots/worlds/red_ballonn/red ballon.obj
 !webots/worlds/tf_luna/TF-Luna 3D structure.obj

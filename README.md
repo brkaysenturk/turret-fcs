@@ -1,9 +1,9 @@
 # Otonom Asimetrik Hava Tehdidi Tespit ve Atış Kontrol Sistemi (Turret FCS)
-### YTU Bitirme Tezi // TUSAŞ LIFT UP Sanayi Odaklı Lisans Bitirme Projesi
+### YTU Bitirme Çalışması & Tasarım Projesi
 
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 [![STM32 Nucleo](https://img.shields.io/badge/Hardware-STM32F401RE-002B49.svg)](https://www.st.com/)
-[![Webots Simulator](https://img.shields.io/badge/Simulation-Webots%20R2023b-red.svg)](https://cyberbotics.com/)
+[![Webots Simulator](https://img.shields.io/badge/Simulation-Webots%20R2025a-red.svg)](https://cyberbotics.com/)
 [![YOLOv8](https://img.shields.io/badge/YOLO-v8n-00FFFF.svg)](https://ultralytics.com/)
 [![Reinforcement Learning](https://img.shields.io/badge/RL-PPO%20(SB3)-orange.svg)](https://stable-baselines3.readthedocs.io/)
 
@@ -21,7 +21,7 @@ Bu proje; mikro/mini İHA'lar, kamikaze dronlar ve asimetrik hava tehditlerine k
   * **PPO Derin Takviyeli Öğrenme (RL):** Ani manevra yapan tehditlere karşı çevik ve adaptif açısal hız tahmini.
 * **Askeri Standartta Sayısal HUD (Heads-Up Display):** Hedef menzili, yaklaşma hızı, kilit durumu, balistik nişangah ve atış penceresi gösterimi.
 * **Gömülü Donanım Mimarisi:** STM32F401RE tabanlı 100 Hz UART haberleşmeli, donanımsal limit anahtarlı servo kontrolcü.
-* **Dijital İkiz Simülasyonu:** Webots R2023b fizik motorunda 1:1 ölçekli aerodinamik ve mekanik simülasyon doğrulaması.
+* **Dijital İkiz Simülasyonu:** Webots R2025a fizik motorunda 1:1 ölçekli aerodinamik ve mekanik simülasyon doğrulaması.
 
 ---
 
@@ -61,7 +61,7 @@ Bu proje; mikro/mini İHA'lar, kamikaze dronlar ve asimetrik hava tehditlerine k
 
 ## 📊 Webots Simülasyon Doğrulaması (10 Atışlık Performans Analizi)
 
-Sistem Webots R2023b ortamında farklı mesafelerdeki (1.2m - 5.0m) ve farklı irtifalardaki hareketli hava hedeflerine karşı test edilmiş ve **%100 vuruş hassasiyeti (10/10)** doğrulanmıştır:
+Sistem Webots R2025a ortamında farklı mesafelerdeki (1.2m - 5.0m) ve farklı irtifalardaki hareketli hava hedeflerine karşı test edilmiş ve **%100 vuruş hassasiyeti (10/10)** doğrulanmıştır:
 
 | Parametre | Değer |
 | :--- | :--- |
@@ -131,5 +131,5 @@ turret_fcs/
 ---
 
 ## 📜 Lisans & Akademik Referans
-Bu proje Yıldız Teknik Üniversitesi Bitirme Projesi kapsamında ve TUSAŞ LIFT UP Sanayi Odaklı Lisans Bitirme Projeleri Programı çerçevesinde geliştirilmiştir.
+Bu proje Yıldız Teknik Üniversitesi Bitirme Çalışması & Tasarım Projesi kapsamında geliştirilmiştir.
 Tüm hakları proje ekibine aittir.

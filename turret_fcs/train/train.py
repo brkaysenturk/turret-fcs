@@ -4,7 +4,7 @@ from ultralytics import YOLO
 
 def main():
     base_dir = Path(__file__).resolve().parents[2]
-    yaml_path = base_dir / "datasets" / "baloon_merged" / "data.yaml"
+    yaml_path = base_dir / "datasets" / "balloon" / "data.yaml"
     
     # Egitim baslangic agirligi: Temel yolov8n uzerinden temiz egitim
     weights_path = base_dir / "weights" / "yolov8n.pt"
@@ -29,7 +29,7 @@ def main():
         translate=0.15,        # Konum kaydirma
         fliplr=0.5,            # Yatay aynalama
         mosaic=1.0,            # 4 kareyi birlestirerek kucuk hedef tespitini guclendirme
-        name="balon_detector_v3",
+        name="balloon_detector",
         exist_ok=True
     )
 
