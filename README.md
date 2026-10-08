@@ -122,7 +122,7 @@ python analysis/system_identification.py
 
 ```
 turret_fcs/
-├── requirements.txt           # Python kütüphane bağımlılıkları (NumPy <2.0 kilitlemeli)
+├── requirements.txt           # Python kütüphane bağımlılıkları
 ├── setup_env.bat              # Otomatik sanal ortam (venv) ve kütüphane kurulum aracı
 ├── README.md                  # Proje mimarisi ve teknik dokümantasyon
 ├── analysis/                  # Akademik kontrol ve sistem tanıma araçları
@@ -142,6 +142,9 @@ turret_fcs/
 │   ├── rl_controller.py       # PPO takviyeli öğrenme denetleyicisi
 │   ├── pid_controller.py      # Optimize PD kontrolcü
 │   └── camera_thread.py       # Sıfır gecikmeli çok iş parçacıklı kamera sürücüsü
+├── stm32/                     # STM32F401RE Nucleo gömülü yazılım projesi (CubeIDE)
+│   └── turret_main/           # Ana taret donanım projesi (.ioc, Core/Src, Core/Inc)
+│       └── Core/Src/          # fcs_comm.c, servo_driver.c, luna_read.c, flywheel_solenoid.c, main.c
 ├── webots/                    # Webots dijital ikiz simülasyonu
 │   ├── controllers/           # Simülasyon kontrolcüleri
 │   ├── worlds/                # 3D simülasyon dünyası
