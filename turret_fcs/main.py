@@ -9,9 +9,11 @@ from fcs_comm import FCSCommunicator
 from fcs_manager import FCSManager
 from turret_hud import TurretHUD
 from patrol_generator import PatrolGenerator
+from telemetry import TelemetryLogger
 
 
 def main():
+    ENABLE_TELEMETRY = True
     model_path = Path(__file__).resolve().parents[1] / "runs/detect/balloon_detector/weights/best.pt"
     model = YOLO(str(model_path))
 
@@ -23,6 +25,7 @@ def main():
     hud = TurretHUD()
     fcs = FCSManager()
     patrol = PatrolGenerator()
+    telemetry = TelemetryLogger() if ENABLE_TELEMETRY else None
 
     H_FOV, V_FOV = 69.0, 42.0
     fx = (1280 / 2.0) / np.tan(np.radians(H_FOV / 2.0))
@@ -93,6 +96,20 @@ def main():
                 pan_patrol, tilt_patrol = patrol.update(dt)
                 stm.send(pan_patrol, tilt_patrol, 0)
 
+            if telemetry is not None:
+                telemetry.log_frame(
+                    dt=dt,
+                    fps=fps,
+                    target_detected=target_detected,
+                    best_box=best_box,
+                    fcs=fcs,
+                    pan_cmd=pan_cmd if target_detected else pan_patrol,
+                    tilt_cmd=tilt_cmd if target_detected else tilt_patrol,
+                    dist_cm=dist_cm,
+                    strength=strength,
+                    fcs_state=fcs_state if target_detected else 0,
+                )
+
             hud.draw_grid_and_reticle(frame, center_x, center_y, reticle_color=status_color)
 
             ballistic_hud_data = None
@@ -150,7 +167,7 @@ def main():
             cv2.imshow(WINDOW_NAME, frame)
             key = cv2.waitKey(1) & 0xFF
 
-            if key == 27:
+            if key == 27 or key == ord("q") or key == ord("Q"):
                 break
             elif key == ord("m") or key == ord("M"):
                 mode_cycle = {"HYBRID": "PID", "PID": "RL", "RL": "HYBRID"}
@@ -168,6 +185,8 @@ def main():
                 fire_start_time = 0.0
 
     finally:
+        if telemetry is not None:
+            telemetry.close()
         stm.close()
         cap.stop()
         cv2.destroyAllWindows()

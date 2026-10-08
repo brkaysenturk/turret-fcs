@@ -83,7 +83,7 @@ Sistem Webots R2025a ortamında farklı mesafelerdeki (1.2m - 5.0m) ve farklı i
 ### 2. Otomatik Ortam Kurulumu
 Depoyu klonlayın ve ana dizindeki kurulum betiğini çalıştırın:
 ```bash
-git clone https://github.com/<KULLANICI_ADI>/turret_fcs.git
+git clone https://github.com/brkysnturk/turret_fcs.git
 cd turret_fcs
 setup_env.bat
 ```
@@ -96,10 +96,25 @@ turret_fcs\main.bat
 ```
 
 ### 🎮 Kontrol Tuşları
+* **`ESC` :** Programı ve telemetri kaydını güvenli kapatma (CSV dosyasını anında kaydeder).
 * **`SPACE` (Boşluk):** Acil Durdurma (E-STOP) - Motorları ve kilitlenmeyi anında frenler.
 * **`Y` :** Manuel Ateş İzni (Manual Fire Trigger).
 * **`M` :** Kontrol Modu Değiştirici (`HYBRID` <-> `PID` <-> `RL`).
-* **`ESC` :** Programı güvenli kapatma.
+
+---
+
+## 📈 Akademik Dinamik Analiz ve Sistem Tanıma
+
+Taret kontrol dinamiklerini ve sistem tanıma (SOPDT) sonuçlarını incelemek için `analysis/` araçları kullanılır:
+
+```bash
+# 1. 6 Panelli Detaylı Dinamik ve Kontrol Kararlılık Analizi (300 DPI)
+python analysis/plot_tuned_system.py
+
+# 2. 4 Panelli Sistem Tanıma, S-Düzlemi Root Locus ve Doğrulama
+python analysis/system_identification.py
+```
+*(Akademik tez veya jüri sunumu için MATLAB ortamında `analysis/turret_fcs_analysis.m` dosyasını çalıştırabilirsiniz).*
 
 ---
 
@@ -107,25 +122,31 @@ turret_fcs\main.bat
 
 ```
 turret_fcs/
-├── requirements.txt           # Python kütüphane bağımlılıkları
-├── setup_env.bat              # Otomatik venv ve kurulum aracı
-├── README.md                  # Proje dokümantasyonu
+├── requirements.txt           # Python kütüphane bağımlılıkları (NumPy <2.0 kilitlemeli)
+├── setup_env.bat              # Otomatik sanal ortam (venv) ve kütüphane kurulum aracı
+├── README.md                  # Proje mimarisi ve teknik dokümantasyon
+├── analysis/                  # Akademik kontrol ve sistem tanıma araçları
+│   ├── plot_tuned_system.py   # Python 6 panelli dinamik analiz motoru
+│   ├── system_identification.py # Basamak eğri uyumu ve S-düzlemi root locus
+│   ├── turret_fcs_analysis.m  # MATLAB tez analiz ikizi
+│   └── figures/               # Yüksek çözünürlüklü (300 DPI) yayın grafikleri
+├── logs/                      # Gerçek donanım telemetri test kayıtları (.csv)
 ├── turret_fcs/                # Gerçek donanım çalışma kodları
 │   ├── main.py                # Ana atış kontrol döngüsü ve hedef koordinasyonu
-│   ├── main.bat               # Tek tıkla başlatıcı
-│   ├── fcs_manager.py         # Hedef seçim ve balistik hesap motoru
+│   ├── main.bat               # Tek tıkla donanım başlatıcı
+│   ├── telemetry.py           # Kare-kare donanım telemetri kaydedicisi
+│   ├── fcs_manager.py         # Hedef seçim, kilit ve balistik hesap motoru
 │   ├── fcs_comm.py            # STM32 UART binary paket haberleşme sürücüsü
 │   ├── kalman_filter.py       # Kalman filtreli 3D yörünge kestirimi
-│   ├── turret_hud.py          # Askeri standartta dinamik HUD çizici
+│   ├── turret_hud.py          # Askeri standartta dinamik HUD arayüzü
 │   ├── rl_controller.py       # PPO takviyeli öğrenme denetleyicisi
-│   ├── pid_controller.py      # PID kontrolcü
-│   ├── camera_thread.py       # Sıfır gecikmeli çok iş parçacıklı kamera sürücüsü
-│   └── rl_sim/                # Takviyeli öğrenme simülasyon ortamı ve modeller
+│   ├── pid_controller.py      # Optimize PD kontrolcü
+│   └── camera_thread.py       # Sıfır gecikmeli çok iş parçacıklı kamera sürücüsü
 ├── webots/                    # Webots dijital ikiz simülasyonu
 │   ├── controllers/           # Simülasyon kontrolcüleri
 │   ├── worlds/                # 3D simülasyon dünyası
 │   └── analysis/              # Performans grafik motorları ve telemetri verileri
-└── weights/                   # Eğitilmiş yapay zeka model ağırlıkları
+└── weights/                   # Eğitilmiş yapay zeka model ağırlıkları (best.pt)
 ```
 
 ---
