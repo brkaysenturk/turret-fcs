@@ -10,9 +10,9 @@ class PIDController:
     DEFAULT_DISTANCE_M = 2.0
     PROJECTILE_SPEED_MPS = 10.0  # m/s
     GRAVITY_ACCEL = 9.81         # m/s^2
-    MAX_OUTPUT_DEG = 10.0        # Maksimum motor duzeltme derecesi / komut limiti
+    MAX_OUTPUT_DEG = 2.5        # Maksimum motor duzeltme derecesi / komut limiti (Savrulmayi onler)
 
-    def __init__(self, kp=0.42, ki=0.18, kd=0.038, alpha=0.85, max_output=MAX_OUTPUT_DEG):
+    def __init__(self, kp=0.18, ki=0.0, kd=0.025, alpha=0.80, max_output=MAX_OUTPUT_DEG):
         self.kp = kp
         self.ki = ki
         self.kd = kd

@@ -8,21 +8,21 @@ from camera_thread import CameraThread
 from fcs_comm import FCSCommunicator
 from fcs_manager import FCSManager
 from turret_hud import TurretHUD
-# from patrol_generator import PatrolGenerator  # [DEVREYE ALMA] Otonom Lissajous alan tarama modulu
+from patrol_generator import PatrolGenerator
 
 
 def main():
     model_path = Path(__file__).resolve().parents[1] / "runs/detect/balloon_detector/weights/best.pt"
     model = YOLO(str(model_path))
 
-    cap = CameraThread(src=0, width=1280, height=720)
+    cap = CameraThread()
     WINDOW_NAME = "Turret FCS"
     cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
 
-    stm = FCSCommunicator(port="COM3")
+    stm = FCSCommunicator()
     hud = TurretHUD()
     fcs = FCSManager()
-    # patrol = PatrolGenerator(pan_amplitude=35.0, tilt_amplitude=12.0, smoothing_alpha=0.06)  # [DEVREYE ALMA] Tarama motoru
+    patrol = PatrolGenerator()
 
     H_FOV, V_FOV = 69.0, 42.0
     fx = (1280 / 2.0) / np.tan(np.radians(H_FOV / 2.0))
@@ -52,7 +52,7 @@ def main():
             center_x, center_y = w // 2, h // 2
             dist_cm, strength, _ = stm.get_luna_data()
 
-            conf_val = getattr(fcs.selector, "min_conf", 0.30)
+            conf_val = fcs.selector.min_conf
             results = model.track(frame, imgsz=640, conf=conf_val, persist=True, tracker="bytetrack.yaml", verbose=False)
             boxes = results[0].boxes if len(results) > 0 else []
 
@@ -66,7 +66,7 @@ def main():
             target_centered = False
 
             if target_detected:
-                # patrol.reset()  # [DEVREYE ALMA] Hedef yakalandiginda arama desenini sifirla
+                patrol.reset()
                 x1, y1, x2, y2 = best_box
                 bx, by = (x1 + x2) // 2, (y1 + y2) // 2
                 target_centered = hud.is_target_centered(center_x, center_y, x1, y1, x2, y2)
@@ -90,12 +90,8 @@ def main():
                 status_color = (0, 255, 0)
                 angle_err_text = "ANGULAR ERR:   [--, --] deg"
 
-                # --- [DEVREYE ALMA] PATROL (OTONOM LISSAJOUS TARAMA) ---
-                # Hedef yokken kadraji 3D Lissajous egrisi ile cevreye taratir:
-                # pan_patrol, tilt_patrol = patrol.update(dt, current_pan=0.0, current_tilt=0.0)
-                # stm.send(pan_patrol, tilt_patrol, 0)
-                # --------------------------------------------------------
-                stm.send(0.0, 0.0, 0)
+                pan_patrol, tilt_patrol = patrol.update(dt)
+                stm.send(pan_patrol, tilt_patrol, 0)
 
             hud.draw_grid_and_reticle(frame, center_x, center_y, reticle_color=status_color)
 

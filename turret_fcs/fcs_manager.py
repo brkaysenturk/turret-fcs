@@ -13,22 +13,13 @@ class FCSManager:
     atesleme koordinasyonunu yoneten ust seviye yonetici sinifi.
     """
 
-    def __init__(
-        self,
-        kp=0.42,
-        ki=0.18,
-        kd=0.038,
-        alpha=0.85,
-        min_conf=0.30,
-        lock_threshold_frames=15,
-        max_lost_frames=12,
-        control_mode="HYBRID",
-    ):
-        self.selector = TargetSelector(min_conf=min_conf)
-        self.tracker = KalmanFilter(dt=0.033)
-        self.lock_mgr = LockManager(lock_threshold_frames=lock_threshold_frames)
-        self.aimer = PIDController(kp=kp, ki=ki, kd=kd, alpha=alpha)
+    def __init__(self, control_mode="HYBRID", max_lost_frames=12):
+        self.selector = TargetSelector()
+        self.tracker = KalmanFilter()
+        self.lock_mgr = LockManager()
+        self.pid_controller = PIDController()
         self.rl_controller = RLController()
+
         self.control_mode = control_mode  # "HYBRID", "PID", "RL"
         self.current_rl_weight = 0.0
 
@@ -62,11 +53,11 @@ class FCSManager:
 
     @property
     def actual_pan(self):
-        return self.aimer.actual_pan
+        return self.pid_controller.actual_pan
 
     @property 
     def actual_tilt(self):
-        return self.aimer.actual_tilt
+        return self.pid_controller.actual_tilt
 
     def select_best_target(self, boxes, center_x, center_y):
         return self.selector.select_best_target(boxes, center_x, center_y)
@@ -81,11 +72,11 @@ class FCSManager:
             by = (y1 + y2) // 2 
 
             # 1. Camera center'dan hedef acilari
-            pan_deg, tilt_deg = self.aimer.compute_angles(bx, by, center_x, center_y, fx, fy)
+            pan_deg, tilt_deg = self.pid_controller.compute_angles(bx, by, center_x, center_y, fx, fy)
 
             # 2. Kalman hiz tahmini ve onleme hesaplamasi
-            d_m = (dist_cm / 100.0) if (dist_cm is not None and dist_cm > 20) else self.aimer.DEFAULT_DISTANCE_M
-            lead_time = float(np.clip((d_m / self.aimer.PROJECTILE_SPEED_MPS) + 0.015, 0.03, 0.25))
+            d_m = (dist_cm / 100.0) if (dist_cm is not None and dist_cm > 20) else self.pid_controller.DEFAULT_DISTANCE_M
+            lead_time = float(np.clip((d_m / self.pid_controller.PROJECTILE_SPEED_MPS) + 0.015, 0.03, 0.25))
 
             if not is_firing:
                 kwx, kwy, kvx, kvy = self.tracker.update((float(bx), float(by)), dt=dt)
@@ -97,11 +88,11 @@ class FCSManager:
                 raw_pred = np.array([bx + d_lead_x, by + d_lead_y], dtype=float)
                 self.pred_center = 0.70 * raw_pred + 0.30 * self.pred_center
 
-                lead_pan, lead_tilt = self.aimer.compute_lead_angles(d_lead_x, d_lead_y, fx, fy)
+                lead_pan, lead_tilt = self.pid_controller.compute_lead_angles(d_lead_x, d_lead_y, fx, fy)
                 self.firing_lead_offset = np.array([lead_pan, lead_tilt], dtype=float)
 
             # 3. Dusuk aci / yercekimi telafisi
-            self.gravity_comp_deg = self.aimer.compute_gravity_comp(dist_cm)
+            self.gravity_comp_deg = self.pid_controller.compute_gravity_comp(dist_cm)
 
             # 4. Kilit durumu kontrolu
             angular_err = float(np.hypot(pan_deg, tilt_deg))
@@ -111,7 +102,7 @@ class FCSManager:
             active_pan = float(pan_deg + (self.firing_lead_offset[0] if (is_firing or is_hud_firing) else 0.0))
             active_tilt = float(tilt_deg + ((self.firing_lead_offset[1] + self.gravity_comp_deg) if (is_firing or is_hud_firing) else 0.0))
 
-            u_pid_pan, u_pid_tilt = self.aimer.compute_pid(active_pan, active_tilt, dt)
+            u_pid_pan, u_pid_tilt = self.pid_controller.compute_pid(active_pan, active_tilt, dt)
 
             if self.control_mode == "HYBRID" and self.rl_controller.is_loaded:
                 screen_w = center_x * 2
@@ -134,8 +125,8 @@ class FCSManager:
                 lock_factor = 1.0 - float(np.clip((lock_qual - 40.0) / 55.0, 0.0, 0.88))
                 self.current_rl_weight = float(np.clip(raw_boost * lock_factor, 0.0, 0.75))
                 
-                u_pan = float(np.clip(u_pid_pan + (d_pan_deg * self.current_rl_weight), -self.aimer.max_output, self.aimer.max_output))
-                u_tilt = float(np.clip(u_pid_tilt + (d_tilt_deg * self.current_rl_weight), -self.aimer.max_output, self.aimer.max_output))
+                u_pan = float(np.clip(u_pid_pan + (d_pan_deg * self.current_rl_weight), -self.pid_controller.max_output, self.pid_controller.max_output))
+                u_tilt = float(np.clip(u_pid_tilt + (d_tilt_deg * self.current_rl_weight), -self.pid_controller.max_output, self.pid_controller.max_output))
                 return u_pan, u_tilt
 
             elif self.control_mode == "RL" and self.rl_controller.is_loaded:
@@ -147,8 +138,8 @@ class FCSManager:
                     self.target_velocity[0], self.target_velocity[1],
                     d_m, float(pan_deg), float(tilt_deg), dt
                 )
-                u_pan = float(np.clip(d_pan_deg, -self.aimer.max_output, self.aimer.max_output))
-                u_tilt = float(np.clip(d_tilt_deg, -self.aimer.max_output, self.aimer.max_output))
+                u_pan = float(np.clip(d_pan_deg, -self.pid_controller.max_output, self.pid_controller.max_output))
+                u_tilt = float(np.clip(d_tilt_deg, -self.pid_controller.max_output, self.pid_controller.max_output))
                 return u_pan, u_tilt
 
             else:
@@ -169,4 +160,4 @@ class FCSManager:
         self.gravity_comp_deg = 0.0
         self.tracker.reset()
         self.lock_mgr.reset()
-        self.aimer.reset()
+        self.pid_controller.reset()
