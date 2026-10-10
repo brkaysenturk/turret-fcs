@@ -1,12 +1,14 @@
 %% =========================================================================
-%  YILDIZ TEKNIK UNIVERSITESI - MEKATRONIK / KONTROL MUHENDISLIGI
+%  YILDIZ TEKNIK UNIVERSITESI - KONTROL VE OTOMASYON MUHENDISLIGI BOLUMU
 %  BITIRME PROJESI: OTONOM TARET ATIS KONTROL SISTEMI (TURRET FCS)
 %  OPTIMIZE EDILMIS KONTROLCU VE SISTEM DINAMIK ANALIZ MOTORU
 % =========================================================================
-%  Bu script SADECE yeni ve kararlilastirilmis taret konfigurasyonunu analiz eder:
-%    - Kp = 0.18, Ki = 0.00, Kd = 0.025
-%    - Slew Rate Limiti: MAX_OUTPUT_DEG = 2.5 deg/frame (75.8 deg/s)
-%    - Donanim Gecikmesi: tau = 90 ms (Kamera + USB UART)
+%  Bu script gercek donanimda dogrulanan son sistem parametrelerini analiz eder:
+%    - Kp_pan = 0.10 -> 0.16 (Hiz Uyarlamali), Kp_tilt = 0.07 -> 0.12
+%    - Ki = 0.00, Kd = 0.00 (Saf Kritik Sonumlu, Gurultusuz Kontrol)
+%    - Soft Deadband: 0.90 deg -> 0.20 deg (Dinamik Daralma)
+%    - Slew Rate Limiti: MAX_OUTPUT_DEG = 2.75 deg/frame (82.5 deg/s)
+%    - Donanim Gecikmesi: theta = 80 ms (Kamera + YOLOv8 + USB UART)
 %    - Eksiksiz ASCII etiketler, profesyonel lejantlar ve 300 DPI PNG kaydi
 % =========================================================================
 

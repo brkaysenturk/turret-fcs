@@ -99,7 +99,7 @@ turret_fcs\main.bat
 * **`ESC` :** Programı ve telemetri kaydını güvenli kapatma (CSV dosyasını anında kaydeder).
 * **`SPACE` (Boşluk):** Acil Durdurma (E-STOP) - Motorları ve kilitlenmeyi anında frenler.
 * **`Y` :** Manuel Ateş İzni (Manual Fire Trigger).
-* **`M` :** Kontrol Modu Değiştirici (`HYBRID` <-> `PID` <-> `RL`).
+* **`M` :** Kontrol Modu Değiştirici (`P CONTROLLER` <-> `HYBRID CONTROLLER` <-> `RL CONTROLLER`).
 
 ---
 
@@ -140,7 +140,7 @@ turret_fcs/
 │   ├── kalman_filter.py       # Kalman filtreli 3D yörünge kestirimi
 │   ├── turret_hud.py          # Askeri standartta dinamik HUD arayüzü
 │   ├── rl_controller.py       # PPO takviyeli öğrenme denetleyicisi
-│   ├── pid_controller.py      # Optimize PD kontrolcü
+│   ├── p_controller.py        # Hız-uyarlamalı yumuşak ölü bölgeli P kontrolcü
 │   └── camera_thread.py       # Sıfır gecikmeli çok iş parçacıklı kamera sürücüsü
 ├── stm32/                     # STM32F401RE Nucleo gömülü yazılım projesi (CubeIDE)
 │   └── turret_main/           # Ana taret donanım projesi (.ioc, Core/Src, Core/Inc)

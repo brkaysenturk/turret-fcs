@@ -1,3 +1,27 @@
+"""
+================================================================================
+YILDIZ TEKNIK UNIVERSITESI - KONTROL VE OTOMASYON MUHENDISLIGI BOLUMU
+BITIRME PROJESI: OTONOM PAN-TILT TARET VE ATIS KONTROL SISTEMI (FCS)
+--------------------------------------------------------------------------------
+MODUL: PEKISDIRMELI OGRENME DENETLEYICISI (RL CONTROLLER / PPO AGENT)
+================================================================================
+Bu modul, donanimda 80 ms tasiyici gecikmesi altinda hareketli hedefleri izlemek
+icin egitilmis Proximal Policy Optimization (PPO) yapay zeka modelinin gercek
+zamanli cikarim motorudur.
+
+DURUM VE EYLEM UZAYI:
+- Gozlem Vektoru (9 Boyutlu):
+  [err_x, err_y, d_err_x, d_err_y, vx_target, vy_target, dist_norm, pan_vel, tilt_vel]
+- Eylem Uzayi (2 Boyutlu Surekli):
+  [-1.0, 1.0] araliginda hedef pan ve tilt acisal hiz komutlari.
+
+GECIKME TELAFISI (LATENCY COMPENSATION):
+PPO modeli simulasyonda 80 ms transport delay buffer'i ile egitildiginden, hedefin
+anlik konumuna degil, 80 ms sonra olacagi konuma dogru taret komutu uretir (Lead Pursuit).
+Bu sayede yuksek hizli hedeflerde klasik P kontrolcunun arkada kalma (lag) problemini cozer.
+================================================================================
+"""
+
 from pathlib import Path
 import numpy as np
 from stable_baselines3 import PPO

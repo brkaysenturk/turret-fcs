@@ -1,3 +1,24 @@
+"""
+================================================================================
+YILDIZ TEKNIK UNIVERSITESI - KONTROL VE OTOMASYON MUHENDISLIGI BOLUMU
+BITIRME PROJESI: OTONOM PAN-TILT TARET VE ATIS KONTROL SISTEMI (FCS)
+--------------------------------------------------------------------------------
+MODUL: HEDEF SECICI VE ONCELIKLENDIRME MOTORU (TARGET SELECTOR)
+================================================================================
+Bu modul, kameradan gelen coklu nesne tespitleri (YOLOv8 Bounding Boxes) arasindan
+en oncelikli ve vurulabilir birincil hedefi (Primary Threat) secer.
+
+ELEME VE PUANLAMA KRITERLERI:
+1. Guvenilirlik Esigi (Confidence Threshold): conf >= 0.45 altindaki sahte tespitler elenir.
+2. Geometrik Alan ve Boyut Filtresi: Cok kucuk (area < 400 px^2) gurultuler ve asiri buyuk
+   yanlis tespitler (area > 400.000 px^2) elenir.
+3. En Boy Orani (Aspect Ratio): 0.25 - 4.0 arasindaki gecerli sekiller kabul edilir.
+4. Nisangah Mesafesi (Crosshair Distance): Nisangah merkezine (reticle center) en yakin
+   olan hedef en yuksek oncelikle secilir.
+================================================================================
+"""
+
+
 class TargetSelector:
     """
     YOLO tespitlerinden en uygun hedef sinir kutusunu guvene, alana, aspect orana ve 

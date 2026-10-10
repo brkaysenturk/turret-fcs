@@ -1,3 +1,29 @@
+"""
+================================================================================
+YILDIZ TEKNIK UNIVERSITESI - KONTROL VE OTOMASYON MUHENDISLIGI BOLUMU
+BITIRME PROJESI: OTONOM PAN-TILT TARET VE ATIS KONTROL SISTEMI (FCS)
+--------------------------------------------------------------------------------
+MODUL: DINAMIK HEDEF KILIT YONETICISI (LOCK MANAGER)
+================================================================================
+Bu modul, atis kontrol sisteminin atesleme kapisi (Firing Gate) ve hedef kilit
+kararliligini yonetir. Histerezisli cift esik mantigi ve analitik Gauss isabet
+olasiligi modeli ile hedefe tam oturulmadan atis yapilmasini onler.
+
+ALGORITMA VE GUCLU MEKANIZMALAR:
+1. Histerezisli Dinamik Kilit Penceresi (Hysteresis Window):
+   - Kilit Giris Esigi: Hedeften uzakliga ve hiza bagli (2.0° - 3.0°).
+   - Kilit Cikis Esigi: 3.5° (Genis tolerans).
+   - Kilit Titremesi Onleme: Hedef tam esik cizgisinde hareket ederken kilidin
+     anlik acilip kapanmasini (chattering / flickering) onler.
+2. Kararlilik Sayaci (Stability Counter):
+   - Hedef kilit penceresine girdikten sonra art arda 10 kare (~0.33 sn) boyunca
+     pencere icinde kalmasi zorunludur. Anlik hedef gecislerinde atis yapilmaz.
+3. Analitik Gauss Isabet Olasiligi Modeli (Hit Probability):
+   - P_hit = exp(-theta_err^2 / (2 * sigma_eff^2)) formulu ile hedef mesafesine (TF-Luna LiDAR)
+     ve hedef hizina gore 0 - 100% arasinda gercekci balistik vurus olasiligi hesaplar.
+================================================================================
+"""
+
 import numpy as np
 
 

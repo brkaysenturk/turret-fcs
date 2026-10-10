@@ -1,3 +1,25 @@
+"""
+================================================================================
+YILDIZ TEKNIK UNIVERSITESI - KONTROL VE OTOMASYON MUHENDISLIGI BOLUMU
+BITIRME PROJESI: OTONOM PAN-TILT TARET VE ATIS KONTROL SISTEMI (FCS)
+--------------------------------------------------------------------------------
+MODUL: GERCEK ZAMANLI TELEMETRI KAYIT MOTORU (TELEMETRY LOGGER / BLACKBOX)
+================================================================================
+Bu modul, otonom taretin calismasi sirasinda her 33 ms'lik karede olculen tum durum,
+hata, eyleyici ve sensor parametrelerini zaman damgali olarak CSV formatinda kaydeder.
+
+KAYDEDILEN 21 KRITIK PARAMETRE:
+- Zaman ve Basarim: time_sec, dt, fps
+- Hedef Geometrisi ve Durumu: target_detected, box_cx, box_cy
+- Kontrol Hatalari: angular_err_pan, angular_err_tilt, angular_err_total
+- Eyleyici Komutlari: cmd_pan, cmd_tilt (derece/kare)
+- Kalman Kestirimleri: target_vel_x, target_vel_y, target_speed (px/s)
+- TF-Luna LiDAR: dist_cm, signal_strength
+- Durum Makinasi: fcs_state, control_mode (P/HYBRID/RL), rl_weight
+- Atis ve Kilit Kriterleri: lock_counter, is_locked, hit_prob (%)
+================================================================================
+"""
+
 import csv
 import math
 import os
@@ -49,7 +71,7 @@ class TelemetryLogger:
             "dist_cm",           # TF-Luna mesafe (cm)
             "signal_strength",   # TF-Luna sinyal gucu
             "fcs_state",         # 0: Takip, 1: Kilitli, 2: Ates
-            "control_mode",      # PID / HYBRID / RL
+            "control_mode",      # P / HYBRID / RL
             "rl_weight",         # Yapay zeka agirlik katsayisi (%0.0 - 1.0)
             "is_locked",         # Kilit durumu (1 / 0)
             "lock_counter",      # Kilit kararlilik sayaci (0 - 10)
@@ -101,7 +123,7 @@ class TelemetryLogger:
         vy = float(target_vel[1])
         target_speed = round(math.hypot(vx, vy), 2)
 
-        control_mode = getattr(fcs, "control_mode", "PID") if fcs else "PID"
+        control_mode = getattr(fcs, "control_mode", "P") if fcs else "P"
         rl_weight = round(getattr(fcs, "current_rl_weight", 0.0), 3) if fcs else 0.0
         is_locked_flag = 1 if getattr(fcs, "is_locked", False) else 0
         lock_counter = int(getattr(fcs, "lock_counter", 0)) if fcs else 0

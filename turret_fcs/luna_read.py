@@ -1,3 +1,23 @@
+"""
+================================================================================
+YILDIZ TEKNIK UNIVERSITESI - KONTROL VE OTOMASYON MUHENDISLIGI BOLUMU
+BITIRME PROJESI: OTONOM PAN-TILT TARET VE ATIS KONTROL SISTEMI (FCS)
+--------------------------------------------------------------------------------
+MODUL: BAGIMSIZ PC USB-TTL TF-LUNA KALIBRASYON VE TESHIS SURUCUSU (LUNA DRIVER)
+================================================================================
+Bu modul, Benewake TF-Luna LiDAR sensorunun STM32 olmadan, dogrudan bir USB-TTL
+donusturucu (FTDI / CP2102) uzerinden PC'ye (COM portuna) baglandigi durumlarda
+masaustu test, sensor kalibrasyonu ve teshis (standalone diagnostics) amaciyla
+kullanilan ozel surucudur.
+
+NOT - ENTEGRE TARET CALISMA MIMARISI (MAIN.PY):
+Entegre atis kontrol sisteminde TF-Luna dogrudan STM32 mikrodenetleyicisine
+(luna_read.c) baglidir. STM32 mesafeyi 100 Hz'de okur ve PC'ye 'fcs_comm.py'
+RX telemetri paketi icinde ([0x55] basligiyla) iletir. Dolayisiyla ana sistem
+dongusunde 'luna_read.py' yerine tek kablo uzerinden 'fcs_comm.py' kullanilir.
+================================================================================
+"""
+
 import threading
 import time
 import serial

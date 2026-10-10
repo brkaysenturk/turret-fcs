@@ -1,3 +1,28 @@
+"""
+================================================================================
+YILDIZ TEKNIK UNIVERSITESI - KONTROL VE OTOMASYON MUHENDISLIGI BOLUMU
+BITIRME PROJESI: OTONOM PAN-TILT TARET VE ATIS KONTROL SISTEMI (FCS)
+--------------------------------------------------------------------------------
+MODUL: DONANIM HABERLESME VE SERI PORT PROTOKOLU (FCS COMMUNICATOR / UART)
+================================================================================
+Bu modul, PC (Python) ile gomulu sistem (STM32 mikrodenetleyici) arasindaki
+tam cift yonlu (Full-Duplex), asenkron ve binary paketli iletisim katmanidir.
+
+PROTOKOL VE PAKET YAPISI (115200 Baud):
+1. TX Paketi (PC -> STM32) [7 Bayt]:
+   [0xAA (Header)] [Pan Delta * 100: int16 (2B)] [Tilt Delta * 100: int16 (2B)] [State/Fire: uint8 (1B)] [Checksum: uint8 (1B)]
+2. RX Paketi (STM32 -> PC) [6 Bayt]:
+   [0x55 (Header)] [TF-Luna Mesafe: uint16 (2B)] [Sinyal Gucu: uint16 (2B)] [Checksum: uint8 (1B)]
+
+GELISMIS OZELLIKLER:
+- Otomatik Port Tespiti (Auto Plug-and-Play): Windows COM portlarini tarayarak
+  ST-Link / STM32 USB VID '0483' kimligini otomatik tespit eder ve baglanir.
+- Bagimsiz Okuma Thread'i: UART RX okumasini ayri thread'de calistirarak ana kontrol
+  dongusunun bloklanmasini engeller.
+- Checksum Dogrulama: Gurultulu seri hatta hatali baytlari tespit edip eler.
+================================================================================
+"""
+
 import struct
 import threading
 import time

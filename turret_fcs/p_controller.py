@@ -1,7 +1,34 @@
+"""
+================================================================================
+YILDIZ TEKNIK UNIVERSITESI - KONTROL VE OTOMASYON MUHENDISLIGI BOLUMU
+BITIRME PROJESI: OTONOM PAN-TILT TARET VE ATIS KONTROL SISTEMI (FCS)
+--------------------------------------------------------------------------------
+MODUL: HIZ-UYARLAMALI YUMUSAK OLU BOLGELI P KONTROLCU (P CONTROLLER)
+================================================================================
+Bu modul, piksellerden acisal hata donusumunu ve taret motorlarinin gercek zamanli
+servomekanizma kontrol komutlarini uretir.
+
+KONTROL TEORISI VE MATEMATIKSEL MIMARI:
+1. Hiz-Uyarlamali Yumusak Olu Bolge (Velocity-Adaptive Soft Deadband):
+   - Sabit Hedef (v < 25 px/s): Pan Kp=0.10, Deadband=0.90° | Tilt Kp=0.07, Deadband=0.95°
+     YOLO piksel gurultusu motorlara iletilmez, taret sessiz kilitte kalir.
+   - Hareketli Hedef (v >= 25 px/s): Pan Kp=0.16, Deadband=0.20° | Tilt Kp=0.12, Deadband=0.25°
+     Klasik Tip-0 rampa gecikmesi (Lag error) dinamik kazanc takviyesiyle sifirlanir.
+2. Neden Kd = 0 ve Ki = 0?
+   - Kd: 30 FPS goruntu kuantalama gurultusunu turev patlamasina donusturerek mekanik
+     rezonans ve akustik vizilti urettigi icin devreden cikarilmistir.
+   - Ki: STM32 acisal artis biriktirme denklemi theta(k) = theta(k-1) + delta_theta
+     zaten dogal bir integrator gorevi gordugunden (Tip-1 sistem), harici Ki cift
+     integrator faz cokmesine yol acacagi icin kullanilmamistir.
+3. Eyleyici Doyum ve Egim Limiti (Slew Rate Limiter):
+   - Mekanik torku ve disli kutusunu korumak icin kare basi maks komut: 2.75°/kare (82.5°/s).
+================================================================================
+"""
+
 import numpy as np
 
 
-class PIDController:
+class PController:
     """
     Kamera goruntusunden hedefin acisal sapmasini, balistik yercekimi dususunu (super-elevation),
     ve hedefin hareket hizina gore dinamik uyarlanan yumusak olu bolgeli oransal 
@@ -85,9 +112,9 @@ class PIDController:
         lead_tilt = np.degrees(np.arctan(-d_lead_y / max(fy, 1e-6)))
         return float(lead_pan), float(lead_tilt)
 
-    def compute_pid(self, active_pan, active_tilt, dt, target_speed=0.0):
+    def compute_p(self, active_pan, active_tilt, dt, target_speed=0.0):
         """
-        Hedefin hareket hizina gore dinamik olu bolge ve ayrik eksenli oransal kontrol komutunu hesaplar.
+        Hedefin hareket hizina gore dinamik olu bolge ve ayrik eksenli oransal (P) kontrol komutunu hesaplar.
         
         Parametreler:
             active_pan: Yatay eksendeki toplam acisal hata (derece)

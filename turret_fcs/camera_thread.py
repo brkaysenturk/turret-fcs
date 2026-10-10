@@ -1,3 +1,25 @@
+"""
+================================================================================
+YILDIZ TEKNIK UNIVERSITESI - KONTROL VE OTOMASYON MUHENDISLIGI BOLUMU
+BITIRME PROJESI: OTONOM PAN-TILT TARET VE ATIS KONTROL SISTEMI (FCS)
+--------------------------------------------------------------------------------
+MODUL: SIFIR-GECIKMELI KAMERA IS PARCACIGI (CAMERA THREAD / DIRECTSHOW)
+================================================================================
+Bu modul, kameradan goruntu okuma islemini ana kontrol dongusunden izole eden
+ve ayri bir is parcaciginda (daemon thread) calistiran yuksek basarimli goruntu motorudur.
+
+KRITIK GOREVLER VE COZULEN PROBLEMLER:
+1. Donanim Algilama: PyGrabber & DirectShow Graph API ile bagli USB video aygitlarini
+   tarayarak "Logitech C270" kamerasini tak-calistir seklinde otomatik secer.
+2. Tampon Gecikmesini (Buffer Lag) Sifirlama:
+   Standart cv2.VideoCapture(), arka planda 3-5 karelik bir FIFO tamponu tutar.
+   Bu durum gercek dunyada 100-150 ms'lik bayat goruntu (stale frame) gecikmesine yol acar.
+   Bu sinif, en son gelen tek kareyi (latest frame) anlik saklar ve tamponu surekli
+   bosaltarak goruntu gecikmesini sifira indirir.
+3. Donanimsal Cozunurluk: 640x480 @ 30 FPS optimize parametrelerle calisir.
+================================================================================
+"""
+
 import threading
 import time
 import cv2

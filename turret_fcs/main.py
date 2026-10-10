@@ -1,3 +1,27 @@
+"""
+================================================================================
+YILDIZ TEKNIK UNIVERSITESI - KONTROL VE OTOMASYON MUHENDISLIGI BOLUMU
+BITIRME PROJESI: OTONOM PAN-TILT TARET VE ATIS KONTROL SISTEMI (FCS)
+--------------------------------------------------------------------------------
+MODUL: ANA KONTROL DONGUSU VE SISTEM ORKESTRASYONU (MAIN / SYSTEM RUNNER)
+================================================================================
+Bu modul, otonom atis kontrol sisteminin tum alt bilesenlerini (Goruntu Isleme,
+YOLOv8 Hedef Tespiti, FCS Durum Yonetimi, HUD Grafik Arayuzu, STM32 Seri Iletisimi
+ve Telemetri Kaydedicisi) 30 FPS gercek zamanli eszamanli calisma dongusunde birlestirir.
+
+TEMEL GOREVLER VE AKIS:
+1. Donanim Baslatma: Logitech C270 kamera (DirectShow) ve STM32 (USB VID 0483) otomatik algilama.
+2. Derin Ogrenme Cikarimi: Egitilmis YOLOv8 modeli ile balon tespiti (best.pt).
+3. Kontrol Modlari (Klavyeden 'M' ile gecis):
+   - "P": Hiz-uyarlamali yumusak olu bolgeli oransal kontrol (P CONTROLLER - Donanimda en kararli).
+   - "HYBRID": Hizli hedeflerde gecikmeyi telafi eden AI takviyeli P + PPO RL harmanlama (HYBRID CONTROLLER).
+   - "RL": Saf Reinforcement Learning (PPO) ile otonom yonlendirme (RL CONTROLLER).
+4. Akilli Devriye (Klavyeden 'P' ile gecis):
+   - Hedef yokken iki asamali arama (Grace Period -> Yerel Dar Arama -> Genel Sektor).
+5. E-STOP (Bosluk Tusu): Acil durumda aninda motor durdurma ve devriye kilitleme.
+================================================================================
+"""
+
 import time
 from pathlib import Path
 import cv2
@@ -23,7 +47,7 @@ def main():
     # Otomatik port ve kamera tespiti
     stm = FCSCommunicator()
     hud = TurretHUD()
-    fcs = FCSManager(control_mode="PID")
+    fcs = FCSManager(control_mode="P")
     telemetry = TelemetryLogger() if ENABLE_TELEMETRY else None
 
     # Logitech C270 Gorus Acilari
@@ -98,15 +122,27 @@ def main():
                         hud.draw_tracking_line(frame, center_x, center_y, bx, by, status_color)
                     hud.draw_lead_indicator(frame, bx, by, int(fcs.pred_center[0]), int(fcs.pred_center[1]))
             else:
-                status_text = "STATUS: STANDBY"
-                status_color = (0, 255, 0)
+                status_text = f"STATUS: {fcs.patrol_status}"
+                status_color = (0, 200, 255) if fcs.patrol_enabled else (0, 255, 0)
                 angle_err_text = "ANGULAR ERR:   [--, --] deg"
 
-                # Hedef kayboldugu an motorlari durdur, ardindan sessiz moda gec (boslukta titresimi keser)
-                if prev_target_detected:
-                    stm.send(0.0, 0.0, 0)
-                    fcs.reset()
+                # Hedef yokken devriye etkinse komutlari tarete ilet
+                if fcs.patrol_enabled:
+                    u_pan_cmd, u_tilt_cmd = fcs.update(
+                        None, center_x, center_y, fx, fy, dt,
+                        is_firing=False, is_hud_firing=False, dist_cm=dist_cm
+                    )
+                    active_pan_cmd = -u_pan_cmd if PAN_INVERT else u_pan_cmd
+                    active_tilt_cmd = -u_tilt_cmd if TILT_INVERT else u_tilt_cmd
+                    stm.send(active_pan_cmd, active_tilt_cmd, 0)
                     prev_target_detected = False
+                else:
+                    active_pan_cmd = 0.0
+                    active_tilt_cmd = 0.0
+                    if prev_target_detected:
+                        stm.send(0.0, 0.0, 0)
+                        fcs.reset()
+                        prev_target_detected = False
 
             if telemetry is not None:
                 telemetry.log_frame(
@@ -115,8 +151,8 @@ def main():
                     target_detected=target_detected,
                     best_box=best_box,
                     fcs=fcs,
-                    pan_cmd=active_pan_cmd if target_detected else 0.0,
-                    tilt_cmd=active_tilt_cmd if target_detected else 0.0,
+                    pan_cmd=active_pan_cmd if (target_detected or fcs.patrol_enabled) else 0.0,
+                    tilt_cmd=active_tilt_cmd if (target_detected or fcs.patrol_enabled) else 0.0,
                     dist_cm=dist_cm,
                     strength=strength,
                     fcs_state=fcs_state if target_detected else 0,
@@ -153,22 +189,26 @@ def main():
                 hud.draw_lock_bar(frame, center_x, center_y, fcs.lock_counter, fcs.LOCK_THRESHOLD_FRAMES, fcs.is_locked)
                 hud.draw_lock_quality(frame, center_x, center_y, fcs.last_lock_quality)
 
-            # Kontrol Modu Banner (HUD)
+            # Kontrol Modu ve Devriye Durum Banneri (HUD)
             if fcs.control_mode == "HYBRID":
                 rl_pct = int(getattr(fcs, "current_rl_weight", 0.0) * 100)
-                mode_label = f"HYBRID: PID + RL (AI Boost: {rl_pct}%)"
+                mode_label = f"HYBRID CONTROLLER (AI:{rl_pct}%)" if rl_pct > 0 else "HYBRID CONTROLLER"
                 mode_color = (0, 255, 128)
-            elif fcs.control_mode == "PID":
-                mode_label = "CLASSICAL ADAPTIVE PID"
-                mode_color = (0, 255, 255)
-            else:
-                mode_label = "PURE PPO RL"
+            elif fcs.control_mode == "RL":
+                mode_label = "RL CONTROLLER"
                 mode_color = (255, 200, 0)
+            else:
+                mode_label = "P CONTROLLER"
+                mode_color = (0, 255, 255)
 
+            patrol_tag = "PATROL: AUTO" if fcs.patrol_enabled else "PATROL: OFF"
+            banner_text = f"[{mode_label}] | [{patrol_tag}] ('M' Mode / 'P' Patrol)"
+            (b_w, _), _ = cv2.getTextSize(banner_text, cv2.FONT_HERSHEY_SIMPLEX, 0.55, 2)
+            banner_x = max(10, center_x - (b_w // 2))
             cv2.putText(
                 frame,
-                f"CONTROL: [{mode_label}] (Press 'M' to toggle)",
-                (center_x - 250, 30),
+                banner_text,
+                (banner_x, 30),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.55,
                 mode_color,
@@ -182,14 +222,24 @@ def main():
             if key == 27 or key == ord("q") or key == ord("Q"):
                 break
             elif key == ord("m") or key == ord("M"):
-                mode_cycle = {"PID": "HYBRID", "HYBRID": "RL", "RL": "PID"}
-                fcs.control_mode = mode_cycle.get(fcs.control_mode, "PID")
-                print(f"\n[MOD DEGISTI] Gercek Donanim Kontrol Modu: >>> {fcs.control_mode} <<<")
+                mode_cycle = {"P": "HYBRID", "HYBRID": "RL", "RL": "P"}
+                fcs.control_mode = mode_cycle.get(fcs.control_mode, "P")
+                mode_names = {
+                    "P": "P CONTROLLER",
+                    "HYBRID": "HYBRID CONTROLLER",
+                    "RL": "RL CONTROLLER",
+                }
+                print(f"\n[MOD DEGISTI] Gercek Donanim Kontrol Modu: >>> {mode_names.get(fcs.control_mode, fcs.control_mode)} <<<")
+            elif key == ord("p") or key == ord("P"):
+                fcs.patrol_enabled = not fcs.patrol_enabled
+                p_text = "ACIK (Otomatik 2 Asamali Arama)" if fcs.patrol_enabled else "KAPALI (Sessiz Standby)"
+                print(f"\n[DEVIYE MODU] Akilli Tarama / Devriye: >>> {p_text} <<<")
             elif key == 32:  # E-STOP (Bosluk tusu)
                 fcs.reset()
+                fcs.patrol_enabled = False
                 fire_start_time = 0.0
                 stm.send(0.0, 0.0, 0)
-                print("[SYS] EMERGENCY STOP: Taret durduruldu, motorlar sifirlandi.")
+                print("[SYS] EMERGENCY STOP: Taret durduruldu, motorlar sifirlandi, devriye kapatildi.")
             elif key in [ord("y"), ord("Y")] and fcs.is_locked:
                 fire_start_time = time.time()
             elif key in [ord("n"), ord("N")]:

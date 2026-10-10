@@ -1,3 +1,25 @@
+"""
+================================================================================
+YILDIZ TEKNIK UNIVERSITESI - KONTROL VE OTOMASYON MUHENDISLIGI BOLUMU
+BITIRME PROJESI: OTONOM PAN-TILT TARET VE ATIS KONTROL SISTEMI (FCS)
+--------------------------------------------------------------------------------
+MODUL: DONANIM GECIKMELI REINFORCEMENT LEARNING ORTAMI (TURRET ENV / GYMNASIUM)
+================================================================================
+Bu modul, otonom taretin yapay zeka ajanlarini (PPO) egitmek icin gelistirilmis,
+fiziksel dunyadaki 80 ms tasiyici gecikmesini ve eylemsizlik dinamigini simule eden
+ozel Gymnasium benzetim ortamidir.
+
+SIM2REAL (SIMULASYONDAN GERCEGE) KRITIK OZELLIKLERI:
+1. Donanim Tasiyici Gecikme Tamponu (FIFO Latency Buffer):
+   3 adimli (~80 ms) gecikme kuyrugu ile ajanin bayat gozlem uzerinden egitilmesi saglanmis;
+   boylece model gelecegi kestirmeyi (Lead Pursuit) ogrenmistir.
+2. Eylem Yumusakligi ve Jerk Cezasi (Action Difference Penalty):
+   r_jerk = -0.15 * ||action_k - action_{k-1}|| cezasi ile motorlara ani tork darbeleri
+   verilmesi engellenmis, mukavva/3D baskiya uygun akici kontrol ogretilmistir.
+3. Kilit ve Merkez Odulu: Hedef vizor merkezinde kaldikca eksponansiyel pozitif odul.
+================================================================================
+"""
+
 from collections import deque
 import math
 import cv2

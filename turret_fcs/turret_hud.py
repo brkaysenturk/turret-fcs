@@ -1,3 +1,27 @@
+"""
+================================================================================
+YILDIZ TEKNIK UNIVERSITESI - KONTROL VE OTOMASYON MUHENDISLIGI BOLUMU
+BITIRME PROJESI: OTONOM PAN-TILT TARET VE ATIS KONTROL SISTEMI (FCS)
+--------------------------------------------------------------------------------
+MODUL: BAS-USTU GOSTERGESI VE GRAFIK ARAYUZ (HEADS-UP DISPLAY / TURRET HUD)
+================================================================================
+Bu modul, askeri standartlarda taktik atis kontrol arayuzunu (MIL-STD HUD)
+kamera goruntusunun uzerine dinamik katman olarak bindiren gorsel render motorudur.
+
+GOSTERGE VE TELEMETRI BILESENLERI:
+1. Taktik Nisangah (Combat Reticle): Duruma gore renk degistiren (Arama: Sari,
+   Kilit: Yesil, Atesleme: Kirmizi) merkez hedefleme vizoru.
+2. Dinamik Kilit Bari (Lock Stability Progress Bar): Hedef kilit penceresinde
+   kaldikca 0 - 100% dolan gorsel atis hazirlik cubugu.
+3. Analitik Isabet Olasiligi Gostergesi (Hit Probability %): Hedef acisal hatasina
+   ve mesafesine gore hesaplanan anlik vurus kalitesi.
+4. Balistik Onleme Ibre ve Oku (Lead Indicator Vector): Hedefin gelecekteki
+   konumunu gosteren tahmin vizoru ve hedef yon oku.
+5. Canli Telemetri Paneli: FPS, TF-Luna LiDAR mesafesi, sinyal gucu, acisal sapma,
+   kontrol modu (P CONTROLLER / HYBRID CONTROLLER / RL CONTROLLER) ve akilli devriye durumu.
+================================================================================
+"""
+
 import cv2
 import numpy as np
 

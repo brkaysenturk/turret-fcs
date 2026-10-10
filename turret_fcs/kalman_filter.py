@@ -1,3 +1,32 @@
+"""
+================================================================================
+YILDIZ TEKNIK UNIVERSITESI - KONTROL VE OTOMASYON MUHENDISLIGI BOLUMU
+BITIRME PROJESI: OTONOM PAN-TILT TARET VE ATIS KONTROL SISTEMI (FCS)
+--------------------------------------------------------------------------------
+MODUL: ADAPTIF DURUM KESTIRIMI VE KALMAN FILTRESI (KALMAN FILTER)
+================================================================================
+Bu modul, kamera piksel duzleminde hedefin konumunu (x, y) ve hiz vektorunu (vx, vy)
+kestiren, olcum gurultusunu suzen ve balistik atis onleme (Lead Time) kestirimi yapan
+Surekli Beyaz Gurultulu Ivme (CWNA) tabanli genisletilmis Kalman Filtresidir.
+
+DURUM VE OLCUM UZAYI:
+- Durum Vektoru: X = [x, y, vx, vy]^T
+- Olcum Vektoru: Z = [x_meas, y_meas]^T
+- Durum Gecis Matrisi F: x(k+1) = x(k) + vx(k)*dt
+
+GELISMIS OZELLIKLER:
+1. Inovasyon Tabanli Adaptif Surec Gurultusu (Adaptive Q Matrisi):
+   Hedef sabitken kucuk varyans (sigma_a_min=5.0 px/s^2) ile mukemmel gurultu suzme;
+   hedef ani yon degistirdiginde (residual > 32 px) sigma_a_max=320.0 px/s^2 seviyesine
+   yukselerek gecikmesiz hizli manevra takibi.
+2. Olcum Gurultusu Kovaryansi R_var = 25.0 px^2:
+   YOLOv8 sinirlayici kutu titresimlerini (jitter) motora iletmeden duzlestirir.
+3. Cift Kademeli Hiz Yumusatma (Exponential Velocity Smoothing):
+   Hiz turevindeki anlik pikleri (spike) suzerek atis onleme noktasinin (Lead Reticle)
+   ekranda titremesini engeller.
+================================================================================
+"""
+
 import numpy as np
 
 

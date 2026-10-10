@@ -4,14 +4,14 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-# Proje ana dizinini ekle (pid_controller import icin)
+# Proje ana dizinini ekle (p_controller import icin)
 current_dir = Path(__file__).resolve().parent
 parent_dir = current_dir.parent
 if str(parent_dir) not in sys.path:
     sys.path.insert(0, str(parent_dir))
 
 from stable_baselines3 import PPO
-from pid_controller import PIDController
+from p_controller import PController
 from turret_env import TurretEnv
 
 
@@ -23,7 +23,7 @@ def run_comparison():
         return
 
     print("==================================================")
-    print("  TURRET FCS // PID vs. RL KARŞILAŞTIRMA TESTİ   ")
+    print("  TURRET FCS // P CONTROLLER vs. RL KARŞILAŞTIRMA TESTİ   ")
     print("==================================================")
 
     model = PPO.load(str(model_path))
@@ -40,14 +40,14 @@ def run_comparison():
     rl_total_errors = []
 
     for idx, (seed, title) in enumerate(zip(seeds, scenario_names)):
-        # 1. PID Testi
+        # 1. P Kontrolcu Testi
         env_pid = TurretEnv()
         obs_pid, _ = env_pid.reset(seed=seed)
-        pid_ctrl = PIDController(kp=0.35, ki=0.10, kd=0.03)
+        p_ctrl = PController(kp_pan=0.35, kp_tilt=0.35)
 
         pid_errors = []
         for _ in range(env_pid.max_steps):
-            # PID piksel sapmasini hesaplar
+            # Piksel sapmasini hesaplar
             px, py = env_pid.last_pixel_pos
             err_x = px - env_pid.center_x
             err_y = py - env_pid.center_y
@@ -87,7 +87,7 @@ def run_comparison():
         # Grafige Ciz
         time_axis = np.linspace(0, len(pid_errors) * env_pid.dt, len(pid_errors))
         ax = axes[idx]
-        ax.plot(time_axis, pid_errors, label=f"Klasik PID (Ort Hata: {np.mean(pid_errors):.1f}px)", color="crimson", lw=1.8, ls="--")
+        ax.plot(time_axis, pid_errors, label=f"P Kontrolcü (Ort Hata: {np.mean(pid_errors):.1f}px)", color="crimson", lw=1.8, ls="--")
         ax.plot(time_axis[:len(rl_errors)], rl_errors, label=f"PPO - RL Ajanı (Ort Hata: {np.mean(rl_errors):.1f}px)", color="teal", lw=2.0)
         ax.axhline(30, color="gray", linestyle=":", alpha=0.7, label="Hedef Kilit Alanı (30px)")
         ax.set_title(f"Senaryo {idx+1}: {title} (Seed: {seed})", fontweight="bold", fontsize=11)
@@ -105,7 +105,7 @@ def run_comparison():
     print("\n==================================================")
     print("               TEST SONUÇ ÖZETİ                   ")
     print("==================================================")
-    print(f"Klasik PID Ortalama Takip Hatası : {np.mean(pid_total_errors):.2f} px")
+    print(f"P Kontrolcü Ortalama Takip Hatası : {np.mean(pid_total_errors):.2f} px")
     print(f"PPO (RL)   Ortalama Takip Hatası : {np.mean(rl_total_errors):.2f} px")
     improvement = (np.mean(pid_total_errors) - np.mean(rl_total_errors)) / np.mean(pid_total_errors) * 100.0
     print(f"RL Performans İyileştirmesi      : %{improvement:+.1f}")

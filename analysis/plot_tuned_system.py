@@ -1,12 +1,23 @@
 """
-YTU Turret FCS - Guncel Donanim ve Telemetri Dinamik Analiz Motoru
-Bu script, gercek donanimda dogrulanan guncel kontrolcu parametrelerini:
-  - Kp_pan = 0.10, Kp_tilt = 0.07 (Dinamik Hiz Uyarlamali: 0.16 ve 0.12'ye kadar)
-  - Ki = 0.0, Kd = 0.0 (Gurultusuz, saf kritik sonumlu oransal kontrol)
-  - Soft Deadband = 0.90 deg (Pan) / 0.95 deg (Tilt) -> Dinamik daralma: 0.20 deg / 0.25 deg
-  - Slew Limiti = 2.75 deg/frame
-  - Gercek Zamanli Saha Testi Telemetri CSV Verileri (Log 154543 ve Log 161823)
-analiz eder ve yayin kalitesinde (300 DPI) grafikler uretir.
+================================================================================
+YILDIZ TEKNIK UNIVERSITESI - KONTROL VE OTOMASYON MUHENDISLIGI BOLUMU
+BITIRME PROJESI: OTONOM PAN-TILT TARET VE ATIS KONTROL SISTEMI (FCS)
+--------------------------------------------------------------------------------
+MODUL: SISTEM DINAMIGI VE SAHA TESTI GRAFIK MOTORU (PLOT TUNED SYSTEM)
+================================================================================
+Bu modul, gercek donanimda dogrulanan son kontrolcu parametrelerini ve 25 saha
+testi telemetri logunu (ozellikle Log 154543 ve Log 161823) analiz ederek tez ve
+savunma sunumu icin yayin kalitesinde (300 DPI) temel analiz grafiklerini uretir:
+
+URETILEN ANALIZ VE FIGURLER (analysis/figures/):
+- Fig 1: Basamak Yaniti ve Yumusak Olu Bolge Kontrol Eforu
+- Fig 2: Hareketli Hedef Takibi (Type-0 Rampa Hatasi ve Hiza Duyarli Kazanc)
+- Fig 3: S-Duzlemi ve Frekans Cevabi (Bode Kararlilik Marjlari)
+- Fig 4: Histerezisli Dinamik Kilit Penceresi ve Isabet Olasiligi
+- Fig 5: Gercek Telemetri Logu 154543 (Sabit Hedef Titresimsiz Kilitlenme)
+- Fig 6: Gercek Telemetri Logu 161823 (Hareketli Hedef Dinamik Takibi)
+- Fig 7: Kapsamli Sistem Karsilastirma Paneli (Eski PID vs Yeni Adaptif Soft P)
+================================================================================
 """
 
 import csv

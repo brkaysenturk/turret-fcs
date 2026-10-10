@@ -1,3 +1,25 @@
+"""
+================================================================================
+YILDIZ TEKNIK UNIVERSITESI - KONTROL VE OTOMASYON MUHENDISLIGI BOLUMU
+BITIRME PROJESI: OTONOM PAN-TILT TARET VE ATIS KONTROL SISTEMI (FCS)
+--------------------------------------------------------------------------------
+MODUL: PPO PEKISDIRMELI OGRENME EGITIM MOTORU (TRAIN RL / SB3 PPO)
+================================================================================
+Bu modul, TurretEnv benzetim ortami uzerinde Stable-Baselines3 PPO algoritmasiyla
+otonom taret ajanini egitir, odul egrilerini kaydeder ve 'turret_ppo_final.zip'
+modelini uretir.
+
+EGITIM VE SISTEM GUVENLIGI PARAMETRELERI:
+1. Donanim Termal Korumasi: torch.set_num_threads(2) kisitlamasi ile dizustu
+   bilgisayarin asiri isinmasi ve termal kapanmasi engellenir.
+2. Politika Hiperparametreleri:
+   - learning_rate = 3e-4, n_steps = 1024, batch_size = 64, n_epochs = 10
+   - gamma = 0.99, gae_lambda = 0.95, clip_range = 0.2
+3. Gecikme Telafili Egitim: Ajan 80 ms tasiyici gecikmesi altinda hedefin yonunu
+   tahmin etmeyi ogrenir ve hedefi vizor merkezinde tutarak +2000 uzeri odul toplar.
+================================================================================
+"""
+
 import os
 import time
 from pathlib import Path
