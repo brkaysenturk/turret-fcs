@@ -1,16 +1,36 @@
-import cv2
 import threading
 import time
+import cv2
 
 
 class CameraThread:
     """
     OpenCV VideoCapture nesnesini arka planda bagimsiz bir thread ile sarmalayan sinif.
-    Kamera tamponundaki gecikmeyi sifirlar ve VideoCapture API'si ile tam uyumludur.
+    Kamera tamponundaki gecikmeyi sifirlar ve DirectShow ile Logitech C270'i otomatik secer.
     """
 
-    def __init__(self, src=0, width=1280, height=720, fps=30):
-        self.src = src
+    @staticmethod
+    def detect_camera(preferred_name="Logi C270"):
+        """Sistemdeki kameralari listeler ve tercihen Logitech C270'i otomatik secer."""
+        try:
+            from pygrabber.dshow_graph import FilterGraph
+            devices = FilterGraph().get_input_devices()
+            if devices:
+                for idx, dev in enumerate(devices):
+                    if preferred_name.lower() in dev.lower():
+                        return idx, dev
+                return 0, devices[0]
+        except Exception:
+            pass
+        return 0, "Default Camera"
+
+    def __init__(self, src=None, width=1280, height=720, fps=30):
+        if src is None:
+            self.src, self.cam_name = self.detect_camera()
+        else:
+            self.src = src
+            self.cam_name = f"Index {src}"
+
         self.cap = cv2.VideoCapture(self.src, cv2.CAP_DSHOW)
         self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
@@ -25,6 +45,8 @@ class CameraThread:
 
         if self.grabbed:
             self.start()
+        else:
+            print(f"[UYARI] [Camera] Kamera acilamadi (Src: {self.src} - {self.cam_name})!")
 
     def start(self):
         """Kare yakalama is parcacigini baslatir."""
@@ -32,7 +54,7 @@ class CameraThread:
             self.running = True
             self.thread = threading.Thread(target=self._update, daemon=True)
             self.thread.start()
-            print(f"[OK] [Camera] CameraThread baslatildi (Src: {self.src}).")
+            print(f"[OK] [Camera] CameraThread baslatildi (Src: {self.src} - {self.cam_name}).")
 
     def _update(self):
         """Arka planda surekli en guncel kareyi okur."""
@@ -54,15 +76,12 @@ class CameraThread:
             return self.grabbed, self.frame.copy()
 
     def isOpened(self):
-        """Kamera akisinin ve thread'in aktifligini dogrular."""
         return self.running and self.cap.isOpened() and self.grabbed
 
     def stop(self):
-        """Kamerayi ve thread'i guvenli sonlandirir."""
         self.release()
 
     def release(self):
-        """Thread'i ve donanim portunu guvenli kapatir."""
         self.running = False
         if self.thread and self.thread.is_alive():
             self.thread.join(timeout=0.5)
@@ -71,5 +90,4 @@ class CameraThread:
         print("[OK] [Camera] CameraThread serbest birakildi.")
 
     def __getattr__(self, name):
-        """OpenCV metotlarini dogrudan orijinal cv2.VideoCapture nesnesine yonlendirir."""
         return getattr(self.cap, name)

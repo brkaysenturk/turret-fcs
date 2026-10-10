@@ -7,7 +7,7 @@ class LockManager:
     hedef kilit kalitesi puanini gercek zamanli turret FCS icin yonetir.
     """
 
-    def __init__(self, lock_threshold_frames=15, lock_exit_deg=3.2):
+    def __init__(self, lock_threshold_frames=10, lock_exit_deg=3.5):
         self.lock_threshold_frames = lock_threshold_frames
         self.lock_exit_deg = lock_exit_deg
 

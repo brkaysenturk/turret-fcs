@@ -1,10 +1,10 @@
 class TargetSelector:
     """
     YOLO tespitlerinden en uygun hedef sinir kutusunu guvene, alana, aspect orana ve 
-    nisangaha yakina gore secen sinif
+    nisangaha olan mesafeye gore secen sinif.
     """
 
-    def __init__(self, min_conf=0.30, min_area=300, max_area=400000, min_dim=15):
+    def __init__(self, min_conf=0.45, min_area=400, max_area=400000, min_dim=18):
         self.min_conf = min_conf
         self.min_area = min_area
         self.max_area = max_area

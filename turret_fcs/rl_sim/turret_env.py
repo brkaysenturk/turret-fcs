@@ -1,21 +1,25 @@
+from collections import deque
 import math
+import cv2
 import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
-import cv2
 
 
 class TurretEnv(gym.Env):
     """
-    Turret FCS - Yüksek Hassasiyetli ve Agresif Merkez Odaklı (Center-Seeking) RL Ortamı.
+    Turret FCS - Gercek Dunya Gecikmesi (Transport Delay Buffer) ve 
+    Sarsinti Onleme (Action Smoothness Penalty) ile Guclendirilmis RL Ortami.
     """
 
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 60}
 
-    def __init__(self, render_mode=None, dt=0.016):
+    def __init__(self, render_mode=None, dt=0.016, latency_steps=2):
         super().__init__()
         self.render_mode = render_mode
         self.base_dt = dt
+        self.latency_steps = latency_steps  # ~60-80 ms Donanim Gecikmesi (Kamera + YOLO + UART)
+        self.obs_queue = deque(maxlen=self.latency_steps + 1)
 
         # Optik Parametreler (Webots C270)
         self.screen_w = 640
@@ -30,7 +34,7 @@ class TurretEnv(gym.Env):
         # Servo Limitleri
         self.max_pan_deg = 90.0
         self.max_tilt_deg = 45.0
-        self.max_vel_deg_s = 140.0  # Çevik ve hızlı tepki için yükseltildi
+        self.max_vel_deg_s = 140.0
 
         # Eylem Uzayı
         self.action_space = spaces.Box(
@@ -74,7 +78,7 @@ class TurretEnv(gym.Env):
         err_x_norm = np.clip((px - self.center_x) / (self.screen_w / 2.0), -1.5, 1.5)
         err_y_norm = np.clip((py - self.center_y) / (self.screen_h / 2.0), -1.5, 1.5)
 
-        # Hata türevi (Göreceli hız)
+        # Hata türevi
         d_err_x = np.clip((err_x_norm - self.last_err[0]) / max(self.dt, 1e-4) * 0.08, -1.0, 1.0)
         d_err_y = np.clip((err_y_norm - self.last_err[1]) / max(self.dt, 1e-4) * 0.08, -1.0, 1.0)
         self.last_err = np.array([err_x_norm, err_y_norm], dtype=np.float32)
@@ -114,9 +118,8 @@ class TurretEnv(gym.Env):
         self.pan_vel = 0.0
         self.tilt_vel = 0.0
         self.last_err = np.zeros(2, dtype=np.float32)
-        self.last_action = np.zeros(2, dtype=np.float32)
         self.last_dist_val = 1.0
-
+        self.last_action = np.zeros(2, dtype=np.float32)
         self.dt = np.random.uniform(0.016, 0.024)
 
         scenarios = ["static", "linear", "zigzag", "evasive", "circular"]
@@ -137,13 +140,20 @@ class TurretEnv(gym.Env):
             self.target_vel_3d = np.array([0.8 * np.random.choice([-1, 1]), 0.0, 0.0], dtype=np.float32)
 
         self.phase = np.random.uniform(0, 2 * math.pi)
-        return self._get_obs(), {}
+
+        # Gecikme tamponunu ilklendir
+        obs = self._get_obs()
+        self.obs_queue.clear()
+        for _ in range(self.latency_steps + 1):
+            self.obs_queue.append(obs.copy())
+
+        return self.obs_queue[0], {}
 
     def step(self, action):
         self.step_count += 1
         action = np.clip(action, -1.0, 1.0)
 
-        # 1. Hızlı ve Akıcı Motor Dinamiği (Çevik EMA: 0.50 mevcut, 0.50 hedef)
+        # 1. Motor Dinamiği
         target_pan_vel = float(action[0] * self.max_vel_deg_s)
         target_tilt_vel = float(action[1] * self.max_vel_deg_s)
 
@@ -173,27 +183,27 @@ class TurretEnv(gym.Env):
         if abs(self.target_pos_3d[1]) > 1.0:
             self.target_vel_3d[1] *= -1.0
 
-        # 3. Gelişmiş Agresif Merkez Odaklı Ödül Fonksiyonu
-        obs = self._get_obs()
-        err_x_norm, err_y_norm = obs[0], obs[1]
+        # 3. Gercek Durum ve Gecikmeli Gozlem
+        real_obs = self._get_obs()
+        self.obs_queue.append(real_obs.copy())
+        delayed_obs = self.obs_queue[0]  # Ajana 2-3 kare gecikmeli gercek dunya gozlemi sunulur
+
+        err_x_norm, err_y_norm = real_obs[0], real_obs[1]
         dist_sq = err_x_norm**2 + err_y_norm**2
         current_dist = math.sqrt(dist_sq)
 
-        # A) Doğrusal & Karesel Mesafe Cezası (Sıfıra Çekme Baskısı)
+        # Odul Hesaplamasi
         r_dist_penalty = -4.0 * current_dist - 6.0 * dist_sq
-
-        # B) Tam Merkez Kilit Bonusu (Hedef < 15 piksel ise dev ödül)
         r_bullseye = 5.0 * math.exp(-12.0 * dist_sq)
         r_lock = 3.0 if current_dist < 0.04 else 0.0
 
-        # C) Merkeze İlerleme Bonusu (Distance Delta - Yaklaştıkça anında ödüllendir)
         delta_dist = self.last_dist_val - current_dist
         r_progress = 12.0 * delta_dist
         self.last_dist_val = current_dist
 
-        # D) Yumuşaklık (Dengelenmiş Jerk Cezası)
+        # Sarsinti ve Titreme Cezasi (Action Jerk Penalty) -> Donanim motorlarini korur
         action_diff = np.sum((action - self.last_action) ** 2)
-        r_smooth = -0.04 * action_diff
+        r_smooth = -0.15 * action_diff
 
         reward = r_dist_penalty + r_bullseye + r_lock + r_progress + r_smooth
         self.last_action = action.copy()
@@ -205,7 +215,7 @@ class TurretEnv(gym.Env):
             terminated = True
             reward -= 5.0
 
-        return obs, reward, terminated, truncated, {"pixel_dist": current_dist}
+        return delayed_obs, reward, terminated, truncated, {"pixel_dist": current_dist}
 
     def render(self):
         if self.render_mode is None:

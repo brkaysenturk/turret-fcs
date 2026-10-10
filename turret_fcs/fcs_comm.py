@@ -6,7 +6,7 @@ import serial
 
 class FCSCommunicator:
     """
-    STM32 mikrodenetleyicisi ile tek bir seri port (COM) uzerinden Full-Duplex
+    STM32 mikrodenetleyicisi ile tek bir seri port uzerinden Full-Duplex
     ve Saf Binary (ikili) paket protokolu ile calisan iletisim sinifi:
     
       1. TX (PC -> STM32) [7 Bayt]:
@@ -14,12 +14,15 @@ class FCSCommunicator:
          
       2. RX (STM32 -> PC) [6 Bayt]:
          [0x55] [Mesafe: uint16 (2B)] [Sinyal: uint16 (2B)] [Checksum: uint8]
+         
+    Baglanti: Herhangi bir sabit COM port girmeden ST-Link / STM32 USB VID (0483) 
+    veya bagli tek USB seri portu otomatik olarak tarayip baglanir.
     """
 
     HEADER_TX = 0xAA
     HEADER_RX = b"\x55"
 
-    def __init__(self, port="COM3", baudrate=115200, reconnect_interval=2.0, stale_timeout=0.3):
+    def __init__(self, port=None, baudrate=115200, reconnect_interval=2.0, stale_timeout=0.3):
         self.port = port
         self.baudrate = baudrate
         self.reconnect_interval = reconnect_interval
@@ -28,6 +31,7 @@ class FCSCommunicator:
         self.last_reconnect_attempt = 0.0
         self.ser = None
         self._lock = threading.Lock()
+        self._warned_offline = False
 
         # TF-Luna telemetri verileri
         self.distance = 0
@@ -41,20 +45,65 @@ class FCSCommunicator:
         self.thread = threading.Thread(target=self._binary_reader_worker, daemon=True)
         self.thread.start()
 
+    def _find_target_port(self):
+        """Mevcut seri portlari donanim kimligine (VID 0483 / ST-Link) gore tarar."""
+        try:
+            import serial.tools.list_ports
+            available = list(serial.tools.list_ports.comports())
+            if not available:
+                return None
+
+            # 1. Oncelik: ST-Link / STM32 donanim tanimi veya VID:0483
+            for p in available:
+                desc = (p.description or "").lower()
+                hwid = (p.hwid or "").lower()
+                if "0483:" in hwid or "stlink" in desc or "stm" in desc or "stmicroelectronics" in desc:
+                    return p.device
+
+            # 2. Kullanici ozel bir port girmisse onu kontrol et
+            if self.port:
+                for p in available:
+                    if p.device.upper() == self.port.upper():
+                        return p.device
+
+            # 3. Bilgisayarda takili tek bir COM port varsa direkt onu sec
+            if len(available) == 1:
+                return available[0].device
+
+            # 4. Genel USB-Serial donanimlari (CH340, CP210, FTDI vb.)
+            for p in available:
+                desc = (p.description or "").lower()
+                if any(x in desc for x in ["ch340", "cp210", "ftdi", "usb serial", "usb-to-serial"]):
+                    return p.device
+
+        except Exception:
+            pass
+        return None
+
     def connect(self):
-        """Seri port baglantisini baslatir veya yeniden baglanmayi dener."""
+        """Seri port baglantisini otomatik tespit ile baslatir."""
         self.last_reconnect_attempt = time.time()
+        target_port = self._find_target_port()
+        if not target_port:
+            if not self._warned_offline:
+                print("[BILGI] [STM32] Bagli ST-Link/STM32 portu bulunamadi (Donanimsiz Mod). Takildiginda otomatik baglanacak.")
+                self._warned_offline = True
+            self.ser = None
+            return False
+
         try:
             with self._lock:
                 if self.ser and self.ser.is_open:
                     self.ser.close()
                 self.ser = serial.Serial(
-                    self.port,
+                    target_port,
                     self.baudrate,
                     timeout=0.04,
                     write_timeout=0.04,
                 )
-            print(f"[OK] [STM32] {self.port} baglandi (Full-Duplex Binary Mod).")
+            self.port = target_port
+            self._warned_offline = False
+            print(f"[OK] [STM32] {self.port} otomatik baglandi (Full-Duplex Binary Mod).")
             return True
         except (serial.SerialException, OSError):
             self.ser = None
@@ -87,21 +136,16 @@ class FCSCommunicator:
                 if self.ser and self.ser.is_open:
                     self.ser.write(payload + bytes([checksum]))
         except (serial.SerialException, serial.SerialTimeoutException, OSError):
-            print("[ERR] [STM32] Paket gonderilemedi veya baglanti koptu.")
             self.close()
 
     def _binary_reader_worker(self):
-        """
-        STM32'den gelen 6 baytlik ikili telemetri paketlerini okur:
-        [0x55] [Dist_L, Dist_H] [Str_L, Str_H] [Checksum]
-        """
+        """STM32'den gelen 6 baytlik ikili telemetri paketlerini okur."""
         while self.running:
             if not self.is_connected:
                 time.sleep(0.5)
                 continue
 
             try:
-                # 1. Seri port durumu ve bekleyen bayt kontrolu (kilit kilitlemeden bekleme)
                 with self._lock:
                     if not self.ser or not self.ser.is_open:
                         ser_ok = False
@@ -117,14 +161,14 @@ class FCSCommunicator:
                     time.sleep(0.002)
                     continue
 
-                # Tamponda 3 paketten fazla birikmisse en guncel pakete atla (sifir sensor gecikmesi)
+                # Tamponda 3 paketten fazla birikmisse en guncel pakete atla (sifir gecikme)
                 if in_w > 18:
                     with self._lock:
                         if self.ser and self.ser.is_open:
                             discard_count = (in_w // 6 - 1) * 6
                             self.ser.read(discard_count)
 
-                # 2. Paket basligini oku (0x55)
+                # Paket basligi: 0x55
                 header = None
                 with self._lock:
                     if self.ser and self.ser.is_open:
@@ -133,7 +177,6 @@ class FCSCommunicator:
                 if header != self.HEADER_RX:
                     continue
 
-                # 3. Kalan 5 bayti oku (2B Mesafe + 2B Sinyal + 1B Checksum)
                 payload = None
                 with self._lock:
                     if self.ser and self.ser.is_open:
@@ -142,12 +185,11 @@ class FCSCommunicator:
                 if not payload or len(payload) != 5:
                     continue
 
-                # 4. Checksum dogrulama: (0x55 + payload[0..3]) & 0xFF == payload[4]
+                # Checksum dogrulama
                 calc_csum = (0x55 + sum(payload[:4])) & 0xFF
                 if calc_csum != payload[4]:
                     continue
 
-                # 5. Veriyi cozumle
                 dist, strength = struct.unpack("<HH", payload[:4])
                 self.distance = dist
                 self.strength = strength
@@ -157,10 +199,7 @@ class FCSCommunicator:
                 time.sleep(0.1)
 
     def get_luna_data(self):
-        """
-        Guncel sensor verilerini dondurur.
-        0.3 saniye boyunca yeni veri gelmezse 0 cm dondurur.
-        """
+        """Guncel sensor verilerini dondurur. 0.3 sn veri gelmezse 0 cm dondurur."""
         if time.time() - self.last_valid_time > self.stale_timeout:
             return 0, 0, 0.0
         return self.distance, self.strength, self.temp
@@ -173,7 +212,6 @@ class FCSCommunicator:
                 try:
                     if self.ser.is_open:
                         self.ser.close()
-                    print("[OK] [STM32] Baglanti kapatildi.")
                 except Exception:
                     pass
                 finally:

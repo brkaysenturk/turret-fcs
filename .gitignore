@@ -48,7 +48,8 @@ webots/worlds/.*.jpg
 webots/worlds/.*.png
 
 # Logs, Metrics & TensorBoard
-logs/
+logs/*
+!logs/*.csv
 *.tfevents.*
 *.log
 *.tmp

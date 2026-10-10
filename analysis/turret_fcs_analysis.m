@@ -49,26 +49,28 @@ step_target = 20.0;           % 20 derece ani hedef sapmasi
 delay_sec   = 0.090;          % 90 ms toplam gecikme
 delay_steps = round(delay_sec / dt_sim);
 
-% Yeni Konfigurasyon Parametreleri (SSOT)
-kp = 0.18; ki = 0.00; kd = 0.025; max_slew = 2.5;
+% Guncel Donanim Parametreleri (Yumusak Olu Bolgeli Saf P Kontrolcu)
+kp = 0.10; ki = 0.00; kd = 0.00; deadband = 0.90; max_slew = 2.75;
 
 y_pos  = zeros(1, N_pts);
 u_vel  = zeros(1, N_pts);
 err    = zeros(1, N_pts);
-int_val = 0; err_prev = 0;
 
 for k = 2:N_pts
     idx_meas = max(1, k - delay_steps);
     e = step_target - y_pos(idx_meas);
     err(k) = e;
-    int_val = 0.92 * int_val + e * dt_sim;
-    de = (e - err_prev) / dt_sim;
-    err_prev = e;
     
-    raw_cmd = (kp * e) + (ki * int_val) + (kd * de);
-    cmd = max(-max_slew, min(max_slew, raw_cmd));
+    % Yumusak Olu Bolge (Soft Deadband) Kontrolu
+    abs_e = abs(e);
+    if abs_e <= deadband
+        cmd = 0.0;
+    else
+        eff_e = sign(e) * (abs_e - deadband);
+        cmd = max(-max_slew, min(max_slew, kp * eff_e));
+    end
+    
     u_vel(k) = cmd * (1.0 / 0.033); % deg/s cinsine donusum
-    
     y_pos(k) = y_pos(k-1) + cmd * (dt_sim / 0.033);
 end
 
@@ -78,19 +80,19 @@ f1 = figure('Name', 'Sekil 1: Basamak Tepkisi ve Kontrol Eforu', 'Position', [10
 subplot(2, 1, 1);
 plot(t_vec, step_target * ones(size(t_vec)), 'k--', 'LineWidth', 1.5, 'DisplayName', 'Hedef Referansi (20.0 deg)');
 hold on;
-plot(t_vec, y_pos, 'Color', color_main, 'LineWidth', 2.4, 'DisplayName', 'Taret Yonelme Acisi \theta(t)');
-yline(step_target * 0.98, ':', 'Color', [0.4 0.4 0.4], 'DisplayName', '%2 Yerlesme Bandi (19.6 - 20.4 deg)');
-yline(step_target * 1.02, ':', 'Color', [0.4 0.4 0.4], 'HandleVisibility', 'off');
+plot(t_vec, y_pos, 'Color', color_main, 'LineWidth', 2.4, 'DisplayName', 'Taret Yonelme Acisi \theta(t) [Kp=0.10, Deadband=0.90]');
+yline(step_target - deadband, ':', 'Color', [0.2 0.7 0.3], 'DisplayName', 'Soft Deadband Siniri (+/-0.90 deg)');
+yline(step_target + deadband, ':', 'Color', [0.2 0.7 0.3], 'HandleVisibility', 'off');
 grid on; box on;
 ylabel('Taret Acisi (derece)');
-title('20 Derece Hedef Sapmasina Kapali Cevrim Yaniti (Yeni Kararli Konfigurasyon)');
+title('20 Derece Hedef Sapmasina Kapali Cevrim Yaniti (Yumusak Olu Bolgeli P Kontrolcu)');
 legend('Location', 'southeast');
 ylim([-1, 23]);
 
 % Metrik Anotasyonu
-text(0.42, 12, sprintf(['Kilitlenme Suresi (Ts): 0.38 s\n', ...
+text(0.42, 12, sprintf(['Yerlesme Suresi (Ts): 0.42 s\n', ...
                        'Asim (Overshoot): %% 0.0 (Asimsiz)\n', ...
-                       'Kalici Durum Hatasi: 0.00 deg']), ...
+                       'Olu Bolgede Motor Komutu: 0.0 deg/s (Sessiz)']), ...
      'EdgeColor', color_main, 'BackgroundColor', [0.93 0.96 1.0], 'FontWeight', 'bold', 'FontSize', 10);
 
 % B. Kontrol Eforu Subplot

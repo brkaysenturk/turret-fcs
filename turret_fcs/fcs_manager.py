@@ -13,14 +13,14 @@ class FCSManager:
     atesleme koordinasyonunu yoneten ust seviye yonetici sinifi.
     """
 
-    def __init__(self, control_mode="HYBRID", max_lost_frames=12):
+    def __init__(self, control_mode="PID", max_lost_frames=3):
         self.selector = TargetSelector()
         self.tracker = KalmanFilter()
         self.lock_mgr = LockManager()
         self.pid_controller = PIDController()
         self.rl_controller = RLController()
 
-        self.control_mode = control_mode  # "HYBRID", "PID", "RL"
+        self.control_mode = control_mode  # "PID" (Donanim icin onerilen), "HYBRID", "RL"
         self.current_rl_weight = 0.0
 
         self.max_lost_frames = max_lost_frames
@@ -71,10 +71,10 @@ class FCSManager:
             bx = (x1 + x2) // 2
             by = (y1 + y2) // 2 
 
-            # 1. Camera center'dan hedef acilari
+            # 1. Kamera merkezinden hedef acilari
             pan_deg, tilt_deg = self.pid_controller.compute_angles(bx, by, center_x, center_y, fx, fy)
 
-            # 2. Kalman hiz tahmini ve onleme hesaplamasi
+            # 2. Kalman durum takibi ve atis onleme hesaplamasi
             d_m = (dist_cm / 100.0) if (dist_cm is not None and dist_cm > 20) else self.pid_controller.DEFAULT_DISTANCE_M
             lead_time = float(np.clip((d_m / self.pid_controller.PROJECTILE_SPEED_MPS) + 0.015, 0.03, 0.25))
 
@@ -91,18 +91,19 @@ class FCSManager:
                 lead_pan, lead_tilt = self.pid_controller.compute_lead_angles(d_lead_x, d_lead_y, fx, fy)
                 self.firing_lead_offset = np.array([lead_pan, lead_tilt], dtype=float)
 
-            # 3. Dusuk aci / yercekimi telafisi
+            # 3. Balistik yercekimi telafisi
             self.gravity_comp_deg = self.pid_controller.compute_gravity_comp(dist_cm)
 
             # 4. Kilit durumu kontrolu
             angular_err = float(np.hypot(pan_deg, tilt_deg))
+            speed_mag = float(np.hypot(self.target_velocity[0], self.target_velocity[1]))
             self.lock_mgr.update(angular_err, self.target_velocity, is_firing=(is_firing or is_hud_firing), dist_m=d_m)
 
-            # 5. Motor kontrol komutu (HYBRID, PID veya RL Modu)
+            # 5. Motor kontrol komutu (Hiza duyarli dinamik olu bolge ve adaptif kazanc hesaplamasi)
             active_pan = float(pan_deg + (self.firing_lead_offset[0] if (is_firing or is_hud_firing) else 0.0))
             active_tilt = float(tilt_deg + ((self.firing_lead_offset[1] + self.gravity_comp_deg) if (is_firing or is_hud_firing) else 0.0))
 
-            u_pid_pan, u_pid_tilt = self.pid_controller.compute_pid(active_pan, active_tilt, dt)
+            u_pid_pan, u_pid_tilt = self.pid_controller.compute_pid(active_pan, active_tilt, dt, target_speed=speed_mag)
 
             if self.control_mode == "HYBRID" and self.rl_controller.is_loaded:
                 screen_w = center_x * 2
@@ -113,18 +114,15 @@ class FCSManager:
                     d_m, float(pan_deg), float(tilt_deg), dt
                 )
                 
-                # Cift Modlu Uyarlamali Agirlik (Kilitliyken %0-%10, Manevrada %65-%75)
-                speed_mag = float(np.hypot(self.target_velocity[0], self.target_velocity[1]))
                 lock_qual = float(self.lock_mgr.hit_probability)
-                
                 speed_ratio = float(np.clip(speed_mag / 200.0, 0.0, 1.0))
                 weight_spd = 0.60 * speed_ratio
                 weight_err = float(np.clip(angular_err / 2.5, 0.0, 0.25))
                 raw_boost = weight_spd + weight_err
                 
                 lock_factor = 1.0 - float(np.clip((lock_qual - 40.0) / 55.0, 0.0, 0.88))
-                self.current_rl_weight = float(np.clip(raw_boost * lock_factor, 0.0, 0.75))
-                
+                self.current_rl_weight = float(np.clip(raw_boost * lock_factor, 0.0, 0.25))
+
                 u_pan = float(np.clip(u_pid_pan + (d_pan_deg * self.current_rl_weight), -self.pid_controller.max_output, self.pid_controller.max_output))
                 u_tilt = float(np.clip(u_pid_tilt + (d_tilt_deg * self.current_rl_weight), -self.pid_controller.max_output, self.pid_controller.max_output))
                 return u_pan, u_tilt
@@ -148,7 +146,7 @@ class FCSManager:
 
         else:
             self.frames_since_lost += 1
-            if self.frames_since_lost >= self.max_lost_frames:
+            if self.frames_since_lost >= 2:
                 self.reset()
             return 0.0, 0.0
 

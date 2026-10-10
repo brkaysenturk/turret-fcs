@@ -8,7 +8,6 @@ from camera_thread import CameraThread
 from fcs_comm import FCSCommunicator
 from fcs_manager import FCSManager
 from turret_hud import TurretHUD
-from patrol_generator import PatrolGenerator
 from telemetry import TelemetryLogger
 
 
@@ -21,12 +20,13 @@ def main():
     WINDOW_NAME = "Turret FCS"
     cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
 
+    # Otomatik port ve kamera tespiti
     stm = FCSCommunicator()
     hud = TurretHUD()
-    fcs = FCSManager()
-    patrol = PatrolGenerator()
+    fcs = FCSManager(control_mode="PID")
     telemetry = TelemetryLogger() if ENABLE_TELEMETRY else None
 
+    # Logitech C270 Gorus Acilari
     H_FOV, V_FOV = 69.0, 42.0
     fx = (1280 / 2.0) / np.tan(np.radians(H_FOV / 2.0))
     fy = (720 / 2.0) / np.tan(np.radians(V_FOV / 2.0))
@@ -37,6 +37,10 @@ def main():
     ENGAGING_DISPLAY_DURATION = 1.00
     BALLISTIC_DISPLAY_DURATION = 2.00
     FIRE_DISPLAY_DURATION = ENGAGING_DISPLAY_DURATION + BALLISTIC_DISPLAY_DURATION
+
+    prev_target_detected = False
+    PAN_INVERT = True   # Yatay servo mekanik montaj acisina gore tersleme (True: -pan_cmd, False: +pan_cmd)
+    TILT_INVERT = False  # Dikey servo mekanik montaj acisina gore tersleme (True: -tilt_cmd, False: +tilt_cmd)
 
     print("[SYS] TURRET_FCS // BASLATILDI & OPERASYONEL")
 
@@ -63,13 +67,16 @@ def main():
             is_hud_firing = (now - fire_start_time) < FIRE_DISPLAY_DURATION
 
             best_box = fcs.select_best_target(boxes, center_x, center_y)
-            pan_cmd, tilt_cmd = fcs.update(best_box, center_x, center_y, fx, fy, dt, is_firing=is_gun_firing, is_hud_firing=is_hud_firing, dist_cm=dist_cm)
+            pan_cmd, tilt_cmd = fcs.update(
+                best_box, center_x, center_y, fx, fy, dt, 
+                is_firing=is_gun_firing, is_hud_firing=is_hud_firing, dist_cm=dist_cm
+            )
 
             target_detected = best_box is not None
             target_centered = False
 
             if target_detected:
-                patrol.reset()
+                prev_target_detected = True
                 x1, y1, x2, y2 = best_box
                 bx, by = (x1 + x2) // 2, (y1 + y2) // 2
                 target_centered = hud.is_target_centered(center_x, center_y, x1, y1, x2, y2)
@@ -78,7 +85,9 @@ def main():
                 status_color = (0, 0, 255) if fcs.is_locked else (0, 191, 255)
 
                 fcs_state = 2 if (fcs.is_locked and is_gun_firing) else (1 if fcs.is_locked else 0)
-                stm.send(pan_cmd, tilt_cmd, fcs_state)
+                active_pan_cmd = -pan_cmd if PAN_INVERT else pan_cmd
+                active_tilt_cmd = -tilt_cmd if TILT_INVERT else tilt_cmd
+                stm.send(active_pan_cmd, active_tilt_cmd, fcs_state)
 
                 angle_err_text = f"ANGULAR ERR:   [{fcs.actual_pan:+.1f} , {fcs.actual_tilt:+.1f}] deg"
                 target_label = "" if is_hud_firing else hud.get_box_label(dist_cm, target_centered, fcs.is_locked)
@@ -89,12 +98,15 @@ def main():
                         hud.draw_tracking_line(frame, center_x, center_y, bx, by, status_color)
                     hud.draw_lead_indicator(frame, bx, by, int(fcs.pred_center[0]), int(fcs.pred_center[1]))
             else:
-                status_text = "STATUS: PATROLLING"
+                status_text = "STATUS: STANDBY"
                 status_color = (0, 255, 0)
                 angle_err_text = "ANGULAR ERR:   [--, --] deg"
 
-                pan_patrol, tilt_patrol = patrol.update(dt)
-                stm.send(pan_patrol, tilt_patrol, 0)
+                # Hedef kayboldugu an motorlari durdur, ardindan sessiz moda gec (boslukta titresimi keser)
+                if prev_target_detected:
+                    stm.send(0.0, 0.0, 0)
+                    fcs.reset()
+                    prev_target_detected = False
 
             if telemetry is not None:
                 telemetry.log_frame(
@@ -103,8 +115,8 @@ def main():
                     target_detected=target_detected,
                     best_box=best_box,
                     fcs=fcs,
-                    pan_cmd=pan_cmd if target_detected else pan_patrol,
-                    tilt_cmd=tilt_cmd if target_detected else tilt_patrol,
+                    pan_cmd=active_pan_cmd if target_detected else 0.0,
+                    tilt_cmd=active_tilt_cmd if target_detected else 0.0,
                     dist_cm=dist_cm,
                     strength=strength,
                     fcs_state=fcs_state if target_detected else 0,
@@ -145,13 +157,13 @@ def main():
             if fcs.control_mode == "HYBRID":
                 rl_pct = int(getattr(fcs, "current_rl_weight", 0.0) * 100)
                 mode_label = f"HYBRID: PID + RL (AI Boost: {rl_pct}%)"
-                mode_color = (0, 255, 128)  # Parlak Yesil
+                mode_color = (0, 255, 128)
             elif fcs.control_mode == "PID":
-                mode_label = "CLASSICAL PID"
-                mode_color = (0, 255, 255)  # Sari
+                mode_label = "CLASSICAL ADAPTIVE PID"
+                mode_color = (0, 255, 255)
             else:
                 mode_label = "PURE PPO RL"
-                mode_color = (255, 200, 0)  # Mavi/Turkuaz
+                mode_color = (255, 200, 0)
 
             cv2.putText(
                 frame,
@@ -170,10 +182,10 @@ def main():
             if key == 27 or key == ord("q") or key == ord("Q"):
                 break
             elif key == ord("m") or key == ord("M"):
-                mode_cycle = {"HYBRID": "PID", "PID": "RL", "RL": "HYBRID"}
-                fcs.control_mode = mode_cycle.get(fcs.control_mode, "HYBRID")
+                mode_cycle = {"PID": "HYBRID", "HYBRID": "RL", "RL": "PID"}
+                fcs.control_mode = mode_cycle.get(fcs.control_mode, "PID")
                 print(f"\n[MOD DEGISTI] Gercek Donanim Kontrol Modu: >>> {fcs.control_mode} <<<")
-            elif key == 32:  # E-STOP
+            elif key == 32:  # E-STOP (Bosluk tusu)
                 fcs.reset()
                 fire_start_time = 0.0
                 stm.send(0.0, 0.0, 0)
