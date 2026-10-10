@@ -1,8 +1,5 @@
 """
 ================================================================================
-YILDIZ TEKNIK UNIVERSITESI - KONTROL VE OTOMASYON MUHENDISLIGI BOLUMU
-BITIRME PROJESI: OTONOM PAN-TILT TARET VE ATIS KONTROL SISTEMI (FCS)
---------------------------------------------------------------------------------
 MODUL: DONANIM HABERLESME VE SERI PORT PROTOKOLU (FCS COMMUNICATOR / UART)
 ================================================================================
 Bu modul, PC (Python) ile gomulu sistem (STM32 mikrodenetleyici) arasindaki
@@ -85,7 +82,7 @@ class FCSCommunicator:
                 if "0483:" in hwid or "stlink" in desc or "stm" in desc or "stmicroelectronics" in desc:
                     return p.device
 
-            # 2. Kullanici ozel bir port girmisse onu kontrol et
+            # 2. Tanimlanmis ozel port parametresi varsa kontrol et
             if self.port:
                 for p in available:
                     if p.device.upper() == self.port.upper():

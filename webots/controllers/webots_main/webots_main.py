@@ -96,8 +96,16 @@ def main():
                 x1, y1, x2, y2 = best_box
                 bx, by = (x1 + x2) // 2, (y1 + y2) // 2
                 target_centered = hud.is_target_centered(center_x, center_y, x1, y1, x2, y2)
-                status_color = (0, 0, 255) if fcs.is_locked else (0, 191, 255)
-                status_text = "STATUS: TARGET LOCKED" if fcs.is_locked else "STATUS: TRACKING"
+                if is_hud_firing:
+                    status_text = "STATUS: ENGAGING TARGET"
+                    status_color = (0, 0, 255)
+                elif fcs.is_locked:
+                    status_text = "STATUS: TARGET LOCKED"
+                    status_color = (0, 0, 255)
+                else:
+                    status_text = "STATUS: TRACKING"
+                    status_color = (0, 191, 255)
+
                 angle_err_text = f"ANGULAR ERR:   [{fcs.actual_pan:+.1f} , {fcs.actual_tilt:+.1f}] deg"
 
                 target_label = "" if is_hud_firing else hud.get_box_label(dist_cm, target_centered, fcs.is_locked)
@@ -110,7 +118,7 @@ def main():
             else:
                 status_text = "STATUS: PATROLLING"
                 status_color = (0, 255, 0)
-                angle_err_text = "ANGULAR ERR:   [--- , ---] deg"
+                angle_err_text = "ANGULAR ERR:   [--, --] deg"
 
             reticle_color = status_color
             hud.draw_grid_and_reticle(frame, center_x, center_y, reticle_color=reticle_color)
@@ -140,28 +148,38 @@ def main():
             # Telemetri ve metrik kaydi
             logger.log(sim_t, fcs, hw, best_box, is_firing=is_gun_firing, ballistics=ballistics)
 
-            # Kontrol Modu Banner (HUD)
+            # Kontrol Modu ve Devriye Durum Banneri (HUD)
             if fcs.control_mode == "HYBRID":
                 rl_pct = int(getattr(fcs, "current_rl_weight", 0.0) * 100)
-                mode_label = f"HYBRID: PID + RL (AI Boost: {rl_pct}%)"
-                mode_color = (0, 255, 128)  # Parlak Yesil
-            elif fcs.control_mode == "PID":
-                mode_label = "CLASSICAL PID"
-                mode_color = (0, 255, 255)  # Sari
+                mode_label = f"HYBRID CONTROLLER (RL:{rl_pct}%)" if rl_pct > 0 else "HYBRID CONTROLLER"
+                mode_color = (0, 255, 128)
+            elif fcs.control_mode in ["PID", "P"]:
+                mode_label = "P CONTROLLER" if fcs.control_mode == "P" else "PID CONTROLLER"
+                mode_color = (0, 255, 255)
             else:
-                mode_label = "PURE PPO RL"
-                mode_color = (255, 200, 0)  # Mavi/Turkuaz
+                mode_label = "RL CONTROLLER"
+                mode_color = (255, 200, 0)
 
-            cv2.putText(
-                frame,
-                f"CONTROL: [{mode_label}] (Press 'M' to toggle)",
-                (center_x - 240, 30),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.55,
-                mode_color,
-                2,
-                cv2.LINE_AA,
-            )
+            patrol_tag = "PATROL: ACTIVE" if not target_detected else "PATROL: OFF"
+            banner_text = f"[{mode_label}]  |  [{patrol_tag}]"
+            (b_w, _), _ = cv2.getTextSize(banner_text, cv2.FONT_HERSHEY_SIMPLEX, 0.56, 2)
+            banner_x = max(10, center_x - (b_w // 2))
+
+            # Yari saydam ust baslik paneli
+            pad_x, pad_y = 12, 5
+            bx1, by1 = max(0, banner_x - pad_x), max(0, 26 - 16 - pad_y)
+            bx2, by2 = min(frame.shape[1], banner_x + b_w + pad_x), min(frame.shape[0], 26 + pad_y)
+            roi_b = frame[by1:by2, bx1:bx2]
+            black_b = np.zeros_like(roi_b)
+            frame[by1:by2, bx1:bx2] = cv2.addWeighted(roi_b, 0.30, black_b, 0.70, 0)
+            cv2.rectangle(frame, (bx1, by1), (bx2, by2), (90, 100, 110), 1)
+
+            cv2.putText(frame, banner_text, (banner_x, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.56, mode_color, 2, cv2.LINE_AA)
+
+            # Alt operator kontrol lejandi
+            footer_text = "[M] Mode  |  [SPACE] E-Stop  |  [Y] Fire  |  [ESC] Quit"
+            (f_w, _), _ = cv2.getTextSize(footer_text, cv2.FONT_HERSHEY_SIMPLEX, 0.42, 1)
+            cv2.putText(frame, footer_text, (center_x - f_w // 2, frame.shape[0] - 14), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (160, 170, 180), 1, cv2.LINE_AA)
 
             cv2.imshow(WINDOW_NAME, frame)
             key = cv2.waitKey(1) & 0xFF

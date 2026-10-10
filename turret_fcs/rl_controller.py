@@ -1,8 +1,5 @@
 """
 ================================================================================
-YILDIZ TEKNIK UNIVERSITESI - KONTROL VE OTOMASYON MUHENDISLIGI BOLUMU
-BITIRME PROJESI: OTONOM PAN-TILT TARET VE ATIS KONTROL SISTEMI (FCS)
---------------------------------------------------------------------------------
 MODUL: PEKISDIRMELI OGRENME DENETLEYICISI (RL CONTROLLER / PPO AGENT)
 ================================================================================
 Bu modul, donanimda 80 ms tasiyici gecikmesi altinda hareketli hedefleri izlemek

@@ -1,8 +1,5 @@
 """
 ================================================================================
-YILDIZ TEKNIK UNIVERSITESI - KONTROL VE OTOMASYON MUHENDISLIGI BOLUMU
-BITIRME PROJESI: OTONOM PAN-TILT TARET VE ATIS KONTROL SISTEMI (FCS)
---------------------------------------------------------------------------------
 MODUL: SISTEM DINAMIGI VE SAHA TESTI GRAFIK MOTORU (PLOT TUNED SYSTEM)
 ================================================================================
 Bu modul, gercek donanimda dogrulanan son kontrolcu parametrelerini ve 25 saha

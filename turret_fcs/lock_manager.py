@@ -1,8 +1,5 @@
 """
 ================================================================================
-YILDIZ TEKNIK UNIVERSITESI - KONTROL VE OTOMASYON MUHENDISLIGI BOLUMU
-BITIRME PROJESI: OTONOM PAN-TILT TARET VE ATIS KONTROL SISTEMI (FCS)
---------------------------------------------------------------------------------
 MODUL: DINAMIK HEDEF KILIT YONETICISI (LOCK MANAGER)
 ================================================================================
 Bu modul, atis kontrol sisteminin atesleme kapisi (Firing Gate) ve hedef kilit

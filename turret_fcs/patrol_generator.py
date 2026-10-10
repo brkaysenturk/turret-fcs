@@ -1,8 +1,5 @@
 """
 ================================================================================
-YILDIZ TEKNIK UNIVERSITESI - KONTROL VE OTOMASYON MUHENDISLIGI BOLUMU
-BITIRME PROJESI: OTONOM PAN-TILT TARET VE ATIS KONTROL SISTEMI (FCS)
---------------------------------------------------------------------------------
 MODUL: IKI ASAMALI AKILLI DEVIYE VE HEDEF ARAMA URETECI (PATROL GENERATOR)
 ================================================================================
 Bu modul, otonom taretin hedef arama doktrinini iki farkli senaryoya gore yonetir:

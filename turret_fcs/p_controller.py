@@ -1,8 +1,5 @@
 """
 ================================================================================
-YILDIZ TEKNIK UNIVERSITESI - KONTROL VE OTOMASYON MUHENDISLIGI BOLUMU
-BITIRME PROJESI: OTONOM PAN-TILT TARET VE ATIS KONTROL SISTEMI (FCS)
---------------------------------------------------------------------------------
 MODUL: HIZ-UYARLAMALI YUMUSAK OLU BOLGELI P KONTROLCU (P CONTROLLER)
 ================================================================================
 Bu modul, piksellerden acisal hata donusumunu ve taret motorlarinin gercek zamanli

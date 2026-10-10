@@ -1,8 +1,5 @@
 """
 ================================================================================
-YILDIZ TEKNIK UNIVERSITESI - KONTROL VE OTOMASYON MUHENDISLIGI BOLUMU
-BITIRME PROJESI: OTONOM PAN-TILT TARET VE ATIS KONTROL SISTEMI (FCS)
---------------------------------------------------------------------------------
 MODUL: SIFIR-GECIKMELI KAMERA IS PARCACIGI (CAMERA THREAD / DIRECTSHOW)
 ================================================================================
 Bu modul, kameradan goruntu okuma islemini ana kontrol dongusunden izole eden

@@ -1,8 +1,5 @@
 """
 ================================================================================
-YILDIZ TEKNIK UNIVERSITESI - KONTROL VE OTOMASYON MUHENDISLIGI BOLUMU
-BITIRME PROJESI: OTONOM PAN-TILT TARET VE ATIS KONTROL SISTEMI (FCS)
---------------------------------------------------------------------------------
 MODUL: ANA KONTROL DONGUSU VE SISTEM ORKESTRASYONU (MAIN / SYSTEM RUNNER)
 ================================================================================
 Bu modul, otonom atis kontrol sisteminin tum alt bilesenlerini (Goruntu Isleme,
@@ -105,8 +102,15 @@ def main():
                 bx, by = (x1 + x2) // 2, (y1 + y2) // 2
                 target_centered = hud.is_target_centered(center_x, center_y, x1, y1, x2, y2)
 
-                status_text = "STATUS: TARGET LOCKED" if fcs.is_locked else "STATUS: TRACKING"
-                status_color = (0, 0, 255) if fcs.is_locked else (0, 191, 255)
+                if is_hud_firing:
+                    status_text = "STATUS: ENGAGING TARGET"
+                    status_color = (0, 0, 255)
+                elif fcs.is_locked:
+                    status_text = "STATUS: TARGET LOCKED"
+                    status_color = (0, 0, 255)
+                else:
+                    status_text = "STATUS: TRACKING"
+                    status_color = (0, 191, 255)
 
                 fcs_state = 2 if (fcs.is_locked and is_gun_firing) else (1 if fcs.is_locked else 0)
                 active_pan_cmd = -pan_cmd if PAN_INVERT else pan_cmd
@@ -122,8 +126,8 @@ def main():
                         hud.draw_tracking_line(frame, center_x, center_y, bx, by, status_color)
                     hud.draw_lead_indicator(frame, bx, by, int(fcs.pred_center[0]), int(fcs.pred_center[1]))
             else:
-                status_text = f"STATUS: {fcs.patrol_status}"
-                status_color = (0, 200, 255) if fcs.patrol_enabled else (0, 255, 0)
+                status_text = "STATUS: PATROLLING" if fcs.patrol_enabled else "STATUS: STANDBY"
+                status_color = (0, 255, 0) if fcs.patrol_enabled else (180, 180, 180)
                 angle_err_text = "ANGULAR ERR:   [--, --] deg"
 
                 # Hedef yokken devriye etkinse komutlari tarete ilet
@@ -192,7 +196,7 @@ def main():
             # Kontrol Modu ve Devriye Durum Banneri (HUD)
             if fcs.control_mode == "HYBRID":
                 rl_pct = int(getattr(fcs, "current_rl_weight", 0.0) * 100)
-                mode_label = f"HYBRID CONTROLLER (AI:{rl_pct}%)" if rl_pct > 0 else "HYBRID CONTROLLER"
+                mode_label = f"HYBRID CONTROLLER (RL:{rl_pct}%)" if rl_pct > 0 else "HYBRID CONTROLLER"
                 mode_color = (0, 255, 128)
             elif fcs.control_mode == "RL":
                 mode_label = "RL CONTROLLER"
@@ -202,19 +206,25 @@ def main():
                 mode_color = (0, 255, 255)
 
             patrol_tag = "PATROL: AUTO" if fcs.patrol_enabled else "PATROL: OFF"
-            banner_text = f"[{mode_label}] | [{patrol_tag}] ('M' Mode / 'P' Patrol)"
-            (b_w, _), _ = cv2.getTextSize(banner_text, cv2.FONT_HERSHEY_SIMPLEX, 0.55, 2)
+            banner_text = f"[{mode_label}]  |  [{patrol_tag}]"
+            (b_w, _), _ = cv2.getTextSize(banner_text, cv2.FONT_HERSHEY_SIMPLEX, 0.56, 2)
             banner_x = max(10, center_x - (b_w // 2))
-            cv2.putText(
-                frame,
-                banner_text,
-                (banner_x, 30),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.55,
-                mode_color,
-                2,
-                cv2.LINE_AA,
-            )
+
+            # Yari saydam ust baslik paneli
+            pad_x, pad_y = 12, 5
+            bx1, by1 = max(0, banner_x - pad_x), max(0, 26 - 16 - pad_y)
+            bx2, by2 = min(frame.shape[1], banner_x + b_w + pad_x), min(frame.shape[0], 26 + pad_y)
+            roi_b = frame[by1:by2, bx1:bx2]
+            black_b = np.zeros_like(roi_b)
+            frame[by1:by2, bx1:bx2] = cv2.addWeighted(roi_b, 0.30, black_b, 0.70, 0)
+            cv2.rectangle(frame, (bx1, by1), (bx2, by2), (90, 100, 110), 1)
+
+            cv2.putText(frame, banner_text, (banner_x, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.56, mode_color, 2, cv2.LINE_AA)
+
+            # Alt operator kontrol lejandi
+            footer_text = "[M] Mode  |  [P] Patrol  |  [SPACE] E-Stop  |  [Y] Fire  |  [Q] Quit"
+            (f_w, _), _ = cv2.getTextSize(footer_text, cv2.FONT_HERSHEY_SIMPLEX, 0.42, 1)
+            cv2.putText(frame, footer_text, (center_x - f_w // 2, frame.shape[0] - 14), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (160, 170, 180), 1, cv2.LINE_AA)
 
             cv2.imshow(WINDOW_NAME, frame)
             key = cv2.waitKey(1) & 0xFF

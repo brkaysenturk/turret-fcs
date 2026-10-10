@@ -1,8 +1,5 @@
 """
 ================================================================================
-YILDIZ TEKNIK UNIVERSITESI - KONTROL VE OTOMASYON MUHENDISLIGI BOLUMU
-BITIRME PROJESI: OTONOM PAN-TILT TARET VE ATIS KONTROL SISTEMI (FCS)
---------------------------------------------------------------------------------
 MODUL: PPO PEKISDIRMELI OGRENME EGITIM MOTORU (TRAIN RL / SB3 PPO)
 ================================================================================
 Bu modul, TurretEnv benzetim ortami uzerinde Stable-Baselines3 PPO algoritmasiyla

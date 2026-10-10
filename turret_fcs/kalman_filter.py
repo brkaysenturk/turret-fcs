@@ -1,8 +1,5 @@
 """
 ================================================================================
-YILDIZ TEKNIK UNIVERSITESI - KONTROL VE OTOMASYON MUHENDISLIGI BOLUMU
-BITIRME PROJESI: OTONOM PAN-TILT TARET VE ATIS KONTROL SISTEMI (FCS)
---------------------------------------------------------------------------------
 MODUL: ADAPTIF DURUM KESTIRIMI VE KALMAN FILTRESI (KALMAN FILTER)
 ================================================================================
 Bu modul, kamera piksel duzleminde hedefin konumunu (x, y) ve hiz vektorunu (vx, vy)

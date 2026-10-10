@@ -1,8 +1,5 @@
 """
 ================================================================================
-YILDIZ TEKNIK UNIVERSITESI - KONTROL VE OTOMASYON MUHENDISLIGI BOLUMU
-BITIRME PROJESI: OTONOM PAN-TILT TARET VE ATIS KONTROL SISTEMI (FCS)
---------------------------------------------------------------------------------
 MODUL: ATIS KONTROL SISTEMI UST YONETICISI (FCS MANAGER)
 ================================================================================
 Bu modul, otonom taretin en ust karar verici ve durum yoneticisidir (State Machine).

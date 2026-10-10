@@ -1,8 +1,5 @@
 """
 ================================================================================
-YILDIZ TEKNIK UNIVERSITESI - KONTROL VE OTOMASYON MUHENDISLIGI BOLUMU
-BITIRME PROJESI: OTONOM PAN-TILT TARET VE ATIS KONTROL SISTEMI (FCS)
---------------------------------------------------------------------------------
 MODUL: DONANIM GECIKMELI REINFORCEMENT LEARNING ORTAMI (TURRET ENV / GYMNASIUM)
 ================================================================================
 Bu modul, otonom taretin yapay zeka ajanlarini (PPO) egitmek icin gelistirilmis,

@@ -1,8 +1,5 @@
 """
 ================================================================================
-YILDIZ TEKNIK UNIVERSITESI - KONTROL VE OTOMASYON MUHENDISLIGI BOLUMU
-BITIRME PROJESI: OTONOM PAN-TILT TARET VE ATIS KONTROL SISTEMI (FCS)
---------------------------------------------------------------------------------
 MODUL: BAGIMSIZ PC USB-TTL TF-LUNA KALIBRASYON VE TESHIS SURUCUSU (LUNA DRIVER)
 ================================================================================
 Bu modul, Benewake TF-Luna LiDAR sensorunun STM32 olmadan, dogrudan bir USB-TTL

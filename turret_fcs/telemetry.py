@@ -1,8 +1,5 @@
 """
 ================================================================================
-YILDIZ TEKNIK UNIVERSITESI - KONTROL VE OTOMASYON MUHENDISLIGI BOLUMU
-BITIRME PROJESI: OTONOM PAN-TILT TARET VE ATIS KONTROL SISTEMI (FCS)
---------------------------------------------------------------------------------
 MODUL: GERCEK ZAMANLI TELEMETRI KAYIT MOTORU (TELEMETRY LOGGER / BLACKBOX)
 ================================================================================
 Bu modul, otonom taretin calismasi sirasinda her 33 ms'lik karede olculen tum durum,

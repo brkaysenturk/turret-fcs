@@ -1,8 +1,5 @@
 """
 ================================================================================
-YILDIZ TEKNIK UNIVERSITESI - KONTROL VE OTOMASYON MUHENDISLIGI BOLUMU
-BITIRME PROJESI: OTONOM PAN-TILT TARET VE ATIS KONTROL SISTEMI (FCS)
---------------------------------------------------------------------------------
 MODUL: BAS-USTU GOSTERGESI VE GRAFIK ARAYUZ (HEADS-UP DISPLAY / TURRET HUD)
 ================================================================================
 Bu modul, askeri standartlarda taktik atis kontrol arayuzunu (MIL-STD HUD)
@@ -40,12 +37,9 @@ class TurretHUD:
         """Optik merkez / vizor hedef kutusunun icinde mi kontrolu."""
         return (x1 <= center_x <= x2) and (y1 <= center_y <= y2)
 
-    def get_box_label(self, dist_cm, target_centered, is_locked):
-        """Hedef kutusu etiketi."""
-        if is_locked or not target_centered or dist_cm <= 0:
-            return "TARGET"
-        mesafe_m = dist_cm / 100.0
-        return f"TARGET | {mesafe_m:.2f}m"
+    def get_box_label(self, dist_cm=None, target_centered=False, is_locked=False):
+        """Hedef cercevesinin gorsel etiket metnini dondurur."""
+        return "TARGET"
 
     def draw_corner_box(self, img, x1, y1, x2, y2, color, length=18, thickness=2, label=None):
         """Hedef cercevesi."""
@@ -114,11 +108,11 @@ class TurretHUD:
             return
         p_hit_pct = int(quality_val * 100) if quality_val <= 1.0 else int(quality_val)
         if p_hit_pct >= 70:
-            q_color = (0, 255, 0)
+            q_color = (0, 0, 255)      # Kirmizi (Yuksek isabet / Kilit)
         elif p_hit_pct >= 40:
-            q_color = (0, 255, 255)
+            q_color = (0, 191, 255)    # Amber (Orta isabet / Takip)
         else:
-            q_color = (0, 165, 255)
+            q_color = (180, 180, 180)  # Gri (Dusuk isabet)
 
         text = f"HIT PROBABILITY: %{p_hit_pct}"
         font_scale = 0.55
@@ -141,6 +135,7 @@ class TurretHUD:
         """Kilit aninda acilan merkez atis paneli."""
         h, w, _ = frame.shape
 
+        green_color = (0, 255, 0)
         amber_color = (0, 191, 255)
         red_color = (0, 0, 255)
         white_color = (255, 255, 255)
@@ -244,23 +239,24 @@ class TurretHUD:
             else:
                 sig_str = "SIGNAL: --"
 
+            status_line = status_text
             telemetry_line = f"{dist_str}   |   {sig_str}"
             text_color = (255, 255, 255) if target_detected else (190, 190, 190)
 
-            title_scale = 0.65
-            sub_scale = 0.55
+            title_scale = 0.55
+            sub_scale = 0.50
             thick = 2
 
             # Metne gore panel genisligi
-            (w_status, _), _ = cv2.getTextSize(status_text, self.font, title_scale, thick)
-            (w_telemetry, _), _ = cv2.getTextSize(telemetry_line, self.font, sub_scale, thick)
-            (w_angle, _), _ = cv2.getTextSize(angle_err_text, self.font, sub_scale, thick)
+            (w_status, _), _ = cv2.getTextSize(status_line, self.font, title_scale, thick)
+            (w_telemetry, _), _ = cv2.getTextSize(telemetry_line, self.font, sub_scale, 1)
+            (w_angle, _), _ = cv2.getTextSize(angle_err_text, self.font, sub_scale, 1)
 
             max_text_w = max(w_status, w_telemetry, w_angle)
 
-            px1, py1 = 15, 12
+            px1, py1 = 15, 46
             px2 = px1 + max_text_w + 24
-            py2 = py1 + 92
+            py2 = py1 + 86
 
             px2 = min(px2, w)
             py2 = min(py2, h)
@@ -268,19 +264,19 @@ class TurretHUD:
             # Yari saydam arka plan
             roi = frame[py1:py2, px1:px2]
             black_layer = np.zeros_like(roi)
-            frame[py1:py2, px1:px2] = cv2.addWeighted(roi, 0.40, black_layer, 0.60, 0)
+            frame[py1:py2, px1:px2] = cv2.addWeighted(roi, 0.35, black_layer, 0.65, 0)
 
             # Hedef varken sari, yokken gri cerceve
             box_border_color = (0, 191, 255) if target_detected else (90, 90, 90)
             cv2.rectangle(frame, (px1, py1), (px2, py2), box_border_color, 2)
 
-            cv2.putText(frame, status_text, (27, 36), self.font, title_scale, status_color, thick, cv2.LINE_AA)
-            cv2.putText(frame, telemetry_line, (27, 64), self.font, sub_scale, text_color, thick, cv2.LINE_AA)
-            cv2.putText(frame, angle_err_text, (27, 88), self.font, sub_scale, text_color, thick, cv2.LINE_AA)
+            cv2.putText(frame, status_line, (26, py1 + 24), self.font, title_scale, status_color, thick, cv2.LINE_AA)
+            cv2.putText(frame, telemetry_line, (26, py1 + 50), self.font, sub_scale, text_color, 1, cv2.LINE_AA)
+            cv2.putText(frame, angle_err_text, (26, py1 + 72), self.font, sub_scale, (200, 210, 220), 1, cv2.LINE_AA)
 
-        # Sag ust FPS
+        # Sag ust FPS parametresi (Takip ve devriyede aktif; kilit ve atis aninda gizlenir)
         if not (is_locked or firing):
             fps_text = f"FPS: {fps}"
-            (fps_w, _), _ = cv2.getTextSize(fps_text, self.font, 0.60, 2)
+            (fps_w, _), _ = cv2.getTextSize(fps_text, self.font, 0.50, 2)
             fps_color = (0, 255, 0) if fps >= 25 else (0, 165, 255)
-            cv2.putText(frame, fps_text, (w - fps_w - 20, 36), self.font, 0.60, fps_color, 2, cv2.LINE_AA)
+            cv2.putText(frame, fps_text, (w - fps_w - 18, 26), self.font, 0.50, fps_color, 2, cv2.LINE_AA)

@@ -1,3 +1,14 @@
+"""
+================================================================================
+MODUL: P KONTROLCU vs. REINFORCEMENT LEARNING (PPO) KARSILASTIRMA BENZETIMI
+================================================================================
+Bu betik, 80 ms tasiyici gecikmesi (Transport Delay) altinda calisan otonom taretin
+klasik Hız-Uyarlamalı P Kontrolcüsü ile PPO Derin Takviyeli Öğrenme Ajanının (RL)
+takip başarımını 3 kritik manevra senaryosunda (Zikzak, Doğrusal Kaçış, Evasive)
+birebir aynı tohum (seed) ve dinamik koşullarda karşılaştırır ve tez grafiği üretir.
+================================================================================
+"""
+
 import math
 import sys
 from pathlib import Path
@@ -22,51 +33,51 @@ def run_comparison():
         print("Lutfen once 'train_rl.py' ile modeli egitin.")
         return
 
-    print("==================================================")
-    print("  TURRET FCS // P CONTROLLER vs. RL KARŞILAŞTIRMA TESTİ   ")
-    print("==================================================")
+    print("==================================================================")
+    print("  YILDIZ TEKNIK UNIVERSITESI - KONTROL VE OTOMASYON MUHENDISLIGI   ")
+    print("      TURRET FCS // P CONTROLLER vs. RL KARSILASTIRMA BENZETIMI    ")
+    print("==================================================================")
 
     model = PPO.load(str(model_path))
 
-    # Test Senaryoları (Her ikisi de birebir aynı tohum/harekette test edilir)
+    # Test Senaryolari (Her iki kontrolcu de birebir ayni tohum ve yorungede test edilir)
     seeds = [42, 100, 2026]
-    scenario_names = ["Zikzak Manevrası", "Doğrusal Kaçış", "Dinamik Evasive"]
+    scenario_names = ["Zikzak Manevrasi", "Dogrusal Kacis", "Dinamik Evasive (Kacis)"]
 
-    fig, axes = plt.subplots(len(seeds), 1, figsize=(10, 10), sharex=True)
+    fig, axes = plt.subplots(len(seeds), 1, figsize=(11, 10), sharex=True)
     if len(seeds) == 1:
         axes = [axes]
 
-    pid_total_errors = []
+    p_total_errors = []
     rl_total_errors = []
 
     for idx, (seed, title) in enumerate(zip(seeds, scenario_names)):
         # 1. P Kontrolcu Testi
-        env_pid = TurretEnv()
-        obs_pid, _ = env_pid.reset(seed=seed)
+        env_p = TurretEnv()
+        obs_p, _ = env_p.reset(seed=seed)
         p_ctrl = PController(kp_pan=0.35, kp_tilt=0.35)
 
-        pid_errors = []
-        for _ in range(env_pid.max_steps):
-            # Piksel sapmasini hesaplar
-            px, py = env_pid.last_pixel_pos
-            err_x = px - env_pid.center_x
-            err_y = py - env_pid.center_y
+        p_errors = []
+        for _ in range(env_p.max_steps):
+            px, py = env_p.last_pixel_pos
+            err_x = px - env_p.center_x
+            err_y = py - env_p.center_y
             dist_px = math.hypot(err_x, err_y)
-            pid_errors.append(dist_px)
+            p_errors.append(dist_px)
 
-            # Basit oransal kontrol eylemi
-            action_pid = np.array(
+            # Oransal kontrol eylemi (Normalize acisal hiz komutu)
+            action_p = np.array(
                 [
-                    np.clip(err_x / (env_pid.screen_w / 4.0), -1.0, 1.0),
-                    np.clip(-err_y / (env_pid.screen_h / 4.0), -1.0, 1.0),
+                    np.clip(err_x / (env_p.screen_w / 4.0), -1.0, 1.0),
+                    np.clip(-err_y / (env_p.screen_h / 4.0), -1.0, 1.0),
                 ],
                 dtype=np.float32,
             )
-            obs_pid, _, term, trunc, _ = env_pid.step(action_pid)
+            obs_p, _, term, trunc, _ = env_p.step(action_p)
             if term or trunc:
                 break
 
-        # 2. RL (PPO) Testi (Birebir Ayni Seed)
+        # 2. RL (PPO) Testi (Birebir Ayni Tohum ve Dinamik Kosul)
         env_rl = TurretEnv()
         obs_rl, _ = env_rl.reset(seed=seed)
 
@@ -81,36 +92,64 @@ def run_comparison():
             if term or trunc:
                 break
 
-        pid_total_errors.append(np.mean(pid_errors))
+        p_total_errors.append(np.mean(p_errors))
         rl_total_errors.append(np.mean(rl_errors))
 
-        # Grafige Ciz
-        time_axis = np.linspace(0, len(pid_errors) * env_pid.dt, len(pid_errors))
+        # Alt Grafige Ciz
+        time_axis = np.linspace(0, len(p_errors) * env_p.dt, len(p_errors))
         ax = axes[idx]
-        ax.plot(time_axis, pid_errors, label=f"P Kontrolcü (Ort Hata: {np.mean(pid_errors):.1f}px)", color="crimson", lw=1.8, ls="--")
-        ax.plot(time_axis[:len(rl_errors)], rl_errors, label=f"PPO - RL Ajanı (Ort Hata: {np.mean(rl_errors):.1f}px)", color="teal", lw=2.0)
-        ax.axhline(30, color="gray", linestyle=":", alpha=0.7, label="Hedef Kilit Alanı (30px)")
+        ax.plot(
+            time_axis,
+            p_errors,
+            label=f"P Kontrolcu (Ort Hata: {np.mean(p_errors):.1f} px)",
+            color="#dc2626",
+            lw=1.8,
+            ls="--",
+        )
+        ax.plot(
+            time_axis[:len(rl_errors)],
+            rl_errors,
+            label=f"PPO - RL Ajani (Ort Hata: {np.mean(rl_errors):.1f} px)",
+            color="#0d9488",
+            lw=2.2,
+        )
+        ax.axhline(30, color="gray", linestyle=":", alpha=0.75, label="Hedef Kilit Alani (30 px)")
         ax.set_title(f"Senaryo {idx+1}: {title} (Seed: {seed})", fontweight="bold", fontsize=11)
-        ax.set_ylabel("Piksel Hatası (px)")
-        ax.grid(True, alpha=0.3)
-        ax.legend(loc="upper right")
+        ax.set_ylabel("Piksel Hatasi (px)", fontsize=10)
+        ax.grid(True, alpha=0.35, linestyle="--")
+        ax.legend(loc="upper right", framealpha=0.92)
 
     axes[-1].set_xlabel("Zaman (Saniye)", fontsize=11)
-    plt.tight_layout()
 
-    output_plot_path = current_dir / "pid_vs_rl_comparison.png"
-    plt.savefig(str(output_plot_path), dpi=300)
+    fig.suptitle(
+        "YILDIZ TEKNIK UNIVERSITESI - KONTROL VE OTOMASYON MUHENDISLIGI BOLUMU\n"
+        "OTONOM PAN-TILT TARET: P KONTROLCU vs. PPO RL DERIN TAKVIYELI OGRENME KARSILASTIRMASI",
+        fontsize=12,
+        fontweight="bold",
+        y=0.992,
+    )
+    plt.tight_layout(rect=[0, 0.02, 1, 0.94])
+
+    p_plot_path = current_dir / "p_vs_rl_comparison.png"
+    pid_plot_path = current_dir / "pid_vs_rl_comparison.png"
+    plt.savefig(str(p_plot_path), dpi=300)
+    plt.savefig(str(pid_plot_path), dpi=300)
     plt.close()
 
-    print("\n==================================================")
-    print("               TEST SONUÇ ÖZETİ                   ")
-    print("==================================================")
-    print(f"P Kontrolcü Ortalama Takip Hatası : {np.mean(pid_total_errors):.2f} px")
-    print(f"PPO (RL)   Ortalama Takip Hatası : {np.mean(rl_total_errors):.2f} px")
-    improvement = (np.mean(pid_total_errors) - np.mean(rl_total_errors)) / np.mean(pid_total_errors) * 100.0
-    print(f"RL Performans İyileştirmesi      : %{improvement:+.1f}")
-    print(f"\n[OK] Rapor ve Tez Grafiği Kaydedildi: {output_plot_path}")
-    print("==================================================")
+    p_avg = float(np.mean(p_total_errors))
+    rl_avg = float(np.mean(rl_total_errors))
+    improvement = (p_avg - rl_avg) / p_avg * 100.0
+
+    print("\n==================================================================")
+    print("                    BENZETIM TEST SONUC OZETI                     ")
+    print("==================================================================")
+    print(f"P Kontrolcu Ortalama Takip Hatasi : {p_avg:.2f} px")
+    print(f"PPO (RL)    Ortalama Takip Hatasi : {rl_avg:.2f} px")
+    print(f"RL Performans Iyilestirmesi       : %{improvement:+.1f}")
+    print("------------------------------------------------------------------")
+    print(f"[OK] 300 DPI Tez Grafigi Kaydedildi: {p_plot_path.name}")
+    print(f"[OK] Karsilastirma Grafigi Kaydedildi: {pid_plot_path.name}")
+    print("==================================================================")
 
 
 if __name__ == "__main__":

@@ -1,8 +1,5 @@
 """
 ================================================================================
-YILDIZ TEKNIK UNIVERSITESI - KONTROL VE OTOMASYON MUHENDISLIGI BOLUMU
-BITIRME PROJESI: OTONOM PAN-TILT TARET VE ATIS KONTROL SISTEMI (FCS)
---------------------------------------------------------------------------------
 MODUL: SISTEM TANIMA (SYSTEM IDENTIFICATION) VE S-DUZLEMI KARARLILIK ANALIZI
 Bu script, gercek donanimda (MG996R servolar + Logitech C270 kamera + STM32)
 olculen parametrelerle sistemin acik ve kapali cevrim transfer fonksiyonlarini,
