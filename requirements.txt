@@ -11,3 +11,5 @@ gymnasium>=0.29.0
 matplotlib>=3.7.0
 scipy>=1.11.0
 pygrabber>=0.1
+tensorboard>=2.14.0
+lap>=0.5.0

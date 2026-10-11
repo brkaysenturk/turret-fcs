@@ -1,84 +1,125 @@
 # Otonom Asimetrik Hava Tehdidi Tespit ve Atış Kontrol Sistemi (Turret FCS)
-### YTU Bitirme Çalışması & Tasarım Projesi
+### Yıldız Teknik Üniversitesi — Kontrol ve Otomasyon Mühendisliği Bölümü
+**Bitirme Çalışması & Tasarım Projesi**
 
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 [![STM32 Nucleo](https://img.shields.io/badge/Hardware-STM32F401RE-002B49.svg)](https://www.st.com/)
 [![Webots Simulator](https://img.shields.io/badge/Simulation-Webots%20R2025a-red.svg)](https://cyberbotics.com/)
 [![YOLOv8](https://img.shields.io/badge/YOLO-v8n-00FFFF.svg)](https://ultralytics.com/)
 [![Reinforcement Learning](https://img.shields.io/badge/RL-PPO%20(SB3)-orange.svg)](https://stable-baselines3.readthedocs.io/)
+[![Control Theory](https://img.shields.io/badge/Control-Type--1%20P%20%2B%20Deadband-success.svg)](https://en.wikipedia.org/wiki/Proportional_control)
 
-Bu proje; mikro/mini İHA'lar, kamikaze dronlar ve asimetrik hava tehditlerine karşı geliştirilmiş; **Kamera + ToF Lidar Sensör Füzyonu**, **YOLOv8 Derin Öğrenme Hedef Tespiti**, **Genişletilmiş Kalman Filtresi (EKF) Yörünge Kestirimi** ve **Hibrit PID + PPO Takviyeli Öğrenme (RL)** tabanlı otonom bir Elektro-Optik Atış Kontrol Sistemidir (FCS).
+Bu proje; mikro/mini İHA'lar, kamikaze dronlar ve asimetrik hava hedeflerine karşı geliştirilmiş; **Logitech C270 RGB Kamera + Benewake TF-Luna ToF LiDAR Sensör Füzyonu**, **YOLOv8n Derin Öğrenme Hedef Tespiti**, **ByteTrack Çoklu Hedef Takibi**, **Genişletilmiş Kalman Filtresi (EKF) Yörünge Kestirimi**, **Tip-1 Hız-Uyarlamalı Yumuşak Ölü Bölgeli P Kontrolcü** ve **80 ms Taşıyıcı Gecikme Telafili PPO Derin Pekiştirmeli Öğrenme (RL)** tabanlı otonom bir Elektro-Optik Atış Kontrol Sistemidir (FCS).
 
 ---
 
 ## 🎯 Temel Özellikler ve Yetenekler
 
-* **Çift Modlu Algılama ve Sensör Füzyonu:** RGB Kamera (Logitech C270) ve TF-Luna ToF Lidar sensörünün yüksek hızlı veri füzyonu.
-* **Yapay Zeka Destekli Hedefleme:** Gerçek zamanlı YOLOv8n nesne tespiti ve ByteTrack tabanlı çoklu hedef takibi.
-* **Balistik ve Kinematik Kestirim:** Hedefin 3 boyutlu hız ve ivmesini modelleyen Kalman Filtresi ile önleme açısı (lead angle) ve yerçekimi balistik düşüş kompanzasyonu.
-* **Hibrit Çift Katmanlı Kontrol Mimarisi:**
-  * **PID Kontrolcü:** Düşük gecikmeli, kararlı açısal merkezleme.
-  * **PPO Derin Takviyeli Öğrenme (RL):** Ani manevra yapan tehditlere karşı çevik ve adaptif açısal hız tahmini.
-* **Askeri Standartta Sayısal HUD (Heads-Up Display):** Hedef menzili, yaklaşma hızı, kilit durumu, balistik nişangah ve atış penceresi gösterimi.
-* **Gömülü Donanım Mimarisi:** STM32F401RE tabanlı 100 Hz UART haberleşmeli, donanımsal limit anahtarlı servo kontrolcü.
-* **Dijital İkiz Simülasyonu:** Webots R2025a fizik motorunda 1:1 ölçekli aerodinamik ve mekanik simülasyon doğrulaması.
+* **Çift Modlu Algılama ve Sensör Füzyonu:** RGB Kamera (Logitech C270, 720p @ 30 FPS) ve TF-Luna ToF LiDAR sensörünün (100 Hz UART) yüksek hızlı veri füzyonu.
+* **Yapay Zeka Destekli Hedefleme:** Gerçek zamanlı YOLOv8n nesne tespiti ve ByteTrack tabanlı çoklu hedef izleme algoritması. Hedef sınırlayıcı kutusunda sadeleştirilmiş `TARGET` etiketi.
+* **Balistik ve Kinematik Kestirim (Lead Pursuit):** Hedefin 2D/3D hız ve yön vektörünü kestiren Kalman Filtresi (`kalman_filter.py`), dinamik mermi uçuş süresi önleme açısı (lead angle) ve yerçekimi balistik düşüş (süper-elevasyon) telafisi.
+* **Çok Katmanlı Üçlü Kontrol Mimarisi (`[M]` Tuşu ile Değiştirilebilir):**
+  * **`[P CONTROLLER]`:** Tip-1 ayrık integratör karakteristiği ile çalışan, $u = K_p \cdot e$ formunda, hız-uyarlamalı yumuşak ölü bölgeli (soft deadband) ve sıfır kalıcı durum hatalı kararlı açısal merkezleme.
+  * **`[HYBRID CONTROLLER (RL:X%)]`:** Kararlı P omurgasını korurken, hedef manevralarında gecikmeyi yenmek için devreye giren dinamik PPO takviyesi (maksimum %55 AI desteği). Hedefe kilit oturunca takviye otomatik sönümlenerek merkezde sıfır titreşim sağlanır.
+  * **`[RL CONTROLLER]`:** 80 ms donanım gecikme tamponu (transport delay buffer) ve çıkış hız alçak geçiren filtresi (EMA) ile eğitilmiş, tam otonom PPO ajanının doğrudan açısal hız kontrolü.
+* **Taktiksel Operatör HUD (Heads-Up Display):**
+  * **Renk Disiplini:** Devriye modunda **Yeşil**, Takipte **Amber**, Hedef kilitlendiğinde ve atış anında **Kırmızı**.
+  * **Muharebe Yetkilendirme Paneli:** Koyu Amber (`TARGET LOCKED` / `AUTHORIZE FIRE? [Y/N]`).
+  * **Kademeli Vuruş Olasılığı (Hit Probability):** Gri ($< 40\%$), Amber ($40\% - 69\%$), Kırmızı ($\ge 70\%$).
+  * **Muharebe Sadeleştirmesi (Decluttering):** Kilit ve atış esnasında operatörün dikkatini dağıtmamak için sol telemetri kutusu ve sağ üst FPS göstergesi otomatik gizlenir.
+* **Gömülü Donanım Mimarisi:** STM32F401RE Nucleo tabanlı 100 Hz ikili (binary) UART haberleşmeli, donanımsal limit korumalı çift MG996R servo sürücüsü, 23.500 RPM çift volan motoru ve 12V JF-0530B solenoid dart itici.
+* **Dijital İkiz Simülasyonu:** Webots R2025a fizik motorunda 1:1 ölçekli aerodinamik ve mekanik simülasyon doğrulaması (%100 isabet oranı).
 
 ---
 
-## 🏛️ Sistem ve Yazılım Mimarisi
+## 🏛️ Sistem ve Donanım Mimarisi
+
+Aşağıdaki şemalar sistemin PC yazılım boru hattını, STM32 gömülü mimarisini, Webots simülasyon motorunu ve elektriksel güç dağıtım katmanını göstermektedir:
+
+### 1. Turret FCS Yazılım Pipeline Şeması
+![Turret FCS Mimari Şeması](turret_fcs_architecture.png)
+
+### 2. STM32F401RE Gömülü Çekirdek & Sürücü Mimarisi
+![STM32 Gömülü Mimari](stm32_architecture.png)
+
+### 3. Webots Dijital İkiz Simülasyon Mimarisi
+![Webots Simülasyon Mimarisi](webots_architecture.png)
+
+### 4. Donanım ve Güç Dağıtım Şeması
+Projenin elektriksel güç dağıtımı, sensör entegrasyonu ve aktüatör bağlantıları [turret_fcs_hardware.svg](turret_fcs_hardware.svg) dosyasında detaylandırılmıştır.
+
+### 5. 3D Mekanik Montaj ve Donanım Tasarımı
+Taretin 3D yazıcıdan üretilecek açık beşikli, minimal optik paralakslı ve gizli servo hornlu elektromekanik montaj tasarımı:
+![Turret FCS 3D Mekanik Montaj](turret_cad_render_annotated.jpg)
 
 ```
 +-----------------------------------------------------------------------------------+
-|                            GÖRSEL VE SENSÖR GİRDİSİ                                |
-|  [ Kamera (1280x720 @ 30 FPS) ]           [ TF-Luna ToF Lidar (UART Mesafe) ]     |
+|                            GÖRSEL VE SENSÖR GİRDİSİ                               |
+|  [ Logitech C270 (1280x720 @ 30 FPS) ]     [ Benewake TF-Luna LiDAR (100 Hz UART) ]|
 +-----------------------------------------------------------------------------------+
                                          │
                                          ▼
 +-----------------------------------------------------------------------------------+
-|                             HEDEF TESPİT VE İZLEME                                 |
-|  * YOLOv8n Derin Öğrenme Modeli (Balon / Mini İHA Tespiti)                        |
-|  * ByteTrack / Kalman Filtresi (3D Konum, Hız ve İvme Kestirimi)                   |
-|  * Askeri HUD Arayüzü & Hedef Önceliklendirme (FCS Manager)                       |
+|                             HEDEF TESPİT VE İZLEME                                |
+|  * YOLOv8n Derin Öğrenme Modeli (Hava Hedefi / Mini İHA Tespiti)                 |
+|  * ByteTrack / Kalman Filtresi (3D Konum, Hız ve İvme Kestirimi)                  |
+|  * Taktiksel Askeri HUD Arayüzü & Hedef Önceliklendirme (FCS Manager)             |
 +-----------------------------------------------------------------------------------+
                                          │
                                          ▼
 +-----------------------------------------------------------------------------------+
 |                           KONTROL VE NİŞAN ALMA KATMANI                           |
-|  * Balistik Düşüş & Önleme Açısı Hesaplama (Ballistics Engine)                    |
-|  * Hibrit Kontrolcü: Klasik PID + PPO Takviyeli Öğrenme (RL Controller)           |
+|  * Balistik Düşüş & Dinamik Önleme Açısı Hesaplama (Ballistics Engine)            |
+|  * Çok Modlu Kontrol: P Kontrolcü / Hibrit (P + PPO RL) / Saf RL                 |
+|  * 80 ms Taşıyıcı Gecikme Telafisi (Lead Pursuit) & Çıkış Hız Filtresi (EMA)      |
 +-----------------------------------------------------------------------------------+
                                          │
                                          ▼
 +-----------------------------------------------------------------------------------+
 |                        GÖMÜLÜ DONANIM / FİZİKSEL EYLEME                           |
-|  * STM32F401RE Mikrodenetleyici (100 Hz Kontrol Döngüsü)                          |
-|  * Çift Eksen Pan-Tilt Servo Sürücüleri (Yüksek Torklu Açısal Yönlendirme)        |
-|  * Fırlatıcı ve Tetik Kontrol Birimi                                              |
+|  * STM32F401RE Nucleo Mikrodenetleyici (100 Hz UART Kontrol Döngüsü)              |
+|  * Çift Eksen Pan-Tilt MG996R Servoları (50 Hz PWM Açısal Yönlendirme)            |
+|  * Çift DC Volan Motoru (23.500 RPM) ve 12V Solenoid Dart Tetik İticisi          |
 +-----------------------------------------------------------------------------------+
 ```
 
 ---
 
-## 📊 Webots Simülasyon Doğrulaması (10 Atışlık Performans Analizi)
+## 🔄 Algoritmik Durum Akış Şeması (Flowchart)
 
-Sistem Webots R2025a ortamında farklı mesafelerdeki (1.2m - 5.0m) ve farklı irtifalardaki hareketli hava hedeflerine karşı test edilmiş ve **%100 vuruş hassasiyeti (10/10)** doğrulanmıştır:
+Sistemin arama, tespit, takip, kilitlenme ve atış sekansları [turret_fcs_flowchart.svg](turret_fcs_flowchart.svg) dosyasında modellenmiştir:
 
-| Parametre | Değer |
-| :--- | :--- |
-| **Toplam Angajman / Başarı** | 10 Atış / 10 İsabet (%100 Başarı) |
-| **Ortalama Hedefe Kilitlenme Süresi** | 0.42 saniye |
-| **Ortalama Açısal Hata (Hedefe İsabette)** | 0.18 derece |
-| **Maksimum Test Menzili** | 5.0 metre |
-| **Kontrol Tepki Frekansı** | 100 Hz (STM32) / 30+ FPS (Python FCS) |
+* **DURUM 1 (Devriye / Arama):** Hedef yokken Lissajous 3D eğrileriyle parametrik tarama yapılır; HUD yeşil renktedir.
+* **DURUM 2 (Tespit & Mesafe):** Hedef algılandığında TF-Luna LiDAR ile 100 Hz mesafe ve sinyal gücü doğrulanır.
+* **DURUM 3 (Takip & Lead):** Kalman Filtresi hedef hızını kestirir; HUD amber rengine geçer.
+* **DURUM 4 (Hibrit / P Kontrol):** Tip-1 P kontrolcü ve dinamik PPO takviyesi ile açısal gecikme sıfırlanır.
+* **DURUM 5 (Hedefe Kilitlendi):** Hata eşiği yakalandığında reticle kırmızıya döner, koyu amber muharebe paneli açılır, operatörden `[Y]` atış yetkisi beklenir.
+* **DURUM 6 (Ateşleme):** Volan motorları devrini alır, solenoid 80 ms darbe ile dartı fırlatır.
+
+---
+
+## 📊 Karşılaştırmalı Performans Analizi (P Kontrolcü vs PPO RL)
+
+Sistem, gerçek donanımın **80 ms taşıyıcı gecikmesi** altında 3 farklı zorlu hedef manevra senaryosunda (Doğrusal, Zigzag ve Kaçınma Manevrası) test edilmiştir:
+
+![P Controller vs PPO RL Benchmark Karşılaştırması](turret_fcs/rl_sim/p_vs_rl_comparison.png)
+
+| Test Senaryosu | Klasik P Kontrolcü Ortalama Hata | PPO Takviyeli Öğrenme (RL) Hata | Hata İyileştirme Oranı |
+| :--- | :---: | :---: | :---: |
+| **Senaryo 1 (Doğrusal Uçuş)** | 12.83 piksel | 6.89 piksel | **+%46.3** |
+| **Senaryo 2 (Zigzag Manevrası)** | 13.68 piksel | 4.79 piksel | **+%65.0** |
+| **Senaryo 3 (Kaçınma Manevrası)** | 15.17 piksel | 4.15 piksel | **+%72.6** |
+| **Genel Benchmark Ortalaması** | **13.89 piksel** | **5.28 piksel** | **+%62.0 Doğruluk Artışı** |
 
 ---
 
 ## 🚀 Hızlı Başlangıç ve Kurulum
 
-### 1. Gereksinimler
+### 1. Donanım ve Yazılım Gereksinimleri
 * Windows 10/11 x64
 * Python 3.10 veya 3.12 (*"Add Python to PATH"* seçili olmalıdır)
 * STM32 Nucleo-F401RE Kartı & Logitech C270 Web Kamerası
+* Benewake TF-Luna LiDAR Sensörü
 
 ### 2. Otomatik Ortam Kurulumu
 Depoyu klonlayın ve ana dizindeki kurulum betiğini çalıştırın:
@@ -87,25 +128,27 @@ git clone https://github.com/brkysnturk/turret_fcs.git
 cd turret_fcs
 setup_env.bat
 ```
-Bu betik sanal ortamı (`venv`) kurar, `pip`'i günceller ve [requirements.txt](requirements.txt) içerisindeki tüm bağımlılıkları yükler.
+Bu betik sanal ortamı (`venv`) oluşturur, `pip`'i günceller ve [requirements.txt](requirements.txt) içerisindeki tüm bağımlılıkları eksiksiz yükler.
 
-### 3. Sistemi Çalıştırma
-Donanım kablolarını taktıktan sonra tek tıkla sistemi başlatın:
+### 3. Sistemi Tek Tıkla Başlatma
+Donanım kablolarını taktıktan sonra ana dizindeki başlatıcıyı çalıştırın:
 ```bash
-turret_fcs\main.bat
+main.bat
 ```
 
-### 🎮 Kontrol Tuşları
-* **`ESC` :** Programı ve telemetri kaydını güvenli kapatma (CSV dosyasını anında kaydeder).
-* **`SPACE` (Boşluk):** Acil Durdurma (E-STOP) - Motorları ve kilitlenmeyi anında frenler.
-* **`Y` :** Manuel Ateş İzni (Manual Fire Trigger).
-* **`M` :** Kontrol Modu Değiştirici (`P CONTROLLER` <-> `HYBRID CONTROLLER` <-> `RL CONTROLLER`).
+### 🎮 Operatör Kontrol Tuşları
+* **`ESC` / `Q` :** Programı ve telemetri kaydını güvenli kapatma (`logs/telemetry_test_*.csv` dosyasını diske yazar).
+* **`SPACE` (Boşluk) :** Acil Durdurma (E-STOP) — Motorları ve kilitlenmeyi anında frenler.
+* **`M` :** Kontrol Modu Döngüsü (`[P CONTROLLER]` $\leftrightarrow$ `[HYBRID CONTROLLER (RL:X%)]` $\leftrightarrow$ `[RL CONTROLLER]`).
+* **`P` :** 2 Kademeli Akıllı Devriye (Patrol) modunu açma / kapatma.
+* **`Y` :** Manuel Atış Yetkisi (Authorize Fire).
+* **`N` :** Hedef Bırakma / Aramaya Geri Dönme.
 
 ---
 
 ## 📈 Akademik Dinamik Analiz ve Sistem Tanıma
 
-Taret kontrol dinamiklerini ve sistem tanıma (SOPDT) sonuçlarını incelemek için `analysis/` araçları kullanılır:
+Taret kontrol dinamiklerini, FOPDT sistem tanıma sonuçlarını ve Padé kök-yer eğrilerini incelemek için `analysis/` araçları kullanılır:
 
 ```bash
 # 1. 6 Panelli Detaylı Dinamik ve Kontrol Kararlılık Analizi (300 DPI)
@@ -113,6 +156,9 @@ python analysis/plot_tuned_system.py
 
 # 2. 4 Panelli Sistem Tanıma, S-Düzlemi Root Locus ve Doğrulama
 python analysis/system_identification.py
+
+# 3. P Kontrolcü vs PPO RL Karşılaştırma Grafiği
+python turret_fcs/rl_sim/compare_pid_vs_rl.py
 ```
 *(Akademik tez veya jüri sunumu için MATLAB ortamında `analysis/turret_fcs_analysis.m` dosyasını çalıştırabilirsiniz).*
 
@@ -122,38 +168,49 @@ python analysis/system_identification.py
 
 ```
 turret_fcs/
-├── requirements.txt           # Python kütüphane bağımlılıkları
+├── requirements.txt           # Python kütüphane bağımlılıkları (YOLO, Torch, SB3, vb.)
 ├── setup_env.bat              # Otomatik sanal ortam (venv) ve kütüphane kurulum aracı
+├── main.bat                   # Tek tıkla gerçek zamanlı atış kontrol başlatıcısı
 ├── README.md                  # Proje mimarisi ve teknik dokümantasyon
+├── turret_fcs_architecture.png# 4K Turret FCS ana mimari şeması
+├── stm32_architecture.png     # 4K STM32 gömülü sürücü ve kesme mimarisi
+├── webots_architecture.png    # 4K Webots dijital ikiz simülasyon mimarisi
+├── turret_fcs_flowchart.svg   # Vektörel algoritmik durum akış şeması (Flowchart)
+├── turret_fcs_hardware.svg    # Vektörel elektriksel donanım ve güç dağıtım şeması
 ├── analysis/                  # Akademik kontrol ve sistem tanıma araçları
 │   ├── plot_tuned_system.py   # Python 6 panelli dinamik analiz motoru
-│   ├── system_identification.py # Basamak eğri uyumu ve S-düzlemi root locus
-│   ├── turret_fcs_analysis.m  # MATLAB tez analiz ikizi
+│   ├── system_identification.py # FOPDT basamak eğri uyumu ve Padé kök-yer eğrisi
+│   ├── turret_fcs_analysis.m  # MATLAB akademik analiz ikizi
 │   └── figures/               # Yüksek çözünürlüklü (300 DPI) yayın grafikleri
 ├── logs/                      # Gerçek donanım telemetri test kayıtları (.csv)
 ├── turret_fcs/                # Gerçek donanım çalışma kodları
 │   ├── main.py                # Ana atış kontrol döngüsü ve hedef koordinasyonu
-│   ├── main.bat               # Tek tıkla donanım başlatıcı
 │   ├── telemetry.py           # Kare-kare donanım telemetri kaydedicisi
 │   ├── fcs_manager.py         # Hedef seçim, kilit ve balistik hesap motoru
 │   ├── fcs_comm.py            # STM32 UART binary paket haberleşme sürücüsü
-│   ├── kalman_filter.py       # Kalman filtreli 3D yörünge kestirimi
-│   ├── turret_hud.py          # Askeri standartta dinamik HUD arayüzü
-│   ├── rl_controller.py       # PPO takviyeli öğrenme denetleyicisi
-│   ├── p_controller.py        # Hız-uyarlamalı yumuşak ölü bölgeli P kontrolcü
-│   └── camera_thread.py       # Sıfır gecikmeli çok iş parçacıklı kamera sürücüsü
+│   ├── kalman_filter.py       # Kalman filtreli 3D yörünge ve hız kestirimi
+│   ├── turret_hud.py          # Askeri standartta dinamik taktiksel HUD arayüzü
+│   ├── rl_controller.py       # 80 ms gecikme telafili PPO RL cıkarım motoru
+│   ├── p_controller.py        # Hız-uyarlamalı yumuşak ölü bölgeli Tip-1 P kontrolcü
+│   ├── patrol_generator.py    # Lissajous 3D parametrik arama ve akıllı devriye
+│   ├── target_selector.py     # Öncelikli hedef filtreleme algoritması
+│   ├── camera_thread.py       # Sıfır gecikmeli çok iş parçacıklı kamera sürücüsü
+│   └── rl_sim/                # Pekiştirmeli öğrenme ortamı ve eğitim araçları
+│       ├── turret_env.py      # Gymnasium taret ortamı (80 ms Transport Delay Buffer)
+│       ├── train_rl.py        # PPO model eğitim kodu (Stable-Baselines3)
+│       ├── compare_pid_vs_rl.py # P vs RL akademik benchmark karşılaştırması
+│       └── models/            # Eğitilmiş üretim PPO modeli (turret_ppo_final.zip)
 ├── stm32/                     # STM32F401RE Nucleo gömülü yazılım projesi (CubeIDE)
 │   └── turret_main/           # Ana taret donanım projesi (.ioc, Core/Src, Core/Inc)
 │       └── Core/Src/          # fcs_comm.c, servo_driver.c, luna_read.c, flywheel_solenoid.c, main.c
 ├── webots/                    # Webots dijital ikiz simülasyonu
-│   ├── controllers/           # Simülasyon kontrolcüleri
-│   ├── worlds/                # 3D simülasyon dünyası
-│   └── analysis/              # Performans grafik motorları ve telemetri verileri
+│   ├── controllers/           # Simülasyon kontrolcüleri (webots_main, webots_turret_hud, vb.)
+│   ├── worlds/                # 3D simülasyon dünyası ve aktörler
+│   └── analysis/              # Webots performans analiz motorları ve telemetri verileri
 └── weights/                   # Eğitilmiş yapay zeka model ağırlıkları (best.pt)
 ```
 
 ---
 
 ## 📜 Lisans & Akademik Referans
-Bu proje Yıldız Teknik Üniversitesi Bitirme Çalışması & Tasarım Projesi kapsamında geliştirilmiştir.
-Tüm hakları proje ekibine aittir.
+Bu proje Yıldız Teknik Üniversitesi Kontrol ve Otomasyon Mühendisliği Bölümü Bitirme Çalışması & Tasarım Projesi kapsamında geliştirilmiştir. Tüm hakları proje ekibine aittir.

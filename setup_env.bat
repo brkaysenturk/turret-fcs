@@ -32,6 +32,6 @@ pip install -r requirements.txt
 echo.
 echo ==============================================================
 echo  [TAMAMLANDI] Tum kutuphaneler basariyla kuruldu!
-echo  Artik 'turret_fcs\main.bat' ile sistemi calistirabilirsiniz.
+echo  Artik 'main.bat' ile sistemi calistirabilirsiniz.
 echo ==============================================================
 pause

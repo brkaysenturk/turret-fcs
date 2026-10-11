@@ -23,6 +23,7 @@ __pycache__/
 *.map
 *.d
 stm32/**/Debug/
+
 # Operating System Files
 Thumbs.db
 ehthumbs.db
