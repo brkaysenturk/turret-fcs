@@ -15,25 +15,25 @@ class WebotsHardwareInterface:
         self.dt = self.timestep / 1000.0
 
         # Taret gimbal motorlari
-        self.pan_motor = self.robot.getDevice('pan_motor')
-        self.tilt_motor = self.robot.getDevice('tilt_motor')
+        self.pan_motor = self.robot.getMotor('pan_motor')
+        self.tilt_motor = self.robot.getMotor('tilt_motor')
         self.pan_motor.setVelocity(3.8)
         self.tilt_motor.setVelocity(3.8)
 
         # Aci sensorleri (Enkoderler)
-        self.pan_sensor = self.robot.getDevice('pan_sensor')
-        self.tilt_sensor = self.robot.getDevice('tilt_sensor')
+        self.pan_sensor = self.robot.getPositionSensor('pan_sensor')
+        self.tilt_sensor = self.robot.getPositionSensor('tilt_sensor')
         self.pan_sensor.enable(self.timestep)
         self.tilt_sensor.enable(self.timestep)
 
         # Logitech C270 Kamera
-        self.camera = self.robot.getDevice('c270')
+        self.camera = self.robot.getCamera('c270')
         self.camera.enable(self.timestep)
         self.w_cam = self.camera.getWidth()
         self.h_cam = self.camera.getHeight()
 
         # TF-Luna LiDAR
-        self.lidar = self.robot.getDevice('tf_luna')
+        self.lidar = self.robot.getDistanceSensor('tf_luna')
         self.lidar.enable(self.timestep)
 
     def step(self):

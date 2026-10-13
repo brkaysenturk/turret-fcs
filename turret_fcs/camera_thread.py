@@ -51,7 +51,7 @@ class CameraThread:
             self.cam_name = f"Index {src}"
 
         self.cap = cv2.VideoCapture(self.src, cv2.CAP_DSHOW)
-        self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+        self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter.fourcc(*"MJPG"))
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
         self.cap.set(cv2.CAP_PROP_FPS, fps)
@@ -64,8 +64,6 @@ class CameraThread:
 
         if self.grabbed:
             self.start()
-        else:
-            print(f"[UYARI] [Camera] Kamera acilamadi (Src: {self.src} - {self.cam_name})!")
 
     def start(self):
         """Kare yakalama is parcacigini baslatir."""
@@ -73,7 +71,6 @@ class CameraThread:
             self.running = True
             self.thread = threading.Thread(target=self._update, daemon=True)
             self.thread.start()
-            print(f"[OK] [Camera] CameraThread baslatildi (Src: {self.src} - {self.cam_name}).")
 
     def _update(self):
         """Arka planda surekli en guncel kareyi okur."""
@@ -106,7 +103,6 @@ class CameraThread:
             self.thread.join(timeout=0.5)
         if self.cap.isOpened():
             self.cap.release()
-        print("[OK] [Camera] CameraThread serbest birakildi.")
 
     def __getattr__(self, name):
         return getattr(self.cap, name)

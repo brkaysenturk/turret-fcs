@@ -10,7 +10,7 @@ from webots_rl_controller import WebotsRLController
 class WebotsFCSManager:
     """Moduler ve yuksek hassasiyetli Ates Kontrol Sistemi (FCS Pipeline Yoneticisi)."""
 
-    def __init__(self, kp=0.42, alpha=0.75, min_conf=0.30, control_mode="HYBRID"):
+    def __init__(self, kp=0.42, alpha=0.75, min_conf=0.30, control_mode="HYBRID", patrol_enabled=False):
         self.selector = WebotsTargetSelector(min_conf=min_conf)
         self.tracker = WebotsKalmanFilter(dt=0.016)
         self.lock_mgr = WebotsLockManager(enter_deg=2.0, exit_deg=3.2, threshold_frames=15)
@@ -18,6 +18,7 @@ class WebotsFCSManager:
         self.patroller = WebotsPatrolGenerator()
         self.rl_controller = WebotsRLController()
         self.control_mode = control_mode  # "HYBRID", "PID", "RL"
+        self.patrol_enabled = bool(patrol_enabled)
 
         self.pan_target = 0.0
         self.tilt_target = 0.0
@@ -87,7 +88,7 @@ class WebotsFCSManager:
 
         if best_box is not None:
             self.frames_since_lost = 0
-            self.patroller.is_searching = False
+            self.patroller.on_target_detected()
 
             # 1. Tespit koordinatlarini cikar
             bx, by, raw_p, raw_t, w_px, w_py = self.aimer.process_detection(
@@ -195,10 +196,13 @@ class WebotsFCSManager:
                 )
         else:
             self.frames_since_lost += 1
-            if self.frames_since_lost >= self.MAX_LOST_FRAMES:
-                if not self.patroller.is_searching:
-                    self.reset()
-                self.pan_target, self.tilt_target = self.patroller.update(dt, self.pan_target, self.tilt_target)
+            if self.patrol_enabled:
+                if self.frames_since_lost >= self.MAX_LOST_FRAMES:
+                    self.pan_target, self.tilt_target = self.patroller.update(dt, self.pan_target, self.tilt_target)
+            else:
+                self.patroller.reset()
+                self.pan_target = 0.95 * self.pan_target
+                self.tilt_target = 0.95 * self.tilt_target
 
         return self.pan_target, self.tilt_target
 

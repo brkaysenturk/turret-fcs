@@ -25,9 +25,8 @@ echo [2/3] Pip guncelleniyor...
 call venv\Scripts\activate.bat
 python -m pip install --upgrade pip
 
-echo.
 echo [3/3] Bagimliliklar yukleniyor (requirements.txt)...
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 
 echo.
 echo ==============================================================

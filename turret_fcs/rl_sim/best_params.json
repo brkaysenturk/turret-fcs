@@ -1,0 +1,18 @@
+{
+    "best_trial_number": 5,
+    "best_score": 13.135259512776614,
+    "params": {
+        "w_dist": 4.5,
+        "w_dist_sq": 3.0,
+        "w_bullseye": 3.0,
+        "w_lock": 8.0,
+        "w_smooth": 0.5,
+        "learning_rate": 0.0003969950119766409
+    },
+    "metrics": {
+        "mean_err_px": 32.61959075623451,
+        "lock_ratio": 0.49666666666666665,
+        "mean_jerk": 0.015293416928350784
+    },
+    "elapsed_seconds": 277.66708612442017
+}

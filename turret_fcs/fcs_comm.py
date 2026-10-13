@@ -108,7 +108,6 @@ class FCSCommunicator:
         target_port = self._find_target_port()
         if not target_port:
             if not self._warned_offline:
-                print("[BILGI] [STM32] Bagli ST-Link/STM32 portu bulunamadi (Donanimsiz Mod). Takildiginda otomatik baglanacak.")
                 self._warned_offline = True
             self.ser = None
             return False
@@ -125,7 +124,6 @@ class FCSCommunicator:
                 )
             self.port = target_port
             self._warned_offline = False
-            print(f"[OK] [STM32] {self.port} otomatik baglandi (Full-Duplex Binary Mod).")
             return True
         except (serial.SerialException, OSError):
             self.ser = None
@@ -134,6 +132,11 @@ class FCSCommunicator:
     @property
     def is_connected(self):
         return self.ser is not None and self.ser.is_open
+
+    @property
+    def is_luna_online(self):
+        """TF-Luna LiDAR'in STM32 uzerinden canli telemetri akitip akitmadigini dondurur."""
+        return self.is_connected and (time.time() - self.last_valid_time <= self.stale_timeout) and (self.distance > 0 or self.strength > 0)
 
     def send(self, pan_angle: float, tilt_angle: float, fcs_state: int):
         """
@@ -147,9 +150,9 @@ class FCSCommunicator:
             if not self.is_connected:
                 return
 
-        p = int(max(-32000, min(32000, int(pan_angle * 10))))
-        t = int(max(-32000, min(32000, int(tilt_angle * 10))))
-        state = int(fcs_state) & 0xFF
+        p = max(-32000, min(32000, int(pan_angle * 10)))
+        t = max(-32000, min(32000, int(tilt_angle * 10)))
+        state = fcs_state & 0xFF
 
         try:
             payload = struct.pack("<BhhB", self.HEADER_TX, p, t, state)
@@ -168,6 +171,7 @@ class FCSCommunicator:
                 continue
 
             try:
+                in_w = 0
                 with self._lock:
                     if not self.ser or not self.ser.is_open:
                         ser_ok = False

@@ -161,7 +161,3 @@ class WebotsTelemetryLogger:
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(self.records)
-
-        print(f"\n[OK] [TELEMETRI] {len(self.records)} kare basariyla kaydedildi:")
-        print(f"     -> CSV : {csv_path}")
-        print(f"     -> MATLAB icin 'plot_fcs_analysis.m' calistirabilirsiniz.")

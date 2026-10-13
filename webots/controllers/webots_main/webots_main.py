@@ -43,7 +43,9 @@ def main():
     FIRE_DISPLAY_DURATION = ENGAGING_DISPLAY_DURATION + BALLISTIC_DISPLAY_DURATION
     prev_frame_time = 0.0
 
-    print("[SYS] TURRET_FCS_WEBOTS // BASLATILDI & OPERASYONEL (MODULER MIMARI)")
+    hud.log_event("[SYS] WEBOTS TURRET FCS INITIALIZED", color=(0, 255, 128))
+    hud.log_event("[CAM] WEBOTS VIRTUAL CAM ONLINE (640x480)", color=(0, 255, 128))
+    hud.log_event("[TLM] WEBOTS TELEMETRY ACTIVE", color=(0, 255, 128))
 
     try:
         while hw.step() != -1:
@@ -116,8 +118,8 @@ def main():
                         hud.draw_tracking_line(frame, center_x, center_y, bx, by, status_color)
                     hud.draw_lead_indicator(frame, bx, by, int(fcs.pred_center[0]), int(fcs.pred_center[1]))
             else:
-                status_text = "STATUS: PATROLLING"
-                status_color = (0, 255, 0)
+                status_text = "STATUS: PATROLLING" if fcs.patrol_enabled else "STATUS: STANDBY"
+                status_color = (0, 255, 0) if fcs.patrol_enabled else (180, 180, 180)
                 angle_err_text = "ANGULAR ERR:   [--, --] deg"
 
             reticle_color = status_color
@@ -160,7 +162,7 @@ def main():
                 mode_label = "RL CONTROLLER"
                 mode_color = (255, 200, 0)
 
-            patrol_tag = "PATROL: ACTIVE" if not target_detected else "PATROL: OFF"
+            patrol_tag = "PATROL: AUTO" if fcs.patrol_enabled else "PATROL: OFF"
             banner_text = f"[{mode_label}]  |  [{patrol_tag}]"
             (b_w, _), _ = cv2.getTextSize(banner_text, cv2.FONT_HERSHEY_SIMPLEX, 0.56, 2)
             banner_x = max(10, center_x - (b_w // 2))
@@ -177,31 +179,42 @@ def main():
             cv2.putText(frame, banner_text, (banner_x, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.56, mode_color, 2, cv2.LINE_AA)
 
             # Alt operator kontrol lejandi
-            footer_text = "[M] Mode  |  [SPACE] E-Stop  |  [Y] Fire  |  [ESC] Quit"
+            footer_text = "[M] Mode  |  [P] Patrol  |  [SPACE] E-Stop  |  [Y] Fire  |  [ESC] Quit"
             (f_w, _), _ = cv2.getTextSize(footer_text, cv2.FONT_HERSHEY_SIMPLEX, 0.42, 1)
             cv2.putText(frame, footer_text, (center_x - f_w // 2, frame.shape[0] - 14), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (160, 170, 180), 1, cv2.LINE_AA)
+
+            # Sol alt terminal olay gunlugu (Console Event Log)
+            hud.draw_event_log(frame)
 
             cv2.imshow(WINDOW_NAME, frame)
             key = cv2.waitKey(1) & 0xFF
 
             if key == 27:
+                hud.log_event("[SYS] SESSION TERMINATED (EXIT)", color=(180, 180, 180))
                 break
             elif key == ord('m') or key == ord('M'):
                 # 3 Asamali Dongu: HYBRID -> PID -> RL -> HYBRID
                 mode_cycle = {"HYBRID": "PID", "PID": "RL", "RL": "HYBRID"}
                 fcs.control_mode = mode_cycle.get(fcs.control_mode, "HYBRID")
-                print(f"\n[MOD DEGISTI] Aktif Kontrol Modu: >>> {fcs.control_mode} <<<")
+                mode_names = {"HYBRID": "HYBRID CONTROLLER", "PID": "PID CONTROLLER", "RL": "RL CONTROLLER"}
+                hud.log_event(f"[MODE] {mode_names.get(fcs.control_mode, fcs.control_mode)}", color=(0, 215, 255))
+            elif key == ord('p') or key == ord('P'):
+                fcs.patrol_enabled = not fcs.patrol_enabled
+                p_text = "CIRCULAR SCAN ENGAGED" if fcs.patrol_enabled else "STANDBY (DISABLED)"
+                p_color = (0, 255, 128) if fcs.patrol_enabled else (180, 180, 180)
+                hud.log_event(f"[PATROL] {p_text}", color=p_color)
             elif key == 32:  # Space - Acil Durdurma
                 fcs.reset()
+                fcs.patrol_enabled = False
                 fire_start_time = 0.0
                 ballistics.last_result_text = ""
                 hw.set_motor_commands(0.0, 0.0)
-                print("[SYS] EMERGENCY STOP: Taret durduruldu, motorlar merkezlendi.")
+                hud.log_event("[E-STOP] MOTORS HALTED & ZEROED", color=(0, 0, 255))
             elif key in [ord('y'), ord('Y')]:
                 if (now - fire_start_time) > (GUN_FIRE_DURATION + 0.05):
                     fire_start_time = now
                     ballistics.last_result_text = ""
-                    print("[FCS] 'Y' TIKLANDI: Atis emri verildi -- taret onleme ve atisa geciyor!")
+                    hud.log_event("[FIRE] SOLENOID TRIGGERED", color=(0, 0, 255))
             elif key in [ord('n'), ord('N')]:
                 fcs.reset()
                 fire_start_time = 0.0
@@ -210,7 +223,6 @@ def main():
     finally:
         logger.save()
         cv2.destroyAllWindows()
-        print("[SYS] TURRET_FCS_WEBOTS // KAPATILDI.")
 
 
 if __name__ == "__main__":

@@ -38,7 +38,7 @@ def run_comparison():
     print("      TURRET FCS // P CONTROLLER vs. RL KARSILASTIRMA BENZETIMI    ")
     print("==================================================================")
 
-    model = PPO.load(str(model_path))
+    model = PPO.load(str(model_path), device="cpu")
 
     # Test Senaryolari (Her iki kontrolcu de birebir ayni tohum ve yorungede test edilir)
     seeds = [42, 100, 2026]

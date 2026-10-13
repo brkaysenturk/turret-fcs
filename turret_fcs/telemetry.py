@@ -76,7 +76,6 @@ class TelemetryLogger:
         ]
 
         self._init_csv()
-        print(f"[LOG] [TelemetryLogger] Telemetri kaydi baslatildi: {self.csv_path.name}")
 
     def _init_csv(self):
         with open(self.csv_path, mode="w", newline="", encoding="utf-8") as f:
@@ -171,10 +170,6 @@ class TelemetryLogger:
             return
         self.flush()
         self.is_active = False
-        duration = round(time.time() - self.start_time, 2) if self.start_time else 0.0
-        print(f"\n[OK] [TelemetryLogger] Telemetri kaydi tamamlandi:")
-        print(f"     -> Dosya: {self.csv_path.resolve()}")
-        print(f"     -> Toplam Kayit: {self.total_records} kare | Sure: {duration} sn")
 
     def __enter__(self):
         return self

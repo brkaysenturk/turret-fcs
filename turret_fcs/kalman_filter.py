@@ -77,9 +77,10 @@ class KalmanFilter:
         self.smooth_vx = 0.0
         self.smooth_vy = 0.0
 
-    def update(self, measurement, dt=0.033):
+    def update(self, measurement, dt=0.033, ego_dx=0.0, ego_dy=0.0):
         """
         Durum kestirimi ve Joseph formunda kovaryans guncellemesi.
+        ego_dx, ego_dy: Taretin kendi donusunden kaynaklanan piksel kaymasi (Ego-Motion).
         Returns: px, py, smooth_vx, smooth_vy
         """
         dt = max(0.010, min(float(dt), 0.1))
@@ -96,7 +97,9 @@ class KalmanFilter:
             return mx, my, 0.0, 0.0
 
         # Anormal hedef atlamasi (farkli nesne veya sahte tespit)
-        meas_jump = float(np.hypot(mx - self.last_meas_x, my - self.last_meas_y))
+        expected_x = self.last_meas_x + float(ego_dx)
+        expected_y = self.last_meas_y + float(ego_dy)
+        meas_jump = float(np.hypot(mx - expected_x, my - expected_y))
         if meas_jump > self.jump_threshold:
             self.x = np.array([[mx], [my], [0.0], [0.0]], dtype=float)
             self.P = np.diag([10.0, 10.0, 80.0, 80.0])
@@ -104,7 +107,7 @@ class KalmanFilter:
             self.last_meas_y = my
             return mx, my, 0.0, 0.0
 
-        # 1. Durum Gecis Matrisi F (Sabit Hizli Model)
+        # 1. Durum Gecis Matrisi F (Sabit Hizli Model) + Ego Hareket Kompanzasyonu
         F = np.array([
             [1.0, 0.0, dt,  0.0],
             [0.0, 1.0, 0.0, dt ],
@@ -112,7 +115,10 @@ class KalmanFilter:
             [0.0, 0.0, 0.0, 1.0],
         ], dtype=float)
 
+        # x_pred: Onceki konum + hedef dunya hizi * dt + taretin kendi donus adimi (ego_dx, ego_dy)
         x_pred = F @ self.x
+        x_pred[0, 0] += float(ego_dx)
+        x_pred[1, 0] += float(ego_dy)
 
         # 2. Inovasyon (Residual)
         y = meas - self.H @ x_pred

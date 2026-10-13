@@ -15,7 +15,7 @@ GOREVLER VE ALGORITMALAR:
    Gauss isabet olasiligi hesabi ile atis izni kontrolu.
 5. Hibrit Kontrol Harmanlama: Hedef hizina ve kilit kalitesine gore P kontrolcu ile PPO RL
    arasinda dinamik agirliklandirma (%0 - %55 AI takviyesi).
-6. Iki Asamali Akilli Devriye: Hedef kayboldugunda Grace Period, yerel ve genel arama.
+6. Sakin Dairesel Devriye: Hedef kayboldugunda 1.5 sn bekleme, merkeze donus ve 2 eksenli dairesel tarama.
 ================================================================================
 """
 
@@ -43,7 +43,7 @@ class FCSManager:
         self.rl_controller = RLController()
         self.patrol = PatrolGenerator()
 
-        self.control_mode = "P" if control_mode not in ["HYBRID", "RL"] else control_mode  # "P" (Varsayilan), "HYBRID", "RL"
+        self.control_mode = "P" if control_mode not in ["HYBRID", "RL"] else control_mode  # "P", "HYBRID", "RL"
         self.current_rl_weight = 0.0
         self.patrol_enabled = bool(patrol_enabled)
         self.patrol_status = "STANDBY"
@@ -55,6 +55,10 @@ class FCSManager:
         self.pred_center = np.array([0.0, 0.0], dtype=float)
         self.firing_lead_offset = np.array([0.0, 0.0], dtype=float)
         self.gravity_comp_deg = 0.0
+
+        # Son karede tarete gonderilen motor komutlari (Ego-motion kompanzasyonu icin)
+        self.last_cmd_pan = 0.0
+        self.last_cmd_tilt = 0.0
 
     @property
     def is_locked(self):
@@ -108,7 +112,15 @@ class FCSManager:
             lead_time = float(np.clip((d_m / self.p_controller.PROJECTILE_SPEED_MPS) + 0.015, 0.03, 0.25))
 
             if not is_firing:
-                kwx, kwy, kvx, kvy = self.tracker.update((float(bx), float(by)), dt=dt)
+                # Taretin bir onceki karedeki donusunden kaynaklanan optik akis kaymasi (Ego-Motion)
+                if self.frames_since_lost == 0:
+                    ego_dx = - float(fx) * float(np.tan(np.radians(self.last_cmd_pan)))
+                    ego_dy =   float(fy) * float(np.tan(np.radians(self.last_cmd_tilt)))
+                else:
+                    ego_dx = 0.0
+                    ego_dy = 0.0
+
+                kwx, kwy, kvx, kvy = self.tracker.update((float(bx), float(by)), dt=dt, ego_dx=ego_dx, ego_dy=ego_dy)
                 pred_px, pred_py, _, _ = self.tracker.predict_next_position(lead_time=lead_time)
                 self.target_velocity = np.array([kvx, kvy], dtype=float)
 
@@ -128,11 +140,11 @@ class FCSManager:
             speed_mag = float(np.hypot(self.target_velocity[0], self.target_velocity[1]))
             self.lock_mgr.update(angular_err, self.target_velocity, is_firing=(is_firing or is_hud_firing), dist_m=d_m)
 
-            # 5. Motor kontrol komutu (Hiza duyarli dinamik olu bolge ve adaptif kazanc hesaplamasi)
+            # 5. Motor kontrol komutu (Sabit kazanc ve yumusak olu bolge - Decoupled Soft Deadband P)
             active_pan = float(pan_deg + (self.firing_lead_offset[0] if (is_firing or is_hud_firing) else 0.0))
             active_tilt = float(tilt_deg + ((self.firing_lead_offset[1] + self.gravity_comp_deg) if (is_firing or is_hud_firing) else 0.0))
 
-            u_p_pan, u_p_tilt = self.p_controller.compute_p(active_pan, active_tilt, dt, target_speed=speed_mag)
+            u_p_pan, u_p_tilt = self.p_controller.compute_p(active_pan, active_tilt, dt)
 
             if self.control_mode == "HYBRID" and self.rl_controller.is_loaded:
                 screen_w = center_x * 2
@@ -153,9 +165,17 @@ class FCSManager:
                 # Kilit saglamlastikca RL agirligini azalt, olu bolgede sifir titresim sagla
                 lock_factor = 1.0 - float(np.clip((lock_qual - 35.0) / 60.0, 0.0, 0.85))
                 self.current_rl_weight = float(np.clip(raw_boost * lock_factor, 0.0, 0.55))
+                w = self.current_rl_weight
 
-                u_pan = float(np.clip(u_p_pan + (d_pan_deg * self.current_rl_weight), -self.p_controller.max_output, self.p_controller.max_output))
-                u_tilt = float(np.clip(u_p_tilt + (d_tilt_deg * self.current_rl_weight), -self.p_controller.max_output, self.p_controller.max_output))
+                # Disbukey Harmanlama (Convex Blending): (1 - w)*P + w*RL
+                # Kazanc over-boost riski ortadan kalkar; olu bolgede P sakinligi, dinamik manevrada RL cevigi saglanir.
+                blend_pan = (1.0 - w) * u_p_pan + w * d_pan_deg
+                blend_tilt = (1.0 - w) * u_p_tilt + w * d_tilt_deg
+
+                u_pan = float(np.clip(blend_pan, -self.p_controller.max_output, self.p_controller.max_output))
+                u_tilt = float(np.clip(blend_tilt, -self.p_controller.max_output, self.p_controller.max_output))
+                self.last_cmd_pan = u_pan
+                self.last_cmd_tilt = u_tilt
                 return u_pan, u_tilt
 
             elif self.control_mode == "RL" and self.rl_controller.is_loaded:
@@ -169,10 +189,14 @@ class FCSManager:
                 )
                 u_pan = float(np.clip(d_pan_deg, -self.p_controller.max_output, self.p_controller.max_output))
                 u_tilt = float(np.clip(d_tilt_deg, -self.p_controller.max_output, self.p_controller.max_output))
+                self.last_cmd_pan = u_pan
+                self.last_cmd_tilt = u_tilt
                 return u_pan, u_tilt
 
             else:
                 self.current_rl_weight = 0.0
+                self.last_cmd_pan = u_p_pan
+                self.last_cmd_tilt = u_p_tilt
                 return u_p_pan, u_p_tilt
 
         else:
@@ -183,14 +207,18 @@ class FCSManager:
                 self.target_velocity = np.array([0.0, 0.0], dtype=float)
                 self.firing_lead_offset = np.array([0.0, 0.0], dtype=float)
 
-            # Hedef yokken: Devriye modu aciksa iki asamali akilli arama
+            # Hedef yokken: Devriye modu aciksa sakin dairesel tarama
             if self.patrol_enabled:
                 d_p, d_t, self.patrol_status = self.patrol.update(dt, self.actual_pan, self.actual_tilt)
                 self.p_controller.actual_pan += d_p
                 self.p_controller.actual_tilt += d_t
+                self.last_cmd_pan = d_p
+                self.last_cmd_tilt = d_t
                 return d_p, d_t
             else:
                 self.patrol_status = "STANDBY"
+                self.last_cmd_pan = 0.0
+                self.last_cmd_tilt = 0.0
                 return 0.0, 0.0
 
     def reset(self):
@@ -199,7 +227,10 @@ class FCSManager:
         self.pred_center = np.array([0.0, 0.0], dtype=float)
         self.firing_lead_offset = np.array([0.0, 0.0], dtype=float)
         self.gravity_comp_deg = 0.0
+        self.last_cmd_pan = 0.0
+        self.last_cmd_tilt = 0.0
         self.tracker.reset()
         self.lock_mgr.reset()
         self.p_controller.reset()
         self.patrol.reset()
+

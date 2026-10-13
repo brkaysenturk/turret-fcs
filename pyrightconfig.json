@@ -1,0 +1,11 @@
+{
+  "venvPath": ".",
+  "venv": "venv",
+  "extraPaths": [
+    ".",
+    "turret_fcs",
+    "webots/controllers/webots_main"
+  ],
+  "reportMissingImports": "none",
+  "typeCheckingMode": "off"
+}

@@ -17,6 +17,7 @@ EGITIM VE SISTEM GUVENLIGI PARAMETRELERI:
 ================================================================================
 """
 
+import json
 import os
 import time
 from pathlib import Path
@@ -29,9 +30,34 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 from turret_env import TurretEnv
 
 
-def make_env():
-    # latency_steps=2: Gercek donanimin ~70-80 ms tasima gecikmesi (kamera + YOLO + UART)
-    env = TurretEnv(render_mode=None, latency_steps=2)
+def load_best_params(params_path):
+    if params_path.exists():
+        try:
+            with open(params_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return data.get("params", {})
+        except Exception:
+            pass
+    return {}
+
+
+def make_env(best_params=None):
+    best_params = best_params or {}
+    w_dist = best_params.get("w_dist", 3.5)
+    w_dist_sq = best_params.get("w_dist_sq", 5.0)
+    w_bullseye = best_params.get("w_bullseye", 6.0)
+    w_lock = best_params.get("w_lock", 4.0)
+    w_smooth = best_params.get("w_smooth", 0.25)
+
+    env = TurretEnv(
+        render_mode=None,
+        latency_steps=2,
+        w_dist=w_dist,
+        w_dist_sq=w_dist_sq,
+        w_bullseye=w_bullseye,
+        w_lock=w_lock,
+        w_smooth=w_smooth,
+    )
     return Monitor(env)
 
 
@@ -39,24 +65,41 @@ def train():
     current_dir = Path(__file__).resolve().parent
     models_dir = current_dir / "models"
     logs_dir = current_dir / "logs"
+    params_file = current_dir / "best_params.json"
     models_dir.mkdir(parents=True, exist_ok=True)
     logs_dir.mkdir(parents=True, exist_ok=True)
 
     # Islemci asiri isinmasini (thermal throttle / kapanma) onlemek icin thread limit
     torch.set_num_threads(2)
 
-    print("==================================================")
-    print(" TURRET FCS // GECIKME TAMPONLU PPO RL EGITIMI   ")
-    print("==================================================")
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    print(f"[Device] Donanım: {device.upper()} (Guvenli 2-Thread Modu)")
+    best_params = load_best_params(params_file)
 
-    env = DummyVecEnv([make_env])
+    print("==================================================")
+    print(" TURRET FCS // BAYESIAN OPTIMIZE EDILMIS PPO EGITIMI")
+    print("==================================================")
+    if best_params:
+        print("[Optuna] En Iyi Parametreler Dosyadan Yuklendi:")
+        for k, v in best_params.items():
+            print(f"  - {k}: {v}")
+    else:
+        print("[Bilgi] Standart Bryson parametreleri kullaniliyor.")
+
+    # MlpPolicy ve vektor ortamlari icin CPU GPU'dan cok daha hizlidir (CUDA gecikmesi olmadan)
+    device = "cpu"
+    print(f"[Device] Donanim: {device.upper()} (Guvenli 2-Thread Modu)")
+
+    env = DummyVecEnv([lambda: make_env(best_params)])
+
+    base_lr = float(best_params.get("learning_rate", 3.97e-4))
+
+    # Lineer ogrenme orani sonumleme (fine-tuning asamasinda motor titresimini sifirlar)
+    def lr_schedule(progress_remaining):
+        return max(5e-5, base_lr * progress_remaining)
 
     model = PPO(
         policy="MlpPolicy",
         env=env,
-        learning_rate=3e-4,
+        learning_rate=lr_schedule,
         n_steps=2048,
         batch_size=64,
         n_epochs=10,
@@ -69,8 +112,8 @@ def train():
         device=device,
     )
 
-    TOTAL_TIMESTEPS = 150_000
-    print(f"\n[Eğitim Başlıyor] Toplam Adım: {TOTAL_TIMESTEPS:,}...")
+    TOTAL_TIMESTEPS = 500_000
+    print(f"\n[Eğitim Başlıyor] Toplam Adım: {TOTAL_TIMESTEPS:,} (Derin Yakınsama Modu)...")
     start_time = time.time()
 
     model.learn(

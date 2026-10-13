@@ -33,11 +33,9 @@ class WebotsRLController:
             if self.model_path.exists():
                 self.model = PPO.load(str(self.model_path), device="cpu")
                 self.is_loaded = True
-                print(f"[OK] [RL Controller] Hassas PPO Modeli Yuklendi: {self.model_path.name}")
             else:
-                print(f"[UYARI] [RL Controller] Model bulunamadi: {self.model_path}")
-        except Exception as e:
-            print(f"[HATA] [RL Controller] Model yuklenirken hata: {e}")
+                self.is_loaded = False
+        except Exception:
             self.is_loaded = False
 
     def reset(self):

@@ -5,6 +5,14 @@ import numpy as np
 class TurretHUD:
     def __init__(self):
         self.font = cv2.FONT_HERSHEY_SIMPLEX
+        self.event_logs = []
+
+    def log_event(self, msg, color=(200, 210, 220)):
+        """Taktiksel HUD olay gunlugune yeni bir olay ekler (saat damgasi olmadan)."""
+        clean_msg = msg.strip().replace("\n", " ")
+        self.event_logs.append((clean_msg, color))
+        if len(self.event_logs) > 6:
+            self.event_logs.pop(0)
 
     @staticmethod
     def is_target_centered(center_x, center_y, x1, y1, x2, y2):
@@ -252,3 +260,69 @@ class TurretHUD:
             (fps_w, _), _ = cv2.getTextSize(fps_text, self.font, 0.50, 2)
             fps_color = (0, 255, 0) if fps >= 25 else (0, 165, 255)
             cv2.putText(frame, fps_text, (w - fps_w - 18, 26), self.font, 0.50, fps_color, 2, cv2.LINE_AA)
+
+    def draw_event_log(self, frame, event_logs=None, max_lines=4):
+        """
+        Sol alt kosede terminaldeki sistem ve operator mesajlarini gosteren
+        yari saydam taktiksel askeri olay gunlugu (Console Event Log).
+        """
+        logs_to_draw = event_logs if event_logs is not None else self.event_logs
+        if not logs_to_draw:
+            return
+
+        display_logs = logs_to_draw[-max_lines:]
+        h, w, _ = frame.shape
+        line_height = 18
+        header_height = 20
+        box_h = header_height + (len(display_logs) * line_height) + 8
+
+        px1 = 15
+        py2 = h - 30
+        py1 = py2 - box_h
+
+        # Genislik hesabi
+        max_txt_w = 220
+        for item in display_logs:
+            if isinstance(item, (list, tuple)):
+                txt = str(item[1]) if len(item) >= 3 else str(item[0])
+            else:
+                txt = str(item)
+            (tw, _), _ = cv2.getTextSize(txt, self.font, 0.38, 1)
+            if tw > max_txt_w:
+                max_txt_w = tw
+
+        px2 = min(w - 20, px1 + max_txt_w + 24)
+
+        # Yari saydam arka plan
+        roi = frame[py1:py2, px1:px2]
+        black_layer = np.zeros_like(roi)
+        frame[py1:py2, px1:px2] = cv2.addWeighted(roi, 0.25, black_layer, 0.75, 0)
+
+        # Askeri cerceve
+        cv2.rectangle(frame, (px1, py1), (px2, py2), (75, 85, 95), 1)
+
+        # Baslik
+        header_text = "EVENT LOG"
+        cv2.putText(frame, header_text, (px1 + 10, py1 + 14), self.font, 0.36, (0, 200, 255), 1, cv2.LINE_AA)
+        cv2.line(frame, (px1 + 8, py1 + 18), (px2 - 8, py1 + 18), (55, 65, 75), 1)
+
+        # Log satirlari
+        curr_y = py1 + 18 + line_height
+        for item in display_logs:
+            if isinstance(item, (list, tuple)):
+                if len(item) >= 3:
+                    text = item[1]
+                    color = item[2]
+                elif len(item) == 2:
+                    text = item[0]
+                    color = item[1]
+                else:
+                    text = item[0]
+                    color = (200, 210, 220)
+                full_text = str(text)
+            else:
+                color = (200, 210, 220)
+                full_text = str(item)
+
+            cv2.putText(frame, full_text, (px1 + 10, curr_y - 3), self.font, 0.38, color, 1, cv2.LINE_AA)
+            curr_y += line_height

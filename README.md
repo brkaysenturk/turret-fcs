@@ -1,6 +1,8 @@
 # Otonom Asimetrik Hava Tehdidi Tespit ve Atış Kontrol Sistemi (Turret FCS)
-### Yıldız Teknik Üniversitesi — Kontrol ve Otomasyon Mühendisliği Bölümü
-**Bitirme Çalışması & Tasarım Projesi**
+
+## Yıldız Teknik Üniversitesi — Kontrol ve Otomasyon Mühendisliği Bölümü
+
+### Bitirme Çalışması & Tasarım Projesi
 
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 [![STM32 Nucleo](https://img.shields.io/badge/Hardware-STM32F401RE-002B49.svg)](https://www.st.com/)
@@ -26,6 +28,7 @@ Bu proje; mikro/mini İHA'lar, kamikaze dronlar ve asimetrik hava hedeflerine ka
   * **Renk Disiplini:** Devriye modunda **Yeşil**, Takipte **Amber**, Hedef kilitlendiğinde ve atış anında **Kırmızı**.
   * **Muharebe Yetkilendirme Paneli:** Koyu Amber (`TARGET LOCKED` / `AUTHORIZE FIRE? [Y/N]`).
   * **Kademeli Vuruş Olasılığı (Hit Probability):** Gri ($< 40\%$), Amber ($40\% - 69\%$), Kırmızı ($\ge 70\%$).
+  * **Taktiksel Event Log Konsolu:** Tüm sistem olayları (hedef takibi, silah kilitlenmesi, atış, devriye, mod değişimi, LiDAR durumu ve E-STOP) ekranın sol üstünde askeri standartta dinamik durum akışıyla gösterilir.
   * **Muharebe Sadeleştirmesi (Decluttering):** Kilit ve atış esnasında operatörün dikkatini dağıtmamak için sol telemetri kutusu ve sağ üst FPS göstergesi otomatik gizlenir.
 * **Gömülü Donanım Mimarisi:** STM32F401RE Nucleo tabanlı 100 Hz ikili (binary) UART haberleşmeli, donanımsal limit korumalı çift MG996R servo sürücüsü, 23.500 RPM çift volan motoru ve 12V JF-0530B solenoid dart itici.
 * **Dijital İkiz Simülasyonu:** Webots R2025a fizik motorunda 1:1 ölçekli aerodinamik ve mekanik simülasyon doğrulaması (%100 isabet oranı).
@@ -37,22 +40,28 @@ Bu proje; mikro/mini İHA'lar, kamikaze dronlar ve asimetrik hava hedeflerine ka
 Aşağıdaki şemalar sistemin PC yazılım boru hattını, STM32 gömülü mimarisini, Webots simülasyon motorunu ve elektriksel güç dağıtım katmanını göstermektedir:
 
 ### 1. Turret FCS Yazılım Pipeline Şeması
+
 ![Turret FCS Mimari Şeması](turret_fcs_architecture.png)
 
 ### 2. STM32F401RE Gömülü Çekirdek & Sürücü Mimarisi
+
 ![STM32 Gömülü Mimari](stm32_architecture.png)
 
 ### 3. Webots Dijital İkiz Simülasyon Mimarisi
+
 ![Webots Simülasyon Mimarisi](webots_architecture.png)
 
 ### 4. Donanım ve Güç Dağıtım Şeması
+
 Projenin elektriksel güç dağıtımı, sensör entegrasyonu ve aktüatör bağlantıları [turret_fcs_hardware.svg](turret_fcs_hardware.svg) dosyasında detaylandırılmıştır.
 
 ### 5. 3D Mekanik Montaj ve Donanım Tasarımı
+
 Taretin 3D yazıcıdan üretilecek açık beşikli, minimal optik paralakslı ve gizli servo hornlu elektromekanik montaj tasarımı:
+
 ![Turret FCS 3D Mekanik Montaj](turret_cad_render_annotated.jpg)
 
-```
+```text
 +-----------------------------------------------------------------------------------+
 |                            GÖRSEL VE SENSÖR GİRDİSİ                               |
 |  [ Logitech C270 (1280x720 @ 30 FPS) ]     [ Benewake TF-Luna LiDAR (100 Hz UART) ]|
@@ -89,7 +98,7 @@ Taretin 3D yazıcıdan üretilecek açık beşikli, minimal optik paralakslı ve
 
 Sistemin arama, tespit, takip, kilitlenme ve atış sekansları [turret_fcs_flowchart.svg](turret_fcs_flowchart.svg) dosyasında modellenmiştir:
 
-* **DURUM 1 (Devriye / Arama):** Hedef yokken Lissajous 3D eğrileriyle parametrik tarama yapılır; HUD yeşil renktedir.
+* **DURUM 1 (Devriye / Arama):** Hedef yokken sakin 3-aşamalı dairesel devriye eğrileriyle (0° -> +40° -> -40° -> 0°) parametrik tarama yapılır; HUD yeşil renktedir.
 * **DURUM 2 (Tespit & Mesafe):** Hedef algılandığında TF-Luna LiDAR ile 100 Hz mesafe ve sinyal gücü doğrulanır.
 * **DURUM 3 (Takip & Lead):** Kalman Filtresi hedef hızını kestirir; HUD amber rengine geçer.
 * **DURUM 4 (Hibrit / P Kontrol):** Tip-1 P kontrolcü ve dinamik PPO takviyesi ile açısal gecikme sıfırlanır.
@@ -116,31 +125,38 @@ Sistem, gerçek donanımın **80 ms taşıyıcı gecikmesi** altında 3 farklı 
 ## 🚀 Hızlı Başlangıç ve Kurulum
 
 ### 1. Donanım ve Yazılım Gereksinimleri
+
 * Windows 10/11 x64
 * Python 3.10 veya 3.12 (*"Add Python to PATH"* seçili olmalıdır)
 * STM32 Nucleo-F401RE Kartı & Logitech C270 Web Kamerası
 * Benewake TF-Luna LiDAR Sensörü
 
 ### 2. Otomatik Ortam Kurulumu
+
 Depoyu klonlayın ve ana dizindeki kurulum betiğini çalıştırın:
+
 ```bash
 git clone https://github.com/brkysnturk/turret_fcs.git
 cd turret_fcs
 setup_env.bat
 ```
+
 Bu betik sanal ortamı (`venv`) oluşturur, `pip`'i günceller ve [requirements.txt](requirements.txt) içerisindeki tüm bağımlılıkları eksiksiz yükler.
 
 ### 3. Sistemi Tek Tıkla Başlatma
+
 Donanım kablolarını taktıktan sonra ana dizindeki başlatıcıyı çalıştırın:
+
 ```bash
 main.bat
 ```
 
 ### 🎮 Operatör Kontrol Tuşları
+
 * **`ESC` / `Q` :** Programı ve telemetri kaydını güvenli kapatma (`logs/telemetry_test_*.csv` dosyasını diske yazar).
 * **`SPACE` (Boşluk) :** Acil Durdurma (E-STOP) — Motorları ve kilitlenmeyi anında frenler.
 * **`M` :** Kontrol Modu Döngüsü (`[P CONTROLLER]` $\leftrightarrow$ `[HYBRID CONTROLLER (RL:X%)]` $\leftrightarrow$ `[RL CONTROLLER]`).
-* **`P` :** 2 Kademeli Akıllı Devriye (Patrol) modunu açma / kapatma.
+* **`P` :** Sakin 3-Kademeli Dairesel Devriye (Patrol) modunu açma / kapatma.
 * **`Y` :** Manuel Atış Yetkisi (Authorize Fire).
 * **`N` :** Hedef Bırakma / Aramaya Geri Dönme.
 
@@ -160,13 +176,14 @@ python analysis/system_identification.py
 # 3. P Kontrolcü vs PPO RL Karşılaştırma Grafiği
 python turret_fcs/rl_sim/compare_pid_vs_rl.py
 ```
+
 *(Akademik tez veya jüri sunumu için MATLAB ortamında `analysis/turret_fcs_analysis.m` dosyasını çalıştırabilirsiniz).*
 
 ---
 
 ## 📂 Dizin Yapısı
 
-```
+```text
 turret_fcs/
 ├── requirements.txt           # Python kütüphane bağımlılıkları (YOLO, Torch, SB3, vb.)
 ├── setup_env.bat              # Otomatik sanal ortam (venv) ve kütüphane kurulum aracı
@@ -192,7 +209,7 @@ turret_fcs/
 │   ├── turret_hud.py          # Askeri standartta dinamik taktiksel HUD arayüzü
 │   ├── rl_controller.py       # 80 ms gecikme telafili PPO RL cıkarım motoru
 │   ├── p_controller.py        # Hız-uyarlamalı yumuşak ölü bölgeli Tip-1 P kontrolcü
-│   ├── patrol_generator.py    # Lissajous 3D parametrik arama ve akıllı devriye
+│   ├── patrol_generator.py    # Sakin 3-aşamalı dairesel devriye ve arama motoru
 │   ├── target_selector.py     # Öncelikli hedef filtreleme algoritması
 │   ├── camera_thread.py       # Sıfır gecikmeli çok iş parçacıklı kamera sürücüsü
 │   └── rl_sim/                # Pekiştirmeli öğrenme ortamı ve eğitim araçları
@@ -213,4 +230,5 @@ turret_fcs/
 ---
 
 ## 📜 Lisans & Akademik Referans
+
 Bu proje Yıldız Teknik Üniversitesi Kontrol ve Otomasyon Mühendisliği Bölümü Bitirme Çalışması & Tasarım Projesi kapsamında geliştirilmiştir. Tüm hakları proje ekibine aittir.

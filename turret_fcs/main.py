@@ -14,7 +14,7 @@ TEMEL GOREVLER VE AKIS:
    - "HYBRID": Hizli hedeflerde gecikmeyi telafi eden AI takviyeli P + PPO RL harmanlama (HYBRID CONTROLLER).
    - "RL": Saf Reinforcement Learning (PPO) ile otonom yonlendirme (RL CONTROLLER).
 4. Akilli Devriye (Klavyeden 'P' ile gecis):
-   - Hedef yokken iki asamali arama (Grace Period -> Yerel Dar Arama -> Genel Sektor).
+   - Hedef kayboldugunda 1.5 sn bekleme, merkeze donus ve 2 eksenli dairesel/eliptik tarama.
 5. E-STOP (Bosluk Tusu): Acil durumda aninda motor durdurma ve devriye kilitleme.
 ================================================================================
 """
@@ -47,8 +47,8 @@ def main():
     fcs = FCSManager(control_mode="P")
     telemetry = TelemetryLogger() if ENABLE_TELEMETRY else None
 
-    # Logitech C270 Gorus Acilari
-    H_FOV, V_FOV = 69.0, 42.0
+    # Logitech C270 Resmi Datasheet Gorus Acilari (dFOV 60° -> 16:9 Projeksiyon)
+    H_FOV, V_FOV = 53.0, 31.5
     fx = (1280 / 2.0) / np.tan(np.radians(H_FOV / 2.0))
     fy = (720 / 2.0) / np.tan(np.radians(V_FOV / 2.0))
 
@@ -63,18 +63,69 @@ def main():
     PAN_INVERT = True   # Yatay servo mekanik montaj acisina gore tersleme (True: -pan_cmd, False: +pan_cmd)
     TILT_INVERT = False  # Dikey servo mekanik montaj acisina gore tersleme (True: -tilt_cmd, False: +tilt_cmd)
 
-    print("[SYS] TURRET_FCS // BASLATILDI & OPERASYONEL")
+    # 1. Sistem baslangic durumu
+    hud.log_event("[SYS] TURRET FCS INITIALIZED & OPERATIONAL", color=(0, 255, 128))
+
+    # 2. Kamera baglanti durumu
+    if cap.isOpened():
+        cam_tag = "LOGI C270" if "c270" in cap.cam_name.lower() else "CAMERA"
+        hud.log_event(f"[CAM] {cam_tag} ONLINE (1280x720@30FPS)", color=(0, 255, 128))
+    else:
+        hud.log_event("[CAM] CAMERA OFFLINE / NOT FOUND", color=(0, 0, 255))
+
+    # 3. STM32 baglanti durumu
+    if stm.is_connected:
+        hud.log_event(f"[STM32] {stm.port} CONNECTED (115200 BAUD)", color=(0, 255, 128))
+    else:
+        hud.log_event("[STM32] OFFLINE (SIMULATION / NO HW)", color=(0, 191, 255))
+
+    # 4. TF-Luna LiDAR durumu (STM32 uzerinden)
+    time.sleep(0.04)
+    if stm.is_luna_online:
+        hud.log_event("[LIDAR] TF-LUNA ONLINE", color=(0, 255, 128))
+    else:
+        hud.log_event("[LIDAR] TF-LUNA STANDBY / WAITING", color=(0, 191, 255))
+
+    # 5. Telemetri kayit durumu
+    if telemetry is not None:
+        hud.log_event(f"[TLM] RECORDING ACTIVE ({telemetry.csv_path.name})", color=(0, 255, 128))
+    else:
+        hud.log_event("[TLM] RECORDING DISABLED", color=(180, 180, 180))
+
+    prev_stm_connected = stm.is_connected
+    prev_luna_online = stm.is_luna_online
 
     try:
         while cap.isOpened():
+            # STM32 baglanti durumundaki anlik degisimleri izle
+            if stm.is_connected != prev_stm_connected:
+                prev_stm_connected = stm.is_connected
+                if stm.is_connected:
+                    hud.log_event(f"[STM32] {stm.port} CONNECTED (AUTO)", color=(0, 255, 128))
+                else:
+                    hud.log_event("[STM32] CONNECTION LOST (OFFLINE)", color=(0, 0, 255))
+
+            # TF-Luna LiDAR canlilik durumundaki degisimleri izle
+            curr_luna_online = stm.is_luna_online
+            if curr_luna_online != prev_luna_online:
+                prev_luna_online = curr_luna_online
+                if curr_luna_online:
+                    hud.log_event("[LIDAR] TF-LUNA ONLINE", color=(0, 255, 128))
+                else:
+                    hud.log_event("[LIDAR] TF-LUNA TIMEOUT / OFFLINE", color=(0, 0, 255))
+
             ret, frame = cap.read()
-            if not ret:
+            if not ret or frame is None:
                 break
 
             now = time.time()
             dt = max(0.001, now - prev_frame_time)
             fps = int(1.0 / dt)
             prev_frame_time = now
+
+            fcs_state = 0
+            active_pan_cmd = 0.0
+            active_tilt_cmd = 0.0
 
             h, w, _ = frame.shape
             center_x, center_y = w // 2, h // 2
@@ -226,10 +277,14 @@ def main():
             (f_w, _), _ = cv2.getTextSize(footer_text, cv2.FONT_HERSHEY_SIMPLEX, 0.42, 1)
             cv2.putText(frame, footer_text, (center_x - f_w // 2, frame.shape[0] - 14), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (160, 170, 180), 1, cv2.LINE_AA)
 
+            # Sol alt terminal olay gunlugu (Console Event Log)
+            hud.draw_event_log(frame)
+
             cv2.imshow(WINDOW_NAME, frame)
             key = cv2.waitKey(1) & 0xFF
 
             if key == 27 or key == ord("q") or key == ord("Q"):
+                hud.log_event("[SYS] SESSION TERMINATED (EXIT)", color=(180, 180, 180))
                 break
             elif key == ord("m") or key == ord("M"):
                 mode_cycle = {"P": "HYBRID", "HYBRID": "RL", "RL": "P"}
@@ -239,19 +294,22 @@ def main():
                     "HYBRID": "HYBRID CONTROLLER",
                     "RL": "RL CONTROLLER",
                 }
-                print(f"\n[MOD DEGISTI] Gercek Donanim Kontrol Modu: >>> {mode_names.get(fcs.control_mode, fcs.control_mode)} <<<")
+                mode_str = mode_names.get(fcs.control_mode, fcs.control_mode)
+                hud.log_event(f"[MODE] {mode_str}", color=(0, 215, 255))
             elif key == ord("p") or key == ord("P"):
                 fcs.patrol_enabled = not fcs.patrol_enabled
-                p_text = "ACIK (Otomatik 2 Asamali Arama)" if fcs.patrol_enabled else "KAPALI (Sessiz Standby)"
-                print(f"\n[DEVIYE MODU] Akilli Tarama / Devriye: >>> {p_text} <<<")
+                p_text = "CIRCULAR SCAN ENGAGED" if fcs.patrol_enabled else "STANDBY (DISABLED)"
+                p_color = (0, 255, 128) if fcs.patrol_enabled else (180, 180, 180)
+                hud.log_event(f"[PATROL] {p_text}", color=p_color)
             elif key == 32:  # E-STOP (Bosluk tusu)
                 fcs.reset()
                 fcs.patrol_enabled = False
                 fire_start_time = 0.0
                 stm.send(0.0, 0.0, 0)
-                print("[SYS] EMERGENCY STOP: Taret durduruldu, motorlar sifirlandi, devriye kapatildi.")
+                hud.log_event("[E-STOP] MOTORS HALTED & ZEROED", color=(0, 0, 255))
             elif key in [ord("y"), ord("Y")] and fcs.is_locked:
                 fire_start_time = time.time()
+                hud.log_event("[FIRE] SOLENOID TRIGGERED", color=(0, 0, 255))
             elif key in [ord("n"), ord("N")]:
                 fcs.reset()
                 fire_start_time = 0.0
@@ -262,7 +320,6 @@ def main():
         stm.close()
         cap.stop()
         cv2.destroyAllWindows()
-        print("[SYS] TURRET_FCS // DONANIM VE BAGLANTILAR KAPATILDI.")
 
 
 if __name__ == "__main__":
