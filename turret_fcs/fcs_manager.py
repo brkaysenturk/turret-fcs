@@ -35,7 +35,7 @@ class FCSManager:
     atesleme koordinasyonunu yoneten ust seviye yonetici sinifi.
     """
 
-    def __init__(self, control_mode="P", max_lost_frames=3, patrol_enabled=False):
+    def __init__(self, control_mode="P", max_lost_frames=4, patrol_enabled=False):
         self.selector = TargetSelector()
         self.tracker = KalmanFilter()
         self.lock_mgr = LockManager()
@@ -59,6 +59,9 @@ class FCSManager:
         # Son karede tarete gonderilen motor komutlari (Ego-motion kompanzasyonu icin)
         self.last_cmd_pan = 0.0
         self.last_cmd_tilt = 0.0
+
+        # Menzil Kapilama (Range Gating) icin dogrulanmis hedef mesafesi hafizasi
+        self.last_valid_target_dist_m = float(self.p_controller.DEFAULT_DISTANCE_M)
 
     @property
     def is_locked(self):
@@ -104,11 +107,19 @@ class FCSManager:
             self.patrol.on_target_detected(self.actual_pan, self.actual_tilt)
             self.patrol_status = "TRACKING"
 
-            # 1. Kamera merkezinden hedef acilari
+            # 1. Kamera merkezinden hedef acilari ve acisal hata
             pan_deg, tilt_deg = self.p_controller.compute_angles(bx, by, center_x, center_y, fx, fy)
+            angular_err = float(np.hypot(pan_deg, tilt_deg))
 
-            # 2. Kalman durum takibi ve atis onleme hesaplamasi
-            d_m = (dist_cm / 100.0) if (dist_cm is not None and dist_cm > 20) else self.p_controller.DEFAULT_DISTANCE_M
+            # 2. Menzil Kapilama (Range Gating):
+            # TF-Luna dar isin acisina (~2 deg) sahiptir. Hedef vizor eksenine girmeden once
+            # (angular_err > 3.0 deg), arka duvardan gelen yaniltici mesafeyi eler;
+            # hedefin dogrulanmis son gercek mesafesini (veya varsayilan 2.0m) korur.
+            if angular_err <= 3.0 and dist_cm is not None and dist_cm > 20:
+                self.last_valid_target_dist_m = float(dist_cm / 100.0)
+
+            d_m = self.last_valid_target_dist_m
+            effective_dist_cm = float(d_m * 100.0)
             lead_time = float(np.clip((d_m / self.p_controller.PROJECTILE_SPEED_MPS) + 0.015, 0.03, 0.25))
 
             if not is_firing:
@@ -132,19 +143,24 @@ class FCSManager:
                 lead_pan, lead_tilt = self.p_controller.compute_lead_angles(d_lead_x, d_lead_y, fx, fy)
                 self.firing_lead_offset = np.array([lead_pan, lead_tilt], dtype=float)
 
-            # 3. Balistik yercekimi telafisi
-            self.gravity_comp_deg = self.p_controller.compute_gravity_comp(dist_cm)
+            # 3. Balistik yercekimi telafisi (Dogrulanmis kapilanmis mesafe ile)
+            self.gravity_comp_deg = self.p_controller.compute_gravity_comp(effective_dist_cm)
 
             # 4. Kilit durumu kontrolu
-            angular_err = float(np.hypot(pan_deg, tilt_deg))
             speed_mag = float(np.hypot(self.target_velocity[0], self.target_velocity[1]))
             self.lock_mgr.update(angular_err, self.target_velocity, is_firing=(is_firing or is_hud_firing), dist_m=d_m)
 
-            # 5. Motor kontrol komutu (Sabit kazanc ve yumusak olu bolge - Decoupled Soft Deadband P)
+            # 5. Motor kontrol komutu (Sabit kazanc, yumusak olu bolge ve Kalman Durum Gozlemcili D terimi)
             active_pan = float(pan_deg + (self.firing_lead_offset[0] if (is_firing or is_hud_firing) else 0.0))
             active_tilt = float(tilt_deg + ((self.firing_lead_offset[1] + self.gravity_comp_deg) if (is_firing or is_hud_firing) else 0.0))
 
-            u_p_pan, u_p_tilt = self.p_controller.compute_p(active_pan, active_tilt, dt)
+            # Kalman Durum Gozlemcisinden (Observer) Acisal Hiz (Derece/sn)
+            vel_pan_deg_s, vel_tilt_deg_s = self.tracker.get_angular_velocity_deg_s(fx=fx, fy=fy)
+
+            u_p_pan, u_p_tilt = self.p_controller.compute_p(
+                active_pan, active_tilt, dt=dt,
+                vel_pan_deg_s=vel_pan_deg_s, vel_tilt_deg_s=vel_tilt_deg_s
+            )
 
             if self.control_mode == "HYBRID" and self.rl_controller.is_loaded:
                 screen_w = center_x * 2
@@ -176,6 +192,11 @@ class FCSManager:
                 u_tilt = float(np.clip(blend_tilt, -self.p_controller.max_output, self.p_controller.max_output))
                 self.last_cmd_pan = u_pan
                 self.last_cmd_tilt = u_tilt
+
+                # Hibrit modda servoya fiilen uygulanan komutu RL'in eylem hafizasina aktar
+                if hasattr(self.rl_controller, "update_applied_action"):
+                    self.rl_controller.update_applied_action(u_pan, u_tilt)
+
                 return u_pan, u_tilt
 
             elif self.control_mode == "RL" and self.rl_controller.is_loaded:
@@ -201,7 +222,7 @@ class FCSManager:
 
         else:
             self.frames_since_lost += 1
-            if self.frames_since_lost >= 2:
+            if self.frames_since_lost >= self.max_lost_frames:
                 self.tracker.reset()
                 self.lock_mgr.reset()
                 self.target_velocity = np.array([0.0, 0.0], dtype=float)
@@ -209,13 +230,15 @@ class FCSManager:
 
             # Hedef yokken: Devriye modu aciksa sakin dairesel tarama
             if self.patrol_enabled:
-                d_p, d_t, self.patrol_status = self.patrol.update(dt, self.actual_pan, self.actual_tilt)
-                self.p_controller.actual_pan += d_p
-                self.p_controller.actual_tilt += d_t
+                d_p, d_t, self.patrol_status = self.patrol.update(dt)
+                self.p_controller.actual_pan = 0.0
+                self.p_controller.actual_tilt = 0.0
                 self.last_cmd_pan = d_p
                 self.last_cmd_tilt = d_t
                 return d_p, d_t
             else:
+                self.p_controller.actual_pan = 0.0
+                self.p_controller.actual_tilt = 0.0
                 self.patrol_status = "STANDBY"
                 self.last_cmd_pan = 0.0
                 self.last_cmd_tilt = 0.0
@@ -233,4 +256,5 @@ class FCSManager:
         self.lock_mgr.reset()
         self.p_controller.reset()
         self.patrol.reset()
+        self.selector.reset()
 

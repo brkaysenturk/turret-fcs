@@ -7,15 +7,16 @@ onleme acilarini ve gercek donanimda dogrulanmis yumusak olu bolgeli (Soft Deadb
 motor kontrol komutlarini hesaplar.
 
 KONTROL PARAMETRELERI:
-- Pan:  Kp = 0.10, Ki = 0.0, Kd = 0.0, Deadband = 0.90°
-- Tilt: Kp = 0.07, Ki = 0.0, Kd = 0.0, Deadband = 0.95°
+- Pan:  Kp = 0.10, Ki = 0.0, Kd/k_ff = 0.025, Deadband = 0.90°
+- Tilt: Kp = 0.07, Ki = 0.0, Kd/k_ff = 0.020, Deadband = 0.95°
 - Filtre: alpha = 0.75 (EMA)
 - Komut Limiti: max_output = 2.75°/kare
 
 NOT:
-Ki ve Kd parametreleri hazir ve matematiksel olarak entegre edilmistir.
-0.0 olarak baslatilir (servo ic donanimi ve STM32 Tip-1 dogal entegrasyonu icin).
-Istenildigi anda parametre olarak verilerek PID modunda calistirilabilir.
+Kalman Durum Gozlemcisinden gelen hedef acisal hizi beslendiginde, kontrolcu 2 serbestlik dereceli
+(2-DOF) Referans Hizi Ileri Beslemesi (Velocity Feedforward) modunda calisir ve Tip-1 dongude
+rampa takip hatasini (velocity lag) sönümler. Hiz verisi olmadiginda ise hata turevi olarak calisabilir.
+Ki integrali servo ic donanimi ve STM32 entegrasyonu nedeniyle varsayilan olarak 0.0 tutulur.
 ================================================================================
 """
 
@@ -34,6 +35,7 @@ class PController:
     MAX_OUTPUT_DEG = 2.75        # Kare basi maksimum motor adim limiti (derece)
     DEADBAND_PAN_DEG = 0.90      # Yatay yumusak olu bolge (Pan)
     DEADBAND_TILT_DEG = 0.95     # Dikey yumusak olu bolge (Tilt)
+    ENABLE_D_TERM = True         # Kalman tabanli D terimini ac/kapat (True: Aktif, False: Saf P)
 
     def __init__(
         self,
@@ -41,14 +43,17 @@ class PController:
         kp_tilt=0.07,
         ki_pan=0.0,
         ki_tilt=0.0,
-        kd_pan=0.0,
-        kd_tilt=0.0,
+        kd_pan=0.025,
+        kd_tilt=0.020,
         alpha=0.75,
         max_output=MAX_OUTPUT_DEG,
         deadband_pan=DEADBAND_PAN_DEG,
         deadband_tilt=DEADBAND_TILT_DEG,
         max_integral=1.5,
+        enable_d_term=ENABLE_D_TERM,
     ):
+        # Turev terimi anahtari (True: Aktif, False: Saf P)
+        self.enable_d_term = bool(enable_d_term)
         # Oransal kazanclar (P)
         self.kp_pan = float(kp_pan)
         self.kp_tilt = float(kp_tilt)
@@ -57,7 +62,7 @@ class PController:
         self.ki_pan = float(ki_pan)
         self.ki_tilt = float(ki_tilt)
 
-        # Turev kazanclari (D)
+        # Turev kazanclari (D - Kalman Durum Gozlemcisinden beslenir)
         self.kd_pan = float(kd_pan)
         self.kd_tilt = float(kd_tilt)
 
@@ -104,10 +109,11 @@ class PController:
         lead_tilt = np.degrees(np.arctan(-d_lead_y / max(fy, 1e-6)))
         return float(lead_pan), float(lead_tilt)
 
-    def compute_p(self, active_pan, active_tilt, dt=0.033, target_speed=0.0):
+    def compute_p(self, active_pan, active_tilt, dt=0.033, target_speed=0.0, vel_pan_deg_s=None, vel_tilt_deg_s=None):
         """
         Yumusak olu bolgeli ve ayrik eksenli oransal (P) motor komutunu hesaplar.
         Eger ki veya kd 0'dan farkli ayarlanmissa, integral ve turev terimlerini de ekler.
+        Kalman Durum Gozlemcisinden (Observer) gelen acisal hiz verilirse, gurultusuz D terimi calisir.
         """
         dt = 0.033 if (dt is None or dt <= 0.0) else float(dt)
 
@@ -137,10 +143,18 @@ class PController:
             self.integral_pan = 0.0
             i_term_pan = 0.0
 
-        # Turev (D) terimi
-        if self.kd_pan > 0.0 and not self.first_run:
-            d_err_pan = (eff_pan - self.last_pan_error) / dt
-            d_term_pan = self.kd_pan * d_err_pan
+        # 2-DOF Referans Hizi Ileri Beslemesi (Velocity Feedforward) / Turev (D) Terimi
+        if self.enable_d_term and self.kd_pan > 0.0:
+            if vel_pan_deg_s is not None:
+                # 2-DOF Referans Hizi Ileri Beslemesi: Kalman gozlemcisinden gelen hedef hizi dogrudan
+                # beslenerek rampa izleme hatasi azaltilir.
+                d_term_pan = self.kd_pan * vel_pan_deg_s
+            elif not self.first_run:
+                # Klasik hata turevi modu (Hiz kestirimi saglanmadiginda geri dusus)
+                d_err_pan = (eff_pan - self.last_pan_error) / dt
+                d_term_pan = self.kd_pan * d_err_pan
+            else:
+                d_term_pan = 0.0
         else:
             d_term_pan = 0.0
 
@@ -169,10 +183,17 @@ class PController:
             self.integral_tilt = 0.0
             i_term_tilt = 0.0
 
-        # Turev (D) terimi
-        if self.kd_tilt > 0.0 and not self.first_run:
-            d_err_tilt = (eff_tilt - self.last_tilt_error) / dt
-            d_term_tilt = self.kd_tilt * d_err_tilt
+        # 2-DOF Referans Hizi Ileri Beslemesi (Velocity Feedforward) / Turev (D) Terimi
+        if self.enable_d_term and self.kd_tilt > 0.0:
+            if vel_tilt_deg_s is not None:
+                # 2-DOF Referans Hizi Ileri Beslemesi
+                d_term_tilt = self.kd_tilt * vel_tilt_deg_s
+            elif not self.first_run:
+                # Klasik hata turevi modu
+                d_err_tilt = (eff_tilt - self.last_tilt_error) / dt
+                d_term_tilt = self.kd_tilt * d_err_tilt
+            else:
+                d_term_tilt = 0.0
         else:
             d_term_tilt = 0.0
 

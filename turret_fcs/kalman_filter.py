@@ -197,6 +197,18 @@ class KalmanFilter:
 
         return float(pred_x), float(pred_y), float(vx * attenuation), float(vy * attenuation)
 
+    def get_angular_velocity_deg_s(self, fx=1276.0, fy=1276.0):
+        """
+        Kalman filtresinin kestirdigi piksel hizini (px/s)
+        kamera optik odak uzakligina (fx, fy) gore acisal hiza (derece/saniye) donusturur.
+        P kontrolcuye 2-DOF Referans Hizi Ileri Beslemesi (Velocity Feedforward) icin gurultusu arindirilmis girdi saglar.
+        """
+        fx_val = max(float(fx), 1.0)
+        fy_val = max(float(fy), 1.0)
+        omega_pan = float(np.degrees(np.arctan2(float(self.smooth_vx), fx_val)))
+        omega_tilt = - float(np.degrees(np.arctan2(float(self.smooth_vy), fy_val)))
+        return omega_pan, omega_tilt
+
     def reset(self):
         """Filtre durumunu sifirlar."""
         self.initialized = False

@@ -47,7 +47,7 @@ def make_env(best_params=None):
     w_dist_sq = best_params.get("w_dist_sq", 5.0)
     w_bullseye = best_params.get("w_bullseye", 6.0)
     w_lock = best_params.get("w_lock", 4.0)
-    w_smooth = best_params.get("w_smooth", 0.25)
+    w_smooth = best_params.get("w_smooth", 1.0)
 
     env = TurretEnv(
         render_mode=None,
@@ -57,6 +57,7 @@ def make_env(best_params=None):
         w_bullseye=w_bullseye,
         w_lock=w_lock,
         w_smooth=w_smooth,
+        enable_randomization=True,
     )
     return Monitor(env)
 
@@ -112,7 +113,7 @@ def train():
         device=device,
     )
 
-    TOTAL_TIMESTEPS = 500_000
+    TOTAL_TIMESTEPS = 250_000
     print(f"\n[Eğitim Başlıyor] Toplam Adım: {TOTAL_TIMESTEPS:,} (Derin Yakınsama Modu)...")
     start_time = time.time()
 

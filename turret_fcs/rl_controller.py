@@ -2,13 +2,15 @@
 ================================================================================
 MODUL: PEKISDIRMELI OGRENME DENETLEYICISI (RL CONTROLLER / PPO AGENT)
 ================================================================================
-Bu modul, gercek donanim kisitlari (80 ms tasiyici gecikmesi, 0.90 deg olu bolge,
-2.75 deg/kare adim doyumu ve Logitech C270 optigi) altinda egitilmis Proximal Policy
-Optimization (PPO) yapay zeka modelinin gercek zamanli cikarim motorudur.
+Bu modul, gercek donanim kisitlari (Domain Randomization, eylem gecmisi hafizasi,
+0.90 deg olu bolge, 2.75 deg/kare adim doyumu ve Logitech C270 optigi) altinda
+egitilmis Proximal Policy Optimization (PPO) yapay zeka modelinin gercek zamanli
+cikarim motorudur.
 
 DURUM VE EYLEM UZAYI (BRYSON KURALI ILE NORMALIZASYON):
-- Gozlem Vektoru (9 Boyutlu):
-  [err_x, err_y, d_err_x, d_err_y, vx_norm, vy_norm, dist_norm, pan_step, tilt_step]
+- Gozlem Vektoru (11 Boyutlu):
+  [err_x, err_y, d_err_x, d_err_y, vx_norm, vy_norm, dist_norm,
+   act_pan_t1, act_tilt_t1, act_pan_t2, act_tilt_t2]
 - Eylem Uzayi (2 Boyutlu):
   [-1.0, 1.0] araliginda kare basi normalize motor adim komutlari.
 ================================================================================
@@ -41,9 +43,10 @@ class RLController:
         self.dist_min_m = 0.5
         self.dist_max_m = 5.0
 
-        self.actual_pan_step = 0.0
-        self.actual_tilt_step = 0.0
         self.last_err = np.zeros(2, dtype=np.float32)
+        self.d_err_filt = np.zeros(2, dtype=np.float32)
+        self.act_hist_1 = np.zeros(2, dtype=np.float32)
+        self.act_hist_2 = np.zeros(2, dtype=np.float32)
 
     def load_model(self):
         """Egitilmis PPO zip modelini yukler."""
@@ -57,25 +60,30 @@ class RLController:
             self.is_loaded = False
 
     def reset(self):
-        self.actual_pan_step = 0.0
-        self.actual_tilt_step = 0.0
         self.last_err = np.zeros(2, dtype=np.float32)
+        self.d_err_filt = np.zeros(2, dtype=np.float32)
+        self.act_hist_1 = np.zeros(2, dtype=np.float32)
+        self.act_hist_2 = np.zeros(2, dtype=np.float32)
 
     def predict_angles(self, bx, by, center_x, center_y, screen_w, screen_h, vx, vy, dist_m, curr_pan_deg, curr_tilt_deg, dt):
         """
-        9 boyutlu Bryson durum vektorunu olusturur ve motora iletilecek aci komutunu uretir.
+        11 boyutlu Bryson durum vektorunu olusturur ve motora iletilecek aci komutunu uretir.
         """
         if not self.is_loaded or self.model is None:
             return 0.0, 0.0
 
         dt_safe = max(0.005, float(dt))
 
-        # 1. Hata ve Hata Turevi (Bryson Normalizasyonu)
+        # 1. Hata ve Gurultuden Arindirilmis Filtreli Hata Turevi (EMA Smoothed)
         err_x_norm = np.clip((bx - center_x) / (screen_w / 2.0), -1.5, 1.5)
         err_y_norm = np.clip((by - center_y) / (screen_h / 2.0), -1.5, 1.5)
 
-        d_err_x = np.clip((err_x_norm - self.last_err[0]) / dt_safe * 0.05, -1.0, 1.0)
-        d_err_y = np.clip((err_y_norm - self.last_err[1]) / dt_safe * 0.05, -1.0, 1.0)
+        raw_d_err_x = (err_x_norm - self.last_err[0]) / dt_safe * 0.05
+        raw_d_err_y = (err_y_norm - self.last_err[1]) / dt_safe * 0.05
+        self.d_err_filt[0] = 0.40 * raw_d_err_x + 0.60 * self.d_err_filt[0]
+        self.d_err_filt[1] = 0.40 * raw_d_err_y + 0.60 * self.d_err_filt[1]
+        d_err_x = np.clip(self.d_err_filt[0], -1.0, 1.0)
+        d_err_y = np.clip(self.d_err_filt[1], -1.0, 1.0)
         self.last_err = np.array([err_x_norm, err_y_norm], dtype=np.float32)
 
         # 2. Kalman Hedef Hizi (Piksel/saniye -> Bryson Normalizasyonu: V_max = 300 px/s)
@@ -86,10 +94,7 @@ class RLController:
         dist_val = dist_m if (dist_m is not None and dist_m > 0.2) else 2.0
         dist_norm = np.clip((dist_val - self.dist_min_m) / (self.dist_max_m - self.dist_min_m), 0.0, 1.0) * 2.0 - 1.0
 
-        # 4. Onceki Motor Adimi Normalizasyonu
-        p_step_norm = np.clip(self.actual_pan_step / self.max_step_deg, -1.0, 1.0)
-        t_step_norm = np.clip(self.actual_tilt_step / self.max_step_deg, -1.0, 1.0)
-
+        # 4. 11 Boyutlu Bryson Durum Vektoru (Eylem gecmisi dahil)
         obs = np.array(
             [
                 err_x_norm,
@@ -99,19 +104,32 @@ class RLController:
                 vx_norm,
                 vy_norm,
                 dist_norm,
-                p_step_norm,
-                t_step_norm,
+                self.act_hist_1[0],
+                self.act_hist_1[1],
+                self.act_hist_2[0],
+                self.act_hist_2[1],
             ],
             dtype=np.float32,
         )
 
         action, _ = self.model.predict(obs, deterministic=True)
 
-        # 5. Eylemden Fiziksel Motor Adimina Donusum (+-2.75 deg/kare doyumlu)
+        # 5. Eylem Gecmisi Guncellemesi (Boru hatti hafizasi - Smith Predictor)
+        self.act_hist_2 = self.act_hist_1.copy()
+        self.act_hist_1 = np.array([action[0], action[1]], dtype=np.float32)
+
+        # 6. Eylemden Fiziksel Motor Adimina Donusum (+-2.75 deg/kare doyumlu)
         d_pan_deg = float(np.clip(action[0] * self.max_step_deg, -self.max_step_deg, self.max_step_deg))
         d_tilt_deg = float(np.clip(action[1] * self.max_step_deg, -self.max_step_deg, self.max_step_deg))
 
-        self.actual_pan_step = d_pan_deg
-        self.actual_tilt_step = d_tilt_deg
-
         return d_pan_deg, d_tilt_deg
+
+    def update_applied_action(self, applied_pan_deg, applied_tilt_deg):
+        """
+        Hibrit modda servoya fiilen gonderilen harmanlanmis komutla eylem hafizasini gunceller.
+        Boylece RL ajani, P kontrolcu ile harmanlanmis gercek motor komutunu Smith hafizasinda tutar.
+        """
+        norm_pan = float(np.clip(applied_pan_deg / self.max_step_deg, -1.0, 1.0))
+        norm_tilt = float(np.clip(applied_tilt_deg / self.max_step_deg, -1.0, 1.0))
+        self.act_hist_1 = np.array([norm_pan, norm_tilt], dtype=np.float32)
+

@@ -11,7 +11,7 @@ class WebotsPatrolGenerator:
         pan_limits=(-1.57, 1.57),
         tilt_limits=(-0.52, 0.78),
         wait_delay_sec=1.5,
-        scan_pan_amp_deg=28.0,
+        scan_pan_amp_deg=35.0,
         scan_tilt_amp_deg=8.0,
         scan_period_sec=5.0,
         return_speed_dps=20.0,
@@ -62,7 +62,7 @@ class WebotsPatrolGenerator:
             err_tilt = -curr_t
             dist_to_center = float(np.hypot(err_pan, err_tilt))
 
-            # Merkeze 1.5 derece (0.026 rad) yaklastiysak dairesel taramaya gec
+            # Merkeze 1.5 derece (0.026 rad) yaklastiysak 8-sekli taramaya gec
             if dist_to_center < np.radians(1.5):
                 self.state = "SCANNING"
                 self.scan_time = 0.0
@@ -80,7 +80,7 @@ class WebotsPatrolGenerator:
             target_t = float(np.clip(target_t, self.TILT_LIMITS[0], self.TILT_LIMITS[1]))
             return target_p, target_t
 
-        # 3. ASAMA: DAIRESEL / ELIPTIK SEKTOR TARAMASI (Pan: ±28°, Tilt: ±8°)
+        # 3. ASAMA: 8-SEKLI (SONSUZLUK) LISSAJOUS SEKTOR TARAMASI (Pan: ±35°, Tilt: ±8°)
         elif self.state == "SCANNING":
             self.scan_time += dt
 
@@ -88,7 +88,7 @@ class WebotsPatrolGenerator:
             ramp = min(1.0, self.scan_time / 2.0)
 
             pattern_pan = ramp * self.scan_pan_amp * float(np.sin(self.scan_freq * self.scan_time))
-            pattern_tilt = ramp * self.scan_tilt_amp * float(np.cos(self.scan_freq * self.scan_time))
+            pattern_tilt = ramp * self.scan_tilt_amp * float(np.sin(2.0 * self.scan_freq * self.scan_time))
 
             # Puruzsuz yumusak takip
             target_p = 0.92 * curr_p + 0.08 * pattern_pan

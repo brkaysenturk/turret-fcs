@@ -12,14 +12,23 @@ void Launcher_Init(void)
     GPIO_InitTypeDef gpio = {0};
     gpio.Pin = FLYWHEEL_PIN | SOLENOID_PIN;
     gpio.Mode = GPIO_MODE_OUTPUT_PP;
-    gpio.Pull = GPIO_NOPULL;
+    gpio.Pull = GPIO_PULLDOWN; // Donanimsal olarak 0V'a asilsin (bosta yuksek voltaj engelleme)
     gpio.Speed = GPIO_SPEED_FREQ_LOW;
     HAL_GPIO_Init(GPIOB, &gpio);
 
-    // Baslangicta her iki aktuator de kapali
+    // Baslangicta her iki aktuator de kesinlikle kapali (LOW / 0V)
     HAL_GPIO_WritePin(FLYWHEEL_GPIO_PORT, FLYWHEEL_PIN, GPIO_PIN_RESET);
     HAL_GPIO_WritePin(SOLENOID_GPIO_PORT, SOLENOID_PIN, GPIO_PIN_RESET);
 
+    current_state = LAUNCHER_STATE_IDLE;
+    flywheel_active = false;
+}
+
+void Launcher_EmergencyStop(void)
+{
+    // Acil durum: Volan ve solenoid enerjisini aninda kes
+    HAL_GPIO_WritePin(FLYWHEEL_GPIO_PORT, FLYWHEEL_PIN, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(SOLENOID_GPIO_PORT, SOLENOID_PIN, GPIO_PIN_RESET);
     current_state = LAUNCHER_STATE_IDLE;
     flywheel_active = false;
 }

@@ -43,7 +43,9 @@ int main(void)
   Luna_Init(&huart1);
   FCS_Comm_Init(&huart2);
   Servo_Init();
-  // Launcher_Init(); // Firlatici donanimi (Volan & Solenoid) baglandiginda aktif edilebilir
+  Launcher_Init(); // Pinleri guvenli PULLDOWN ve LOW (0V) durumuna kilitler
+
+  uint32_t last_pc_cmd_time = HAL_GetTick();
 
   /* Infinite loop ------------------------------------------------------------*/
   while (1)
@@ -57,16 +59,37 @@ int main(void)
     // 2. PC'den yeni aci duzeltme komutu geldiginde motorlari sur
     if (FCS_Comm_IsNewCommand())
     {
-      float d_pan = FCS_Comm_GetPan();
-      float d_tilt = FCS_Comm_GetTilt();
-      Servo_ApplyCorrection(d_pan, d_tilt);
+      last_pc_cmd_time = HAL_GetTick();
+      uint8_t state = FCS_Comm_GetState();
+      if (state == 3)
+      {
+        // Acil Durdurma: Motorlari dogrudan mekanik merkez pozisyonuna (90°, 90°) dondur
+        Servo_SetPan(90.0f);
+        Servo_SetTilt(90.0f);
+        Launcher_EmergencyStop();
+      }
+      else
+      {
+        float d_pan = FCS_Comm_GetPan();
+        float d_tilt = FCS_Comm_GetTilt();
+        Servo_ApplyCorrection(d_pan, d_tilt);
+      }
 
-      // Firlatici baglandiginda acilabilir:
-      // uint8_t state = FCS_Comm_GetState();
-      // if (state == 2)
+      // Firlatici baglandiginda acilabilir (Yukselen kenar ile tek darbe korumasi - cift atisi onler):
+      // static uint8_t prev_fcs_state = 0;
+      // if (state == 2 && prev_fcs_state != 2)
       // {
       //   Launcher_TriggerFire();
       // }
+      // prev_fcs_state = state;
+    }
+    else
+    {
+      // 300 ms Heartbeat Zaman Asimi: PC baglantisi veya yazilim kilitlenirse tum eyleyicileri kes
+      if (HAL_GetTick() - last_pc_cmd_time > 300)
+      {
+        Launcher_EmergencyStop();
+      }
     }
 
     // 3. Firlatici durum makinesi (Firlatici donanimi eklendiginde acilabilir)
@@ -212,6 +235,8 @@ static void MX_GPIO_Init(void)
 void Error_Handler(void)
 {
   __disable_irq();
+  // Donanim Guvenligi: Solenoid ve Volan pinlerini aninda sifirla (bobin ve MOSFET korumasi)
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0 | GPIO_PIN_1, GPIO_PIN_RESET);
   while (1)
   {
   }

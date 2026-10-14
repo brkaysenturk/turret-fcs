@@ -58,6 +58,7 @@ class CameraThread:
         self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
         self.grabbed, self.frame = self.cap.read()
+        self.last_frame_time = time.time()
         self.running = False
         self.lock = threading.Lock()
         self.thread = None
@@ -69,6 +70,7 @@ class CameraThread:
         """Kare yakalama is parcacigini baslatir."""
         if not self.running:
             self.running = True
+            self.last_frame_time = time.time()
             self.thread = threading.Thread(target=self._update, daemon=True)
             self.thread.start()
 
@@ -83,16 +85,20 @@ class CameraThread:
             with self.lock:
                 self.grabbed = grabbed
                 self.frame = frame
+                self.last_frame_time = time.time()
 
-    def read(self):
-        """Ana donguye sifir gecikmeli en son kareyi kopyalar."""
+    def read(self, timeout=0.35):
+        """Ana donguye sifir gecikmeli en son kareyi kopyalar (donma korumali)."""
         with self.lock:
-            if not self.grabbed or self.frame is None:
+            is_stale = (time.time() - self.last_frame_time) > timeout
+            if not self.grabbed or self.frame is None or is_stale:
                 return False, None
-            return self.grabbed, self.frame.copy()
+            return True, self.frame.copy()
 
     def isOpened(self):
-        return self.running and self.cap.isOpened() and self.grabbed
+        with self.lock:
+            is_stale = (time.time() - self.last_frame_time) > 0.60
+            return self.running and self.cap.isOpened() and self.grabbed and not is_stale
 
     def stop(self):
         self.release()

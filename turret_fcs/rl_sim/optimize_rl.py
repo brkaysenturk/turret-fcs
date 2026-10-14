@@ -2,13 +2,14 @@
 ================================================================================
 MODUL: BAYESIAN OPTIMIZATION ILE HIPERPARAMETRE OPTIMIZASYONU (OPTUNA TPE)
 ================================================================================
-Bu modul, TurretEnv odul agirliklarini (w_dist, w_dist_sq, w_bullseye, w_lock,
-w_smooth) ve PPO ogrenme oranini (learning_rate) Tree-structured Parzen Estimator
-(TPE) Bayesian optimizasyon algoritmasiyla arastirir.
+Bu modul, Domain Randomization, eylem gecmisi ve sakinlik sartli TurretEnv ortaminda
+odul agirliklarini (w_dist, w_dist_sq, w_bullseye, w_lock, w_smooth) ve PPO ogrenme
+oranini (learning_rate) Tree-structured Parzen Estimator (TPE) Bayesian optimizasyon
+algoritmasiyla gercek dunya kosullarina gore optimize eder.
 
 Hedef Fonksiyonu (Objektif):
 - Hedef takip piksel hatasini MINIMIZE et.
-- Motor sarsintisini / jerk (eylem turevi) MINIMIZE et.
+- Motor sarsintisini / jerk (eylem turevi / titresim) SERTCE MINIMIZE et.
 - Vizor kilitlenme oranini (Lock Ratio) MAKSIMIZE et.
 ================================================================================
 """
@@ -30,7 +31,7 @@ torch.set_num_threads(2)
 
 def evaluate_agent(model, test_seeds=[101, 202, 303, 404, 505], max_steps=300):
     """
-    Egitilmis ajani 5 farkli zorlu yorunge tohumunda test eder.
+    Egitilmis ajani 5 farkli zorlu yorunge tohumunda ve Domain Randomization altinda test eder.
     Metrikler: Ortalama piksel hatasi, vizor kilidi orani, servo jerk/sarsinti.
     """
     total_errors = []
@@ -39,7 +40,7 @@ def evaluate_agent(model, test_seeds=[101, 202, 303, 404, 505], max_steps=300):
     total_jerk = []
 
     for seed in test_seeds:
-        eval_env = TurretEnv(render_mode=None, latency_steps=2)
+        eval_env = TurretEnv(render_mode=None, latency_steps=2, enable_randomization=True)
         obs, _ = eval_env.reset(seed=seed)
         prev_act = np.zeros(2, dtype=np.float32)
 
@@ -48,7 +49,7 @@ def evaluate_agent(model, test_seeds=[101, 202, 303, 404, 505], max_steps=300):
             obs, reward, terminated, truncated, info = eval_env.step(action)
 
             # Piksel hatasi (1280x720 ekranda merkezden uzaklik)
-            err_norm = math_dist = float(info.get("pixel_dist", 0.0))
+            err_norm = float(info.get("pixel_dist", 0.0))
             err_px = err_norm * (eval_env.screen_w / 2.0)
             total_errors.append(err_px)
 
@@ -74,11 +75,11 @@ def evaluate_agent(model, test_seeds=[101, 202, 303, 404, 505], max_steps=300):
 
 def objective(trial):
     # 1. Bayesian Optimizasyon tarafindan orneklenen aday parametreler
-    w_dist = trial.suggest_float("w_dist", 1.5, 6.0, step=0.5)
+    w_dist = trial.suggest_float("w_dist", 2.0, 6.0, step=0.5)
     w_dist_sq = trial.suggest_float("w_dist_sq", 2.0, 8.0, step=0.5)
-    w_bullseye = trial.suggest_float("w_bullseye", 3.0, 10.0, step=0.5)
-    w_lock = trial.suggest_float("w_lock", 2.0, 8.0, step=0.5)
-    w_smooth = trial.suggest_float("w_smooth", 0.10, 0.50, step=0.05)
+    w_bullseye = trial.suggest_float("w_bullseye", 4.0, 12.0, step=0.5)
+    w_lock = trial.suggest_float("w_lock", 4.0, 12.0, step=0.5)
+    w_smooth = trial.suggest_float("w_smooth", 0.50, 3.00, step=0.25)
     lr = trial.suggest_float("learning_rate", 1.5e-4, 5.0e-4, log=True)
 
     def env_fn():
@@ -90,11 +91,12 @@ def objective(trial):
             w_bullseye=w_bullseye,
             w_lock=w_lock,
             w_smooth=w_smooth,
+            enable_randomization=True,
         )
 
     vec_env = DummyVecEnv([env_fn])
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = "cpu"
     model = PPO(
         policy="MlpPolicy",
         env=vec_env,
@@ -118,8 +120,8 @@ def objective(trial):
     mean_err_px, lock_ratio, mean_jerk = evaluate_agent(model)
 
     # Birlesik Maliyet Fonksiyonu (Cost = Minimization Goal)
-    # Dusuk piksel hatasi (+), Dusuk motor sarsintisi (+), Yuksek kilitlenme orani (-)
-    cost = (mean_err_px) + (25.0 * mean_jerk) - (40.0 * lock_ratio)
+    # Dusuk piksel hatasi (+), Dusuk motor sarsintisi / jerk (+), Yuksek kilitlenme orani (-)
+    cost = (mean_err_px) + (40.0 * mean_jerk) - (50.0 * lock_ratio)
 
     trial.set_user_attr("mean_err_px", mean_err_px)
     trial.set_user_attr("lock_ratio", lock_ratio)
@@ -131,9 +133,10 @@ def objective(trial):
 def run_optimization(n_trials=10):
     print("==================================================================")
     print(" TURRET FCS // BAYESIAN OPTIMIZATION (OPTUNA TPE) MOTORU         ")
+    print(" Gurbuz Sim-to-Real: Domain Randomization + Eylem Gecmisi        ")
     print("==================================================================")
     print(f"[Optuna] Planlanan Deneme Sayisi: {n_trials}")
-    print("[Hedef] Minimasyon: Ortalama Piksel Hatasi + 25*Jerk - 40*Kilitlenme")
+    print("[Hedef] Minimasyon: Ortalama Piksel Hatasi + 40*Jerk - 50*Kilitlenme")
     print("------------------------------------------------------------------")
 
     sampler = optuna.samplers.TPESampler(seed=42)

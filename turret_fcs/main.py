@@ -54,12 +54,13 @@ def main():
 
     prev_frame_time = time.time()
     fire_start_time = 0.0
-    GUN_FIRE_DURATION = 0.40
+    GUN_FIRE_DURATION = 0.12  # STM32 solenoid tetik sinyali (120ms < 230ms mekanik saykl, cift atisi kesin onler)
     ENGAGING_DISPLAY_DURATION = 1.00
     BALLISTIC_DISPLAY_DURATION = 2.00
     FIRE_DISPLAY_DURATION = ENGAGING_DISPLAY_DURATION + BALLISTIC_DISPLAY_DURATION
 
     prev_target_detected = False
+    is_estop = False
     PAN_INVERT = True   # Yatay servo mekanik montaj acisina gore tersleme (True: -pan_cmd, False: +pan_cmd)
     TILT_INVERT = False  # Dikey servo mekanik montaj acisina gore tersleme (True: -tilt_cmd, False: +tilt_cmd)
 
@@ -116,11 +117,12 @@ def main():
 
             ret, frame = cap.read()
             if not ret or frame is None:
+                hud.log_event("[CAM] FRAME TIMEOUT / CAMERA OFFLINE", color=(0, 0, 255))
                 break
 
             now = time.time()
-            dt = max(0.001, now - prev_frame_time)
-            fps = int(1.0 / dt)
+            dt = min(0.10, max(0.001, now - prev_frame_time))
+            fps = int(1.0 / max(0.001, now - prev_frame_time))
             prev_frame_time = now
 
             fcs_state = 0
@@ -147,7 +149,18 @@ def main():
             target_detected = best_box is not None
             target_centered = False
 
-            if target_detected:
+            if is_estop:
+                fcs_state = 3
+                active_pan_cmd = 0.0
+                active_tilt_cmd = 0.0
+                stm.send(0.0, 0.0, 3)
+                status_text = "STATUS: EMERGENCY STOP (LATCHED)"
+                status_color = (0, 0, 255)
+                angle_err_text = "ANGULAR ERR:   [HALTED] deg"
+                if target_detected:
+                    x1, y1, x2, y2 = best_box
+                    hud.draw_corner_box(frame, x1, y1, x2, y2, color=(100, 100, 100), length=25, thickness=1, label="TARGET (INHIBITED)")
+            elif target_detected:
                 prev_target_detected = True
                 x1, y1, x2, y2 = best_box
                 bx, by = (x1 + x2) // 2, (y1 + y2) // 2
@@ -181,14 +194,10 @@ def main():
                 status_color = (0, 255, 0) if fcs.patrol_enabled else (180, 180, 180)
                 angle_err_text = "ANGULAR ERR:   [--, --] deg"
 
-                # Hedef yokken devriye etkinse komutlari tarete ilet
+                # Hedef yokken devriye etkinse komutlari tarete ilet (fcs.update zaten 142. satirda calisti)
                 if fcs.patrol_enabled:
-                    u_pan_cmd, u_tilt_cmd = fcs.update(
-                        None, center_x, center_y, fx, fy, dt,
-                        is_firing=False, is_hud_firing=False, dist_cm=dist_cm
-                    )
-                    active_pan_cmd = -u_pan_cmd if PAN_INVERT else u_pan_cmd
-                    active_tilt_cmd = -u_tilt_cmd if TILT_INVERT else u_tilt_cmd
+                    active_pan_cmd = -pan_cmd if PAN_INVERT else pan_cmd
+                    active_tilt_cmd = -tilt_cmd if TILT_INVERT else tilt_cmd
                     stm.send(active_pan_cmd, active_tilt_cmd, 0)
                     prev_target_detected = False
                 else:
@@ -302,11 +311,16 @@ def main():
                 p_color = (0, 255, 128) if fcs.patrol_enabled else (180, 180, 180)
                 hud.log_event(f"[PATROL] {p_text}", color=p_color)
             elif key == 32:  # E-STOP (Bosluk tusu)
+                is_estop = not is_estop
                 fcs.reset()
-                fcs.patrol_enabled = False
                 fire_start_time = 0.0
-                stm.send(0.0, 0.0, 0)
-                hud.log_event("[E-STOP] MOTORS HALTED & ZEROED", color=(0, 0, 255))
+                if is_estop:
+                    fcs.patrol_enabled = False
+                    stm.send(0.0, 0.0, 3)
+                    hud.log_event("[E-STOP] MOTORS HALTED & ZEROED (LATCHED)", color=(0, 0, 255))
+                else:
+                    stm.send(0.0, 0.0, 0)
+                    hud.log_event("[E-STOP] DISENGAGED - RESUMING FCS", color=(0, 255, 128))
             elif key in [ord("y"), ord("Y")] and fcs.is_locked:
                 fire_start_time = time.time()
                 hud.log_event("[FIRE] SOLENOID TRIGGERED", color=(0, 0, 255))

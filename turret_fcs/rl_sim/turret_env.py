@@ -3,12 +3,15 @@
 MODUL: GERCEK DONANIM FIZIKLI RL BENZETIM ORTAMI (TURRET ENV / GYMNASIUM)
 ================================================================================
 Bu modul, gercek taret donaniminin olculmus fiziksel kisitlarini:
-1. Donanim tasima gecikmesi (Transport Delay Buffer: 80 ms / 2.5 kare)
+1. Donanim tasima gecikmesi (Transport Delay Buffer: 33-100 ms / 1-3 kare rastgelelestirme)
 2. Gercek servo olu bolgesi (Deadband: Pan +-0.90 deg, Tilt +-0.95 deg)
 3. Kare basi maksimum adim doyumu (Max Slew Limit: +-2.75 deg/kare)
-4. 1. Derece viskoz motor gecikmesi (Actuator Time Constant: tau = 45 ms)
+4. 1. Derece viskoz motor gecikmesi (Actuator Time Constant: tau = 35-70 ms)
 5. Logitech C270 gercek optik parametreleri (H_FOV = 53.0 deg, V_FOV = 31.5 deg)
-1. birebir iceren ve Bryson Kurali ile normalize edilmis ozel Gymnasium ortamidir.
+6. Domain Randomization (YOLO gurultusu, degisken gecikme, oransal FPS dalgalanmasi)
+7. Eylem Gecmisi (Action History - 2 adimlik boru hatti farkindaligi)
+8. Sakinlik Sartli Odul Fonksiyonu (Merkezde titresim ve savrulmayi onleyen ceza)
+birebir iceren ve Bryson Kurali ile normalize edilmis 11 boyutlu Gymnasium ortamidir.
 ================================================================================
 """
 
@@ -21,8 +24,8 @@ import numpy as np
 
 class TurretEnv(gym.Env):
     """
-    Gercek servo dinamigi, olu bolge, donanim gecikmesi ve Bryson normalizasyonlu
-    turret FCS pekiştirmeli ogrenme ortami.
+    Gercek servo dinamigi, olu bolge, donanim gecikmesi, Domain Randomization,
+    eylem gecmisi ve sakinlik sartli Bryson normalizasyonlu FCS ortami.
     """
 
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 30}
@@ -36,13 +39,16 @@ class TurretEnv(gym.Env):
         w_dist_sq=5.0,
         w_bullseye=6.0,
         w_lock=4.0,
-        w_smooth=0.25,
+        w_smooth=0.75,
+        enable_randomization=True,
     ):
         super().__init__()
         self.render_mode = render_mode
         self.base_dt = float(dt)
-        self.latency_steps = int(latency_steps)  # ~80 ms Donanim Gecikmesi
+        self.base_latency_steps = int(latency_steps)
+        self.latency_steps = self.base_latency_steps
         self.obs_queue = deque(maxlen=self.latency_steps + 1)
+        self.enable_randomization = enable_randomization
 
         # Odul Fonksiyonu Agirliklari
         self.w_dist = float(w_dist)
@@ -68,6 +74,7 @@ class TurretEnv(gym.Env):
         self.deadband_pan = 0.90         # Gercek donanim olu bolgesi Pan (0.90 deg)
         self.deadband_tilt = 0.95        # Gercek donanim olu bolgesi Tilt (0.95 deg)
         self.servo_tau = 0.045           # 1. derece motor zaman sabiti (45 ms)
+        self.yolo_noise_std = 3.5        # YOLO merkez gurultusu (piksel)
 
         # 3. Bryson Kurali ile Normalizasyon Olcekleri
         self.v_max_px_s = 300.0          # Maksimum hedef piksel hizi (px/s)
@@ -81,10 +88,11 @@ class TurretEnv(gym.Env):
             dtype=np.float32,
         )
 
-        # 9 Boyutlu Gozlem Uzayi (Bryson Kuraliyla [-1.0, 1.0] araliginda)
+        # 11 Boyutlu Gozlem Uzayi (Bryson Kuraliyla [-1.0, 1.0] araliginda)
+        # [err_x, err_y, d_err_x, d_err_y, vx, vy, dist, act_pan_t1, act_tilt_t1, act_pan_t2, act_tilt_t2]
         self.observation_space = spaces.Box(
-            low=-np.ones(9, dtype=np.float32),
-            high=np.ones(9, dtype=np.float32),
+            low=-np.ones(11, dtype=np.float32),
+            high=np.ones(11, dtype=np.float32),
             dtype=np.float32,
         )
 
@@ -96,7 +104,10 @@ class TurretEnv(gym.Env):
         self.target_pos_3d = np.zeros(3, dtype=np.float32)
         self.target_vel_3d = np.zeros(3, dtype=np.float32)
         self.last_err = np.zeros(2, dtype=np.float32)
+        self.d_err_filt = np.zeros(2, dtype=np.float32)
         self.last_action = np.zeros(2, dtype=np.float32)
+        self.act_hist_1 = np.zeros(2, dtype=np.float32)
+        self.act_hist_2 = np.zeros(2, dtype=np.float32)
         self.last_dist_val = 1.0
         self.last_pixel_pos = (self.center_x, self.center_y)
         self.trajectory_type = "linear"
@@ -104,7 +115,8 @@ class TurretEnv(gym.Env):
         self.max_steps = 300
         self.dt = self.base_dt
 
-    def _get_obs(self):
+    def _get_sensor_obs(self):
+        """Kamera ve sensor olcumlerinden olusan 7-boyutlu fiziksel gozlemi hesaplar."""
         # 3B hedef koordinatlarindan taret acilarina projeksiyon
         target_azimuth = math.degrees(math.atan2(self.target_pos_3d[0], max(0.1, self.target_pos_3d[2])))
         target_elevation = math.degrees(math.atan2(self.target_pos_3d[1], max(0.1, self.target_pos_3d[2])))
@@ -114,15 +126,25 @@ class TurretEnv(gym.Env):
 
         px = self.center_x + math.tan(math.radians(rel_pan)) * self.fx
         py = self.center_y - math.tan(math.radians(rel_tilt)) * self.fy
-        self.last_pixel_pos = (float(px), float(py))
+
+        # Domain Randomization: YOLO tespit kutusu titresimi
+        noise_x = float(np.random.normal(0.0, self.yolo_noise_std)) if (self.enable_randomization and self.yolo_noise_std > 0) else 0.0
+        noise_y = float(np.random.normal(0.0, self.yolo_noise_std)) if (self.enable_randomization and self.yolo_noise_std > 0) else 0.0
+        px_noisy = px + noise_x
+        py_noisy = py + noise_y
+        self.last_pixel_pos = (float(px_noisy), float(py_noisy))
 
         # 1. Hata (Ekran yaricapina gore Bryson normalizasyonu)
-        err_x_norm = np.clip((px - self.center_x) / (self.screen_w / 2.0), -1.5, 1.5)
-        err_y_norm = np.clip((py - self.center_y) / (self.screen_h / 2.0), -1.5, 1.5)
+        err_x_norm = np.clip((px_noisy - self.center_x) / (self.screen_w / 2.0), -1.5, 1.5)
+        err_y_norm = np.clip((py_noisy - self.center_y) / (self.screen_h / 2.0), -1.5, 1.5)
 
-        # 2. Hata Turevi
-        d_err_x = np.clip((err_x_norm - self.last_err[0]) / max(self.dt, 1e-4) * 0.05, -1.0, 1.0)
-        d_err_y = np.clip((err_y_norm - self.last_err[1]) / max(self.dt, 1e-4) * 0.05, -1.0, 1.0)
+        # 2. Hata Turevi (Dusuk geciren filtreli / EMA smoothed - gurultuden arindirilmis)
+        raw_d_err_x = (err_x_norm - self.last_err[0]) / max(self.dt, 1e-4) * 0.05
+        raw_d_err_y = (err_y_norm - self.last_err[1]) / max(self.dt, 1e-4) * 0.05
+        self.d_err_filt[0] = 0.40 * raw_d_err_x + 0.60 * self.d_err_filt[0]
+        self.d_err_filt[1] = 0.40 * raw_d_err_y + 0.60 * self.d_err_filt[1]
+        d_err_x = np.clip(self.d_err_filt[0], -1.0, 1.0)
+        d_err_y = np.clip(self.d_err_filt[1], -1.0, 1.0)
         self.last_err = np.array([err_x_norm, err_y_norm], dtype=np.float32)
 
         # 3. Hedef Piksel Hizi (3B hizdan piksele donusum ve Bryson normalizasyonu)
@@ -137,10 +159,6 @@ class TurretEnv(gym.Env):
         # 4. Mesafe Normalizasyonu
         dist_norm = np.clip((target_dist - self.dist_min_m) / (self.dist_max_m - self.dist_min_m), 0.0, 1.0) * 2.0 - 1.0
 
-        # 5. Servo Adim Normalizasyonu
-        p_step_norm = np.clip(self.actual_pan_step / self.max_step_deg, -1.0, 1.0)
-        t_step_norm = np.clip(self.actual_tilt_step / self.max_step_deg, -1.0, 1.0)
-
         return np.array(
             [
                 err_x_norm,
@@ -150,8 +168,23 @@ class TurretEnv(gym.Env):
                 vx_norm,
                 vy_norm,
                 dist_norm,
-                p_step_norm,
-                t_step_norm,
+            ],
+            dtype=np.float32,
+        )
+
+    def _get_obs(self):
+        """
+        11-Boyutlu Durum Gozlemi:
+        Gecikmeli kamera sensor verisi (7 Boyut) + Gecikmesiz guncel eylem gecmisi (4 Boyut).
+        Boylece Smith Predictor mantigina uygun olarak eylemler gecikme kuyruguna girmez,
+        ajanan yoldaki (in-flight) taze komutlari dogru bir sekilde sunulur.
+        """
+        delayed_sensor = self.obs_queue[0] if (len(self.obs_queue) > 0) else self._get_sensor_obs()
+        return np.concatenate(
+            [
+                delayed_sensor,
+                self.act_hist_1,
+                self.act_hist_2,
             ],
             dtype=np.float32,
         )
@@ -164,9 +197,29 @@ class TurretEnv(gym.Env):
         self.actual_pan_step = 0.0
         self.actual_tilt_step = 0.0
         self.last_err = np.zeros(2, dtype=np.float32)
+        self.d_err_filt = np.zeros(2, dtype=np.float32)
         self.last_action = np.zeros(2, dtype=np.float32)
+        self.act_hist_1 = np.zeros(2, dtype=np.float32)
+        self.act_hist_2 = np.zeros(2, dtype=np.float32)
         self.last_dist_val = 1.0
-        self.dt = np.random.uniform(0.030, 0.036)  # 30 FPS jitter
+
+        # Domain Randomization: Bolum basi fiziksel parametre dagilimi
+        if self.enable_randomization:
+            self.latency_steps = int(np.random.choice([1, 2, 3]))  # 33 ms - 100 ms degisken donanim gecikmesi
+            self.obs_queue = deque(maxlen=self.latency_steps + 1)
+            self.servo_tau = float(np.random.uniform(0.035, 0.070))  # Servo gecikmesi (35 - 70 ms)
+            self.deadband_pan = float(np.random.uniform(0.75, 1.05))  # Pan mekanik olu bolge
+            self.deadband_tilt = float(np.random.uniform(0.80, 1.10)) # Tilt mekanik olu bolge
+            self.dt = float(np.random.uniform(0.028, 0.038))         # 26 - 36 FPS dalgalanmasi
+            self.yolo_noise_std = float(np.random.uniform(2.0, 5.0))  # YOLO kutu titremesi (piksel)
+        else:
+            self.latency_steps = self.base_latency_steps
+            self.obs_queue = deque(maxlen=self.latency_steps + 1)
+            self.servo_tau = 0.045
+            self.deadband_pan = 0.90
+            self.deadband_tilt = 0.95
+            self.dt = self.base_dt
+            self.yolo_noise_std = 0.0
 
         scenarios = ["static", "linear", "zigzag", "evasive", "circular"]
         self.trajectory_type = np.random.choice(scenarios, p=[0.20, 0.25, 0.25, 0.15, 0.15])
@@ -187,12 +240,12 @@ class TurretEnv(gym.Env):
 
         self.phase = np.random.uniform(0, 2 * math.pi)
 
-        obs = self._get_obs()
+        sensor_obs = self._get_sensor_obs()
         self.obs_queue.clear()
         for _ in range(self.latency_steps + 1):
-            self.obs_queue.append(obs.copy())
+            self.obs_queue.append(sensor_obs.copy())
 
-        return self.obs_queue[0], {}
+        return self._get_obs(), {}
 
     def step(self, action):
         self.step_count += 1
@@ -217,6 +270,10 @@ class TurretEnv(gym.Env):
         self.turret_pan = float(np.clip(self.turret_pan + self.actual_pan_step, -self.max_pan_deg, self.max_pan_deg))
         self.turret_tilt = float(np.clip(self.turret_tilt + self.actual_tilt_step, -self.max_tilt_deg, self.max_tilt_deg))
 
+        # D) Eylem Gecmisi Kaydi (Son 2 adimlik pipeline hafizasi)
+        self.act_hist_2 = self.act_hist_1.copy()
+        self.act_hist_1 = action.copy()
+
         # =====================================================================
         # 2. HEDEF KİNEMATİĞİ
         # =====================================================================
@@ -240,32 +297,44 @@ class TurretEnv(gym.Env):
             self.target_vel_3d[1] *= -1.0
 
         # =====================================================================
-        # 3. GECİKMELİ GÖZLEM VE BRYSON FORMÜLLÜ ÖDÜL FONKSİYONU
+        # 3. GECİKMELİ GÖZLEM VE SAKİNLİK ŞARTLI BRYSON ÖDÜL FONKSİYONU
         # =====================================================================
-        real_obs = self._get_obs()
-        self.obs_queue.append(real_obs.copy())
-        delayed_obs = self.obs_queue[0]  # 80 ms transport delay ile ajana sunulur
+        sensor_obs = self._get_sensor_obs()
+        self.obs_queue.append(sensor_obs.copy())
+        obs = self._get_obs()
 
-        err_x_norm, err_y_norm = real_obs[0], real_obs[1]
+        err_x_norm, err_y_norm = sensor_obs[0], sensor_obs[1]
         dist_sq = err_x_norm**2 + err_y_norm**2
         current_dist = math.sqrt(dist_sq)
 
         # Bryson Kurali Tabanli Odul:
         # A) Mesafe Cezasi (Kuadratik ve dogrusal)
         r_dist = - self.w_dist * current_dist - self.w_dist_sq * dist_sq
-        # B) Hedef Vizor Merkezindeyken Gauss Kilit Bonusu
-        r_bullseye = self.w_bullseye * math.exp(- 18.0 * dist_sq)
-        # C) Kilit Kararlilik Odulu (Hata < %5 ekran)
-        r_lock = self.w_lock if current_dist < 0.05 else 0.0
-        # D) Yaklasma Ilerleme Odulu
+
+        # B) Sakinlik / Hız Faktoru: Merkezde savrulmadan durabilme yetenegi
+        action_mag = float(np.hypot(action[0], action[1]))
+        calm_factor = math.exp(- 3.0 * (action_mag**2))
+
+        # C) Hedef Vizor Merkezindeyken Gauss Kilit Bonusu (Sakinlikle carpanli)
+        r_bullseye = self.w_bullseye * math.exp(- 18.0 * dist_sq) * (0.35 + 0.65 * calm_factor)
+
+        # D) Kilit Kararlilik Odulu: Hedef %5 alanda VE motor sakinse buyuk odul
+        is_calm_lock = (current_dist < 0.05) and (action_mag < 0.30)
+        r_lock = self.w_lock if is_calm_lock else (self.w_lock * 0.20 if current_dist < 0.05 else 0.0)
+
+        # E) Yaklasma Ilerleme Odulu
         r_progress = 10.0 * (self.last_dist_val - current_dist)
         self.last_dist_val = current_dist
-        # E) Eylem Sarsinti / Jerk Cezasi (Motor titresimini sifirlar)
+
+        # F) Eylem Sarsinti / Jerk Cezasi (Motor titresimini sifirlar)
         action_diff = np.sum((action - self.last_action) ** 2)
         r_smooth = - self.w_smooth * action_diff
         self.last_action = action.copy()
 
-        reward = r_dist + r_bullseye + r_lock + r_progress + r_smooth
+        # G) Merkezde gereksiz aksiyon alma cezasi (Hareketsiz sakin kilit tesviki)
+        r_center_still = - 1.5 * action_mag if current_dist < 0.08 else 0.0
+
+        reward = r_dist + r_bullseye + r_lock + r_progress + r_smooth + r_center_still
 
         terminated = False
         truncated = self.step_count >= self.max_steps
@@ -275,4 +344,4 @@ class TurretEnv(gym.Env):
             terminated = True
             reward -= 6.0
 
-        return delayed_obs, reward, terminated, truncated, {"pixel_dist": current_dist}
+        return obs, reward, terminated, truncated, {"pixel_dist": current_dist}

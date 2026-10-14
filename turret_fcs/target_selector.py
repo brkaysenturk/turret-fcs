@@ -27,14 +27,17 @@ class TargetSelector:
         self.min_area = min_area
         self.max_area = max_area
         self.min_dim = min_dim
+        self.locked_track_id = None
+        self.lost_counter = 0
 
     def select_best_target(self, boxes, center_x, center_y):
         if len(boxes) == 0:
+            self.lost_counter += 1
+            if self.lost_counter > 5:
+                self.locked_track_id = None
             return None
 
-        best_box = None
-        min_dist_sq = float("inf")
-
+        candidates = []
         for box in boxes:
             try:
                 conf = float(box.conf[0].cpu().numpy()) if hasattr(box.conf[0], "cpu") else float(box.conf[0])
@@ -61,12 +64,44 @@ class TargetSelector:
             if not (0.35 < aspect_ratio < 2.50):
                 continue
 
+            track_id = None
+            if hasattr(box, "id") and box.id is not None:
+                try:
+                    track_id = int(box.id[0].cpu().numpy()) if hasattr(box.id[0], "cpu") else int(box.id[0])
+                except Exception:
+                    track_id = None
+
             cx = (x1 + x2) // 2
             cy = (y1 + y2) // 2
             dist_sq = (cx - center_x) ** 2 + (cy - center_y) ** 2
 
-            if dist_sq < min_dist_sq:
-                min_dist_sq = dist_sq
-                best_box = (x1, y1, x2, y2)
+            candidates.append({
+                "box": (x1, y1, x2, y2),
+                "track_id": track_id,
+                "dist_sq": dist_sq,
+                "conf": conf
+            })
 
-        return best_box
+        if not candidates:
+            self.lost_counter += 1
+            if self.lost_counter > 5:
+                self.locked_track_id = None
+            return None
+
+        # 1. Kilitli hedef kimligi (track_id) hala kadrajdaysa ona sadik kal (Hedef atlamasini onler)
+        if self.locked_track_id is not None:
+            for c in candidates:
+                if c["track_id"] is not None and c["track_id"] == self.locked_track_id:
+                    self.lost_counter = 0
+                    return c["box"]
+
+        # 2. Kilitli hedef yoksa veya kaybolduysa merkeze en yakin olani sec ve kilitle
+        best = min(candidates, key=lambda c: c["dist_sq"])
+        self.locked_track_id = best["track_id"]
+        self.lost_counter = 0
+        return best["box"]
+
+    def reset(self):
+        """Hedef secici kilit hafizasini sifirlar."""
+        self.locked_track_id = None
+        self.lost_counter = 0

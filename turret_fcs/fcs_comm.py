@@ -138,6 +138,18 @@ class FCSCommunicator:
         """TF-Luna LiDAR'in STM32 uzerinden canli telemetri akitip akitmadigini dondurur."""
         return self.is_connected and (time.time() - self.last_valid_time <= self.stale_timeout) and (self.distance > 0 or self.strength > 0)
 
+    def _disconnect_port(self):
+        """Seri portu guvenlice sifirlar, worker thread'i calisir durumda tutar."""
+        with self._lock:
+            if self.ser:
+                try:
+                    if self.ser.is_open:
+                        self.ser.close()
+                except Exception:
+                    pass
+                finally:
+                    self.ser = None
+
     def send(self, pan_angle: float, tilt_angle: float, fcs_state: int):
         """
         Taret hedef acilarini ve durumunu (0: Takip, 1: Kilit, 2: Ates) binary paket olarak gonderir.
@@ -150,8 +162,8 @@ class FCSCommunicator:
             if not self.is_connected:
                 return
 
-        p = max(-32000, min(32000, int(pan_angle * 10)))
-        t = max(-32000, min(32000, int(tilt_angle * 10)))
+        p = max(-32000, min(32000, int(round(pan_angle * 10))))
+        t = max(-32000, min(32000, int(round(tilt_angle * 10))))
         state = fcs_state & 0xFF
 
         try:
@@ -161,13 +173,16 @@ class FCSCommunicator:
                 if self.ser and self.ser.is_open:
                     self.ser.write(payload + bytes([checksum]))
         except (serial.SerialException, serial.SerialTimeoutException, OSError):
-            self.close()
+            self._disconnect_port()
 
     def _binary_reader_worker(self):
-        """STM32'den gelen 6 baytlik ikili telemetri paketlerini okur."""
+        """STM32'den gelen 6 baytlik ikili telemetri paketlerini okur (kopmaz surekli thread)."""
         while self.running:
             if not self.is_connected:
-                time.sleep(0.5)
+                now = time.time()
+                if (now - self.last_reconnect_attempt) > self.reconnect_interval:
+                    self.connect()
+                time.sleep(0.1)
                 continue
 
             try:
@@ -187,42 +202,33 @@ class FCSCommunicator:
                     time.sleep(0.002)
                     continue
 
-                # Tamponda 3 paketten fazla birikmisse en guncel pakete atla (sifir gecikme)
-                if in_w > 18:
-                    with self._lock:
-                        if self.ser and self.ser.is_open:
-                            discard_count = (in_w // 6 - 1) * 6
-                            self.ser.read(discard_count)
-
-                # Paket basligi: 0x55
-                header = None
+                raw_bytes = None
                 with self._lock:
                     if self.ser and self.ser.is_open:
-                        header = self.ser.read(1)
+                        # Tampondaki tum baytlari tek seferde oku (sifir kilitlenme ve sifir gecikme)
+                        raw_bytes = self.ser.read(in_w)
 
-                if header != self.HEADER_RX:
+                if not raw_bytes or len(raw_bytes) < 6:
                     continue
 
-                payload = None
-                with self._lock:
-                    if self.ser and self.ser.is_open:
-                        payload = self.ser.read(5)
-
-                if not payload or len(payload) != 5:
-                    continue
-
-                # Checksum dogrulama
-                calc_csum = (0x55 + sum(payload[:4])) & 0xFF
-                if calc_csum != payload[4]:
-                    continue
-
-                dist, strength = struct.unpack("<HH", payload[:4])
-                self.distance = dist
-                self.strength = strength
-                self.last_valid_time = time.time()
+                # Buffer'i sondan basa dogru tara; en guncel gecerli 0x55 paketini al
+                # Boylece eski bayat paketler otomatik atlanir ve desenkronizasyon riski sifirlanir
+                for i in range(len(raw_bytes) - 6, -1, -1):
+                    if raw_bytes[i:i+1] == self.HEADER_RX:
+                        payload = raw_bytes[i+1 : i+6]
+                        calc_csum = (0x55 + sum(payload[:4])) & 0xFF
+                        if calc_csum == payload[4]:
+                            dist, strength = struct.unpack("<HH", payload[:4])
+                            self.distance = dist
+                            self.strength = strength
+                            self.last_valid_time = time.time()
+                            break
 
             except (serial.SerialException, OSError):
+                self._disconnect_port()
                 time.sleep(0.1)
+            except Exception:
+                time.sleep(0.01)
 
     def get_luna_data(self):
         """Guncel sensor verilerini dondurur. 0.3 sn veri gelmezse 0 cm dondurur."""
@@ -231,14 +237,11 @@ class FCSCommunicator:
         return self.distance, self.strength, self.temp
 
     def close(self):
-        """Seri portu ve okuma thread'ini guvenli kapatir."""
+        """Seri portu ve okuma thread'ini guvenli kapatir (Sadece ana uygulama cikisinda)."""
         self.running = False
-        with self._lock:
-            if self.ser:
-                try:
-                    if self.ser.is_open:
-                        self.ser.close()
-                except Exception:
-                    pass
-                finally:
-                    self.ser = None
+        self._disconnect_port()
+        try:
+            if hasattr(self, "thread") and self.thread.is_alive():
+                self.thread.join(timeout=0.2)
+        except Exception:
+            pass
