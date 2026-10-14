@@ -66,6 +66,7 @@
   3. Hibrit modda RL hafızasına fiilen uygulanan harmanlanmış komut geri beslendi (`update_applied_action`).
   4. PPO modeli bu yeni ortamda 250.000 adım eğitildi ve ortalama ödülü **3.260 puana** çıkarak kaydedildi.
   5. MIT Lisansı, Hızlı Başlangıç rehberi ve mimari rozetler repoya eklendi.
+  6. Webots R2025a dijital ikizi 11-boyutlu Bryson RL çıkarım hattı, hibrit eylem geri beslemesi ve runtime.ini sanal ortam yapılandırmasıyla tam senkronize edildi.
 
 ---
 

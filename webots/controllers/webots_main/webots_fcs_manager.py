@@ -168,6 +168,9 @@ class WebotsFCSManager:
                 self.pan_target = float(np.clip(hybrid_pan, self.aimer.PAN_LIMITS[0], self.aimer.PAN_LIMITS[1]))
                 self.tilt_target = float(np.clip(hybrid_tilt, self.aimer.TILT_LIMITS[0], self.aimer.TILT_LIMITS[1]))
 
+                if hasattr(self.rl_controller, "update_applied_action"):
+                    self.rl_controller.update_applied_action(d_pan_deg * self.current_rl_weight, d_tilt_deg * self.current_rl_weight)
+
             elif self.control_mode == "RL" and self.rl_controller.is_loaded:
                 self.current_rl_weight = 1.0
                 curr_p_rad = current_pan if (current_pan is not None and not np.isnan(current_pan)) else self.pan_target
