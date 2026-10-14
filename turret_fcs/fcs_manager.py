@@ -60,6 +60,11 @@ class FCSManager:
         self.last_cmd_pan = 0.0
         self.last_cmd_tilt = 0.0
 
+        # Aktuator Durum Gozlemcisi (Actuator State Observer - 1. derece motor dinamigi tau=45ms)
+        self.servo_tau = 0.045
+        self.actual_motor_pan = 0.0
+        self.actual_motor_tilt = 0.0
+
         # Menzil Kapilama (Range Gating) icin dogrulanmis hedef mesafesi hafizasi
         self.last_valid_target_dist_m = float(self.p_controller.DEFAULT_DISTANCE_M)
 
@@ -125,9 +130,16 @@ class FCSManager:
             if not is_firing:
                 # Taretin bir onceki karedeki donusunden kaynaklanan optik akis kaymasi (Ego-Motion)
                 if self.frames_since_lost == 0:
-                    ego_dx = - float(fx) * float(np.tan(np.radians(self.last_cmd_pan)))
-                    ego_dy =   float(fy) * float(np.tan(np.radians(self.last_cmd_tilt)))
+                    # 1. Derece aktüatör gecikme modeli (tau = 45 ms)
+                    alpha_m = float(dt / (self.servo_tau + dt))
+                    self.actual_motor_pan = (1.0 - alpha_m) * self.actual_motor_pan + alpha_m * self.last_cmd_pan
+                    self.actual_motor_tilt = (1.0 - alpha_m) * self.actual_motor_tilt + alpha_m * self.last_cmd_tilt
+
+                    ego_dx = - float(fx) * float(np.tan(np.radians(self.actual_motor_pan)))
+                    ego_dy =   float(fy) * float(np.tan(np.radians(self.actual_motor_tilt)))
                 else:
+                    self.actual_motor_pan = 0.0
+                    self.actual_motor_tilt = 0.0
                     ego_dx = 0.0
                     ego_dy = 0.0
 
@@ -227,6 +239,8 @@ class FCSManager:
                 self.lock_mgr.reset()
                 self.target_velocity = np.array([0.0, 0.0], dtype=float)
                 self.firing_lead_offset = np.array([0.0, 0.0], dtype=float)
+                self.actual_motor_pan = 0.0
+                self.actual_motor_tilt = 0.0
 
             # Hedef yokken: Devriye modu aciksa sakin dairesel tarama
             if self.patrol_enabled:
@@ -252,6 +266,8 @@ class FCSManager:
         self.gravity_comp_deg = 0.0
         self.last_cmd_pan = 0.0
         self.last_cmd_tilt = 0.0
+        self.actual_motor_pan = 0.0
+        self.actual_motor_tilt = 0.0
         self.tracker.reset()
         self.lock_mgr.reset()
         self.p_controller.reset()

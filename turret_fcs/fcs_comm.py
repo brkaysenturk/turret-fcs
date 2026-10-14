@@ -7,7 +7,7 @@ tam cift yonlu (Full-Duplex), asenkron ve binary paketli iletisim katmanidir.
 
 PROTOKOL VE PAKET YAPISI (115200 Baud):
 1. TX Paketi (PC -> STM32) [7 Bayt]:
-   [0xAA (Header)] [Pan Delta * 100: int16 (2B)] [Tilt Delta * 100: int16 (2B)] [State/Fire: uint8 (1B)] [Checksum: uint8 (1B)]
+   [0xAA (Header)] [Pan Delta * 10: int16 (2B, 0.1 deg)] [Tilt Delta * 10: int16 (2B, 0.1 deg)] [State/Fire: uint8 (1B)] [Checksum: uint8 (1B)]
 2. RX Paketi (STM32 -> PC) [6 Bayt]:
    [0x55 (Header)] [TF-Luna Mesafe: uint16 (2B)] [Sinyal Gucu: uint16 (2B)] [Checksum: uint8 (1B)]
 
