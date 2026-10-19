@@ -6,10 +6,10 @@ Bu modul, kameradan gelen coklu nesne tespitleri (YOLOv8 Bounding Boxes) arasind
 en oncelikli ve vurulabilir birincil hedefi (Primary Threat) secer.
 
 ELEME VE PUANLAMA KRITERLERI:
-1. Guvenilirlik Esigi (Confidence Threshold): conf >= 0.45 altindaki sahte tespitler elenir.
+1. Guvenilirlik Esigi (Confidence Threshold): conf >= 0.28 altindaki sahte tespitler elenir.
 2. Geometrik Alan ve Boyut Filtresi: Cok kucuk (area < 400 px^2) gurultuler ve asiri buyuk
    yanlis tespitler (area > 400.000 px^2) elenir.
-3. En Boy Orani (Aspect Ratio): 0.25 - 4.0 arasindaki gecerli sekiller kabul edilir.
+3. En Boy Orani (Aspect Ratio): 0.35 - 2.50 arasindaki gecerli sekiller kabul edilir.
 4. Nisangah Mesafesi (Crosshair Distance): Nisangah merkezine (reticle center) en yakin
    olan hedef en yuksek oncelikle secilir.
 ================================================================================
@@ -22,7 +22,8 @@ class TargetSelector:
     nisangaha olan mesafeye gore secen sinif.
     """
 
-    def __init__(self, min_conf=0.45, min_area=400, max_area=400000, min_dim=18):
+    def __init__(self, min_conf=0.28, min_area=400, max_area=400000, min_dim=18):
+        # min_conf: Ev/Los Isik Bulanikligi: 0.28 | Okul Orijinal: 0.45
         self.min_conf = min_conf
         self.min_area = min_area
         self.max_area = max_area
@@ -33,7 +34,7 @@ class TargetSelector:
     def select_best_target(self, boxes, center_x, center_y):
         if len(boxes) == 0:
             self.lost_counter += 1
-            if self.lost_counter > 5:
+            if self.lost_counter > 8:  # Ev: 8 | Okul Orijinal: 5
                 self.locked_track_id = None
             return None
 

@@ -58,6 +58,7 @@ class WebotsLockManager:
         self.last_lock_quality = self.hit_probability / 100.0
 
         dynamic_threshold = self.compute_dynamic_threshold(target_velocity)
+        dynamic_exit_threshold = dynamic_threshold + 0.60
 
         # Hedef tolerans icindeyse sayaci artir, ciktiysa her kare 1 azalt (leaky integrator)
         if target_angular_error <= dynamic_threshold:
@@ -69,15 +70,15 @@ class WebotsLockManager:
 
         # Histerezisli Kilit Yonetimi:
         if not self.is_locked:
-            # Henuz kilitli degilse: Yalnizca 15 kare tam doldugunda kilitlen
+            # Henuz kilitli degilse: Yalnizca esik karesi tam doldugunda kilitlen
             if self.stability_counter >= self.LOCK_THRESHOLD_FRAMES:
                 self.is_locked = True
         else:
             # Zaten kilitliyse: 1 kare cikti diye kilit ANINDA bozulmaz!
-            # Kilit ancak hedef cok uzaklasirsa (> LOCK_EXIT_DEG) veya sayac yariya duserse (< 8) bozulur
-            if target_angular_error > self.LOCK_EXIT_DEG or self.stability_counter < (self.LOCK_THRESHOLD_FRAMES // 2):
+            # Kilit ancak hedef cok uzaklasirsa (> dynamic_exit_threshold) veya sayac yariya duserse (< esik//2) bozulur
+            if target_angular_error > dynamic_exit_threshold or self.stability_counter < (self.LOCK_THRESHOLD_FRAMES // 2):
                 self.is_locked = False
-                if target_angular_error > self.LOCK_EXIT_DEG:
+                if target_angular_error > dynamic_exit_threshold:
                     self.stability_counter = 0
                     self.lock_counter = 0
 

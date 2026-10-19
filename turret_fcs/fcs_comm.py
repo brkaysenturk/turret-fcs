@@ -61,6 +61,10 @@ class FCSCommunicator:
         self.temp = 0.0
         self.last_valid_time = 0.0
 
+        # Kuantalama Artik Biriktiricisi (Quantization Residue Accumulator: 0.1 deg alti adimlari korur)
+        self.residue_pan = 0.0
+        self.residue_tilt = 0.0
+
         # Arka plan binary dinleyici
         self.running = True
         self.connect()
@@ -162,8 +166,22 @@ class FCSCommunicator:
             if not self.is_connected:
                 return
 
-        p = max(-32000, min(32000, int(round(pan_angle * 10))))
-        t = max(-32000, min(32000, int(round(tilt_angle * 10))))
+        # Kuantalama Artik Biriktirme: 0.1 dereceden kucuk hassas komutlar kaybolmaz
+        if pan_angle == 0.0 and tilt_angle == 0.0:
+            self.residue_pan = 0.0
+            self.residue_tilt = 0.0
+            p = 0
+            t = 0
+        else:
+            total_p = float(pan_angle) * 10.0 + self.residue_pan
+            p_step = int(round(total_p))
+            self.residue_pan = total_p - p_step
+            p = max(-32000, min(32000, p_step))
+
+            total_t = float(tilt_angle) * 10.0 + self.residue_tilt
+            t_step = int(round(total_t))
+            self.residue_tilt = total_t - t_step
+            t = max(-32000, min(32000, t_step))
         state = fcs_state & 0xFF
 
         try:

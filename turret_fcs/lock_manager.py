@@ -30,9 +30,11 @@ class LockManager:
     hedef kilit kalitesi puanini gercek zamanli turret FCS icin yonetir.
     """
 
-    def __init__(self, lock_threshold_frames=10, lock_exit_deg=3.5):
-        self.lock_threshold_frames = lock_threshold_frames
-        self.lock_exit_deg = lock_exit_deg
+    # --- KILIT ESIGI VE TOLERANS KALIBRASYONU ---
+    def __init__(self, lock_threshold_frames=10, lock_exit_margin_deg=0.60, lock_exit_deg=None):
+        self.lock_threshold_frames = lock_threshold_frames  # Kararlilik karesi (10 kare = 0.33 sn)
+        self.lock_exit_margin_deg = lock_exit_margin_deg    # Dinamik giris esigine bagli histerezis payi (+0.60 deg)
+        self.lock_exit_deg = lock_exit_deg  # Geriye uyumluluk
 
         self.stability_counter = 0
         self.is_locked = False
@@ -42,10 +44,10 @@ class LockManager:
     def compute_dynamic_threshold(self, target_velocity):
         speed_mag = float(np.hypot(target_velocity[0], target_velocity[1]))
         if speed_mag < 15.0:
-            return 2.0
+            return 1.60  # Ev: 1.60 (Hassas gercek kilit) | Okul Orijinal: 2.00
         if speed_mag < 45.0:
-            return 2.5
-        return 3.0
+            return 2.20  # Ev: 2.20 | Okul Orijinal: 2.50
+        return 3.00
 
     def compute_hit_probability(self, angular_error_deg, target_velocity, dist_m=2.0, target_radius_m=0.15):
         """
@@ -78,6 +80,7 @@ class LockManager:
         self.lock_quality = self.hit_probability / 100.0
 
         dynamic_threshold = self.compute_dynamic_threshold(target_velocity)
+        dynamic_exit_threshold = dynamic_threshold + self.lock_exit_margin_deg
 
         # Hedef tolerans icindeyse sayaci artir, ciktiysa her kare 1 azalt 
         if angular_error_deg <= dynamic_threshold:
@@ -87,14 +90,14 @@ class LockManager:
 
         # Histerezisli Kilit Durumu:
         if not self.is_locked:
-            # Kilitli degilken: Yalnizca 15 kare tam dolunca kilitlen
+            # Kilitli degilken: Yalnizca esik karesi dolunca kilitlen
             if self.stability_counter >= self.lock_threshold_frames:
                 self.is_locked = True
         else:
-            # Hedef cok uzaklasirsa (> exit_deg) veya sayac yariya duserse kilit bozulur
-            if angular_error_deg > self.lock_exit_deg or self.stability_counter < (self.lock_threshold_frames // 2):
+            # Hedef histerezis esiginden uzaklasirsa (> dynamic_exit_threshold) veya sayac yariya duserse kilit bozulur
+            if angular_error_deg > dynamic_exit_threshold or self.stability_counter < (self.lock_threshold_frames // 2):
                 self.is_locked = False
-                if angular_error_deg > self.lock_exit_deg:
+                if angular_error_deg > dynamic_exit_threshold:
                     self.stability_counter = 0
 
         return self.is_locked, self.stability_counter, self.hit_probability

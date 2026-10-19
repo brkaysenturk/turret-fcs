@@ -12,7 +12,7 @@ KAYDEDILEN 21 KRITIK PARAMETRE:
 - Eyleyici Komutlari: cmd_pan, cmd_tilt (derece/kare)
 - Kalman Kestirimleri: target_vel_x, target_vel_y, target_speed (px/s)
 - TF-Luna LiDAR: dist_cm, signal_strength
-- Durum Makinasi: fcs_state, control_mode (P/HYBRID/RL), rl_weight
+- Durum Makinasi: fcs_state, control_mode (P/RL), rl_weight
 - Atis ve Kilit Kriterleri: lock_counter, is_locked, hit_prob (%)
 ================================================================================
 """
@@ -68,7 +68,7 @@ class TelemetryLogger:
             "dist_cm",           # TF-Luna mesafe (cm)
             "signal_strength",   # TF-Luna sinyal gucu
             "fcs_state",         # 0: Takip, 1: Kilitli, 2: Ates
-            "control_mode",      # P / HYBRID / RL
+            "control_mode",      # P / RL
             "rl_weight",         # Yapay zeka agirlik katsayisi (%0.0 - 1.0)
             "is_locked",         # Kilit durumu (1 / 0)
             "lock_counter",      # Kilit kararlilik sayaci (0 - 10)

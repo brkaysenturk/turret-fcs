@@ -1,23 +1,25 @@
 """
 ================================================================================
-MODUL: ORANSAL (P / PID) MOTOR KONTROLCUSU (P CONTROLLER)
+MODUL: AYRIK EKSENLI YUMUSAK OLU BOLGELI TIP-1 P MOTOR KONTROLCUSU
 ================================================================================
 Bu modul, kamera gorus acilarini, balistik yercekimi kompanzasyonunu (super-elevation),
-onleme acilarini ve gercek donanimda dogrulanmis yumusak olu bolgeli (Soft Deadband)
-motor kontrol komutlarini hesaplar.
+atis onleme acilarini ve gercek donanimda dogrulanmis yumusak olu bolgeli (Soft Deadband)
+saf oransal (Tip-1 P) motor kontrol komutlarini hesaplar.
 
 KONTROL PARAMETRELERI:
-- Pan:  Kp = 0.10, Ki = 0.0, Kd/k_ff = 0.025, Deadband = 0.90°
-- Tilt: Kp = 0.07, Ki = 0.0, Kd/k_ff = 0.020, Deadband = 0.95°
+- Pan:  Kp = 0.055 - 0.10, Deadband = 0.85 - 0.90 deg
+- Tilt: Kp = 0.030 - 0.06, Deadband = 0.85 - 0.95 deg (Agir volan namlu sonumlu)
 - Filtre: alpha = 0.75 (EMA)
-- Komut Limiti: max_output = 2.75°/kare
+- Komut Limiti: max_output = 1.35 - 2.75 deg/kare
 
-NOT:
-Kalman Durum Gozlemcisinden gelen hedef acisal hizi beslendiginde, kontrolcu 2 serbestlik dereceli
-(2-DOF) Referans Hizi Ileri Beslemesi (Velocity Feedforward) modunda calisir ve Tip-1 dongude
-rampa takip hatasini (velocity lag) sönümler. Hiz verisi olmadiginda ise hata turevi olarak calisabilir.
-Ki integrali servo ic donanimi ve STM32 entegrasyonu nedeniyle varsayilan olarak 0.0 tutulur.
-================================================================================
+KONTROL TEORISI GEREKCESI:
+STM32 gometim yazilimindaki pozisyon biriktiricisi theta(k) = theta(k-1) + delta_theta
+ayrik zamanda dogal bir integrator gibi davranir (Tip-1 Servomekanizma).
+Bu sayede sistem harici bir integral (Ki) veya turev (Kd / D-termi) gerektirmeden
+dogal olarak sifir kalici durum hatasi (zero steady-state error) ile hedefe kilitlenir.
+Kamera gurultusunu motora tasimamak ve disli titresimini engellemek icin turev (D)
+terimi kullanilmaz; sifir jerk ile kalkis icin Yumusak Olu Bolge (Soft Deadband) uygulanir.
+===============================================================================
 """
 
 import numpy as np
@@ -26,65 +28,42 @@ import numpy as np
 class PController:
     """
     Kamera gorus acilarini, balistik telafiyi ve ayrik eksenli yumusak olu bolgeli
-    oransal (ve opsiyonel I/D destekli) motor duzeltme komutlarini hesaplar.
+    saf oransal (Tip-1 P) motor duzeltme komutlarini hesaplar.
     """
 
     DEFAULT_DISTANCE_M = 2.0
     PROJECTILE_SPEED_MPS = 10.0  # m/s (Mermi namlu cikis hizi)
     GRAVITY_ACCEL = 9.81         # m/s^2 (Yercekimi ivmesi)
-    MAX_OUTPUT_DEG = 2.75        # Kare basi maksimum motor adim limiti (derece)
-    DEADBAND_PAN_DEG = 0.90      # Yatay yumusak olu bolge (Pan)
-    DEADBAND_TILT_DEG = 0.95     # Dikey yumusak olu bolge (Tilt)
-    ENABLE_D_TERM = True         # Kalman tabanli D terimini ac/kapat (True: Aktif, False: Saf P)
+
+    # --- KALIBRASYON DEGERLERI ---
+    MAX_OUTPUT_DEG = 1.35        # Ev: 1.35 (Sonumlu/Kritik) | Okul: 2.75
+    DEADBAND_PAN_DEG = 0.85      # Yatay eksen yumusak olu bolgesi (deg)
+    DEADBAND_TILT_DEG = 0.95     # Dikey eksen 300g pirinc namlu olu bolgesi (deg)
 
     def __init__(
         self,
-        kp_pan=0.10,
-        kp_tilt=0.07,
-        ki_pan=0.0,
-        ki_tilt=0.0,
-        kd_pan=0.025,
-        kd_tilt=0.020,
+        kp_pan=0.055,            # Ev: 0.055 | Okul: 0.10
+        kp_tilt=0.030,           # Ev: 0.030 | Okul: 0.06 (Dikey agir namlu kararliligi)
         alpha=0.75,
         max_output=MAX_OUTPUT_DEG,
         deadband_pan=DEADBAND_PAN_DEG,
         deadband_tilt=DEADBAND_TILT_DEG,
-        max_integral=1.5,
-        enable_d_term=ENABLE_D_TERM,
     ):
-        # Turev terimi anahtari (True: Aktif, False: Saf P)
-        self.enable_d_term = bool(enable_d_term)
         # Oransal kazanclar (P)
         self.kp_pan = float(kp_pan)
         self.kp_tilt = float(kp_tilt)
-
-        # Integral kazanclari (I)
-        self.ki_pan = float(ki_pan)
-        self.ki_tilt = float(ki_tilt)
-
-        # Turev kazanclari (D - Kalman Durum Gozlemcisinden beslenir)
-        self.kd_pan = float(kd_pan)
-        self.kd_tilt = float(kd_tilt)
 
         # Filtre ve sinirlar
         self.alpha = float(alpha)
         self.max_output = float(max_output)
         self.deadband_pan = float(deadband_pan)
         self.deadband_tilt = float(deadband_tilt)
-        self.max_integral = float(max_integral)
 
         # Anlik ve filtrelenmis acilar
         self.actual_pan = 0.0
         self.actual_tilt = 0.0
         self.filtered_pan = 0.0
         self.filtered_tilt = 0.0
-
-        # Integral birikimleri ve gecmis hatalar (I ve D icin)
-        self.integral_pan = 0.0
-        self.integral_tilt = 0.0
-        self.last_pan_error = 0.0
-        self.last_tilt_error = 0.0
-        self.first_run = True
 
     def compute_angles(self, bx, by, center_x, center_y, fx, fy):
         """Kamera merkezinden hedefin acisal sapmasini hesaplar ve EMA ile filtreler."""
@@ -109,14 +88,11 @@ class PController:
         lead_tilt = np.degrees(np.arctan(-d_lead_y / max(fy, 1e-6)))
         return float(lead_pan), float(lead_tilt)
 
-    def compute_p(self, active_pan, active_tilt, dt=0.033, target_speed=0.0, vel_pan_deg_s=None, vel_tilt_deg_s=None):
+    def compute_p(self, active_pan, active_tilt, dt=0.033, **kwargs):
         """
-        Yumusak olu bolgeli ve ayrik eksenli oransal (P) motor komutunu hesaplar.
-        Eger ki veya kd 0'dan farkli ayarlanmissa, integral ve turev terimlerini de ekler.
-        Kalman Durum Gozlemcisinden (Observer) gelen acisal hiz verilirse, gurultusuz D terimi calisir.
+        Yumusak olu bolgeli (Soft Deadband) ve ayrik eksenli saf oransal (Tip-1 P)
+        motor komutunu hesaplar. Sifir jerk ile puzursuz kalkis saglar.
         """
-        dt = 0.033 if (dt is None or dt <= 0.0) else float(dt)
-
         self.filtered_pan = self.alpha * active_pan + (1.0 - self.alpha) * self.filtered_pan
         self.filtered_tilt = self.alpha * active_tilt + (1.0 - self.alpha) * self.filtered_tilt
 
@@ -125,82 +101,20 @@ class PController:
         # =========================================================================
         abs_pan = abs(self.filtered_pan)
         if abs_pan <= self.deadband_pan:
-            eff_pan = 0.0
-            # Olu bolge icindeyken integral szintisi (leaky integrator)
-            self.integral_pan *= 0.90
+            u_pan = 0.0
         else:
             eff_pan = np.sign(self.filtered_pan) * (abs_pan - self.deadband_pan)
-
-        # Oransal (P) terimi
-        p_term_pan = self.kp_pan * eff_pan
-
-        # Integral (I) terimi (Anti-windup sinirlamali)
-        if self.ki_pan > 0.0:
-            self.integral_pan += eff_pan * dt
-            self.integral_pan = float(np.clip(self.integral_pan, -self.max_integral, self.max_integral))
-            i_term_pan = self.ki_pan * self.integral_pan
-        else:
-            self.integral_pan = 0.0
-            i_term_pan = 0.0
-
-        # 2-DOF Referans Hizi Ileri Beslemesi (Velocity Feedforward) / Turev (D) Terimi
-        if self.enable_d_term and self.kd_pan > 0.0:
-            if vel_pan_deg_s is not None:
-                # 2-DOF Referans Hizi Ileri Beslemesi: Kalman gozlemcisinden gelen hedef hizi dogrudan
-                # beslenerek rampa izleme hatasi azaltilir.
-                d_term_pan = self.kd_pan * vel_pan_deg_s
-            elif not self.first_run:
-                # Klasik hata turevi modu (Hiz kestirimi saglanmadiginda geri dusus)
-                d_err_pan = (eff_pan - self.last_pan_error) / dt
-                d_term_pan = self.kd_pan * d_err_pan
-            else:
-                d_term_pan = 0.0
-        else:
-            d_term_pan = 0.0
-
-        self.last_pan_error = eff_pan
-        u_pan = p_term_pan + i_term_pan + d_term_pan
+            u_pan = self.kp_pan * eff_pan
 
         # =========================================================================
         # 2. TILT EKSENI (Dikey)
         # =========================================================================
         abs_tilt = abs(self.filtered_tilt)
         if abs_tilt <= self.deadband_tilt:
-            eff_tilt = 0.0
-            self.integral_tilt *= 0.90
+            u_tilt = 0.0
         else:
             eff_tilt = np.sign(self.filtered_tilt) * (abs_tilt - self.deadband_tilt)
-
-        # Oransal (P) terimi
-        p_term_tilt = self.kp_tilt * eff_tilt
-
-        # Integral (I) terimi (Anti-windup sinirlamali)
-        if self.ki_tilt > 0.0:
-            self.integral_tilt += eff_tilt * dt
-            self.integral_tilt = float(np.clip(self.integral_tilt, -self.max_integral, self.max_integral))
-            i_term_tilt = self.ki_tilt * self.integral_tilt
-        else:
-            self.integral_tilt = 0.0
-            i_term_tilt = 0.0
-
-        # 2-DOF Referans Hizi Ileri Beslemesi (Velocity Feedforward) / Turev (D) Terimi
-        if self.enable_d_term and self.kd_tilt > 0.0:
-            if vel_tilt_deg_s is not None:
-                # 2-DOF Referans Hizi Ileri Beslemesi
-                d_term_tilt = self.kd_tilt * vel_tilt_deg_s
-            elif not self.first_run:
-                # Klasik hata turevi modu
-                d_err_tilt = (eff_tilt - self.last_tilt_error) / dt
-                d_term_tilt = self.kd_tilt * d_err_tilt
-            else:
-                d_term_tilt = 0.0
-        else:
-            d_term_tilt = 0.0
-
-        self.last_tilt_error = eff_tilt
-        u_tilt = p_term_tilt + i_term_tilt + d_term_tilt
-
-        self.first_run = False
+            u_tilt = self.kp_tilt * eff_tilt
 
         # Eyleyici mekanik sinirlamasi (Maksimum motor komutu)
         u_pan = float(np.clip(u_pan, -self.max_output, self.max_output))
@@ -214,8 +128,3 @@ class PController:
         self.actual_tilt = 0.0
         self.filtered_pan = 0.0
         self.filtered_tilt = 0.0
-        self.integral_pan = 0.0
-        self.integral_tilt = 0.0
-        self.last_pan_error = 0.0
-        self.last_tilt_error = 0.0
-        self.first_run = True

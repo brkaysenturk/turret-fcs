@@ -6,8 +6,8 @@
         "w_dist_sq": 7.5,
         "w_bullseye": 9.0,
         "w_lock": 10.0,
-        "w_smooth": 0.5,
-        "learning_rate": 0.0004822103254591567
+        "w_smooth": 1.5,
+        "learning_rate": 0.00035
     },
     "metrics": {
         "mean_err_px": 89.64912273009583,

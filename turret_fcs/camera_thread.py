@@ -13,7 +13,7 @@ KRITIK GOREVLER VE COZULEN PROBLEMLER:
    Bu durum gercek dunyada 100-150 ms'lik bayat goruntu (stale frame) gecikmesine yol acar.
    Bu sinif, en son gelen tek kareyi (latest frame) anlik saklar ve tamponu surekli
    bosaltarak goruntu gecikmesini sifira indirir.
-3. Donanimsal Cozunurluk: 640x480 @ 30 FPS optimize parametrelerle calisir.
+3. Donanimsal Cozunurluk: 1280x720 @ 30 FPS optimize parametrelerle calisir.
 ================================================================================
 """
 

@@ -10,9 +10,8 @@ TEMEL GOREVLER VE AKIS:
 1. Donanim Baslatma: Logitech C270 kamera (DirectShow) ve STM32 (USB VID 0483) otomatik algilama.
 2. Derin Ogrenme Cikarimi: Egitilmis YOLOv8 modeli ile balon tespiti (best.pt).
 3. Kontrol Modlari (Klavyeden 'M' ile gecis):
-   - "P": Hiz-uyarlamali yumusak olu bolgeli oransal kontrol (P CONTROLLER - Donanimda en kararli).
-   - "HYBRID": Hizli hedeflerde gecikmeyi telafi eden AI takviyeli P + PPO RL harmanlama (HYBRID CONTROLLER).
-   - "RL": Saf Reinforcement Learning (PPO) ile otonom yonlendirme (RL CONTROLLER).
+   - "P": Hiz-uyarlamali yumusak olu bolgeli oransal kontrol (P CONTROLLER - Hassas Kilit).
+   - "RL": 11-Boyutlu Bryson durum uzayli ve eylem gecmisli PPO Reinforcement Learning (RL CONTROLLER - Cevik Takip).
 4. Akilli Devriye (Klavyeden 'P' ile gecis):
    - Hedef kayboldugunda 1.5 sn bekleme, merkeze donus ve 2 eksenli dairesel/eliptik tarama.
 5. E-STOP (Bosluk Tusu): Acil durumda aninda motor durdurma ve devriye kilitleme.
@@ -205,8 +204,8 @@ def main():
                     active_tilt_cmd = 0.0
                     if prev_target_detected:
                         stm.send(0.0, 0.0, 0)
-                        fcs.reset()
-                        prev_target_detected = False
+                        if fcs.frames_since_lost >= fcs.max_lost_frames:
+                            prev_target_detected = False
 
             if telemetry is not None:
                 telemetry.log_frame(
@@ -254,15 +253,11 @@ def main():
                 hud.draw_lock_quality(frame, center_x, center_y, fcs.last_lock_quality)
 
             # Kontrol Modu ve Devriye Durum Banneri (HUD)
-            if fcs.control_mode == "HYBRID":
-                rl_pct = int(getattr(fcs, "current_rl_weight", 0.0) * 100)
-                mode_label = f"HYBRID CONTROLLER (RL:{rl_pct}%)" if rl_pct > 0 else "HYBRID CONTROLLER"
+            if fcs.control_mode == "RL":
+                mode_label = "RL CONTROLLER (AGILE PURSUIT)"
                 mode_color = (0, 255, 128)
-            elif fcs.control_mode == "RL":
-                mode_label = "RL CONTROLLER"
-                mode_color = (255, 200, 0)
             else:
-                mode_label = "P CONTROLLER"
+                mode_label = "P CONTROLLER (PRECISION LOCK)"
                 mode_color = (0, 255, 255)
 
             patrol_tag = "PATROL: AUTO" if fcs.patrol_enabled else "PATROL: OFF"
@@ -282,7 +277,7 @@ def main():
             cv2.putText(frame, banner_text, (banner_x, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.56, mode_color, 2, cv2.LINE_AA)
 
             # Alt operator kontrol lejandi
-            footer_text = "[M] Mode  |  [P] Patrol  |  [SPACE] E-Stop  |  [Y] Fire  |  [Q] Quit"
+            footer_text = "[M] Mode (P/RL)  |  [P] Patrol  |  [SPACE] E-Stop  |  [Y] Fire  |  [Q] Quit"
             (f_w, _), _ = cv2.getTextSize(footer_text, cv2.FONT_HERSHEY_SIMPLEX, 0.42, 1)
             cv2.putText(frame, footer_text, (center_x - f_w // 2, frame.shape[0] - 14), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (160, 170, 180), 1, cv2.LINE_AA)
 
@@ -296,12 +291,11 @@ def main():
                 hud.log_event("[SYS] SESSION TERMINATED (EXIT)", color=(180, 180, 180))
                 break
             elif key == ord("m") or key == ord("M"):
-                mode_cycle = {"P": "HYBRID", "HYBRID": "RL", "RL": "P"}
+                mode_cycle = {"P": "RL", "RL": "P"}
                 fcs.control_mode = mode_cycle.get(fcs.control_mode, "P")
                 mode_names = {
-                    "P": "P CONTROLLER",
-                    "HYBRID": "HYBRID CONTROLLER",
-                    "RL": "RL CONTROLLER",
+                    "P": "P CONTROLLER (PRECISION LOCK)",
+                    "RL": "RL CONTROLLER (AGILE PURSUIT)",
                 }
                 mode_str = mode_names.get(fcs.control_mode, fcs.control_mode)
                 hud.log_event(f"[MODE] {mode_str}", color=(0, 215, 255))

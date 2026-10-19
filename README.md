@@ -2,27 +2,45 @@
 
 ## Yıldız Teknik Üniversitesi — Kontrol ve Otomasyon Mühendisliği Bölümü
 
-### Bitirme Çalışması & Tasarım Projesi (v1.1 Production Release)
+### Bitirme Çalışması & Tasarım Projesi (v1.2 Production Release)
 
-[![Release](https://img.shields.io/badge/Release-v1.1-success.svg)](https://github.com/brkysnturk/turret_fcs/releases/tag/v1.1)
+[![Release](https://img.shields.io/badge/Release-v1.2-success.svg)](https://github.com/brkysnturk/turret_fcs/releases/tag/v1.2)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 [![STM32 Nucleo](https://img.shields.io/badge/Hardware-STM32F401RE-002B49.svg)](https://www.st.com/)
 [![Webots Simulator](https://img.shields.io/badge/Simulation-Webots%20R2025a-red.svg)](https://cyberbotics.com/)
 [![YOLOv8](https://img.shields.io/badge/YOLO-v8n-00FFFF.svg)](https://ultralytics.com/)
 [![Reinforcement Learning](https://img.shields.io/badge/RL-11D%20PPO%20(SB3)-orange.svg)](https://stable-baselines3.readthedocs.io/)
-[![Control Theory](https://img.shields.io/badge/Control-Type--1%20P%20%2B%202--DOF%20Feedforward-brightgreen.svg)](https://en.wikipedia.org/wiki/Proportional_control)
+[![Control Theory](https://img.shields.io/badge/Control-Soft--Deadband%20Type--1%20P-brightgreen.svg)](https://en.wikipedia.org/wiki/Proportional_control)
 
-Bu proje; mikro/mini İHA'lar ve asimetrik hava tehditlerine karşı geliştirilmiş; **Logitech C270 RGB Kamera + Benewake TF-Luna ToF LiDAR Sensör Füzyonu**, **YOLOv8n Derin Öğrenme Hedef Tespiti**, **ByteTrack Çoklu Hedef Takibi**, **Adaptif Kalman Filtresi Hız/Konum Kestirimi**, **2-DOF Referans Hızı İleri Beslemeli (Velocity Feedforward) Tip-1 P Kontrolcü**, **Menzil Kapılama (Range Gating)** ve **11-Boyutlu Eylem Geçmişli PPO Derin Pekiştirmeli Öğrenme (RL)** tabanlı otonom bir Elektro-Optik Atış Kontrol Sistemidir (FCS).
+Bu proje; mikro/mini İHA'lar ve asimetrik hava tehditlerine karşı geliştirilmiş; **Logitech C270 RGB Kamera + Benewake TF-Luna ToF LiDAR Sensör Füzyonu**, **YOLOv8n Derin Öğrenme Hedef Tespiti**, **ByteTrack Çoklu Hedef Takibi**, **Ego-Hareket Telafili Adaptif Kalman Filtresi**, **Yumuşak Ölü Bölgeli (Soft Deadband) Tip-1 P Kontrolcü**, **Menzil Kapılama (Range Gating)** ve **11-Boyutlu Eylem Geçmişli PPO Derin Pekiştirmeli Öğrenme (RL)** tabanlı otonom bir Elektro-Optik Atış Kontrol Sistemidir (FCS).
 
 ---
 
-## 🚀 v1.1 Güncellemesi İle Gelen Yenilikler
+## 🚀 v1.2
 
-* **Kalman Tabanlı 2-DOF Hız İleri Beslemesi (Velocity Feedforward):**
-  * Klasik PID'deki gürültülü sonlu farklar türevi yerine, Kalman filtresinin kestirdiği filtrelenmiş hedef açısal hızı doğrudan 2 serbestlik dereceli (2-DOF) referans hızı ileri beslemesi olarak aktarılır.
-  * Tip-1 ayrık integratör döngüsünde hareketli hedeflere karşı oluşan rampa hız geride kalma hatasını (velocity lag) ortadan kaldırır.
-  * `p_controller.py` içerisinden `ENABLE_D_TERM = True / False` anahtarı ile anında açılıp kapatılabilir.
+* **Asimetrik Eylemsizlik ve Dikey Stick-Slip Limit Cycle Çözümü:**
+  * Dikey eksendeki 300g pirinç volan namlu ağırlığının yarattığı yerçekimi momenti ve dişli boşluğu sönümlendi.
+  * Eksen bazlı asimetrik yumuşak ölü bölge devreye alındı: Pan 0.85 derece, Tilt 0.95 derece.
+  * Kilit bölgesi yakınında (0.95 - 3.0 derece) adaptif sönümleme (0.45 - 1.0) ve sıfır jerk dikey EMA filtresi uygulandı.
+* **Smith Predictor Eylem Belleği Tutarlılığı:**
+  * PPO RL modelinde motora fiilen gönderilen (ölü bölge ve doyma sonrası) net komutlar eylem hafızasına yazılarak ajan ile fiziksel servo adımları arasındaki desenskronizasyon tamamen giderildi.
+  * Fiziksel testte %50.2 kilitlenme oranı, 13.16 saniye (1.061 kare) kesintisiz aralıksız kilitlenme rekoru ve dikey eksende %0.0 yön değişimi (sıfır titreşim) elde edildi.
+* **Sağlamlaştırılmış Hedef Takip ve Geçici Kayıp (Dropout) Koruması:**
+  * Hedefin kamerada 1-3 karelik anlık kaçışlarında ByteTrack hedef kimliği ve Kalman filtresinin erken sıfırlanması önlendi; 4 karelik (`max_lost_frames`) dinamik tolerans penceresi korundu.
+  * Aktüatör durum gözlemcisine (`tau = 45 ms`) `was_lost` bayrağı eklenerek hedefin yeniden kadraja girdiği ilk karede sahte ego-hareket sıçraması engellendi.
+* **Modüler A/B Ayrık Kontrol Mimarisi:**
+  * Kararsızlığa açık dışbükey hibrit harmanlama yerine operatörün `M` tuşu ile doğrudan seçebildiği saf **`[P CONTROLLER (Hassas Kilit)]`** ve **`[RL CONTROLLER (Çevik Takip)]`** mimarisi kesinleştirildi.
+* **Konsolide Analiz ve Teftiş Paketi:**
+  * Tüm log inceleme ve akademik görselleştirme araçları `analysis/inspect_logs.py` ve `analysis/generate_benchmark_plots.py` altında tek çatı altında toplandı.
+
+---
+
+## 🚀 v1.1
+
+* **Yumuşak Ölü Bölgeli (Soft Deadband) Tip-1 P Omurgası:**
+  * STM32 gömülü mimarisindeki ayrık integratör karakteristiği ile harici Ki veya parazit üreten Kd türevine ihtiyaç duymadan sıfır kalıcı durum hatasıyla çalışır.
+  * Yumuşak ölü bölge formülü ile hata eşiği aşıldığı an motor harekete sıfır jerk ile pürüzsüz başlar, mekanik dişli avlanması (chattering) tamamen engellenir.
 * **Menzil Kapılama (Range Gating) Koruması:**
   * Hedef namlu merkezinden uzaktayken (`angular_error > 3.0°`) TF-Luna LiDAR ışınının arkadaki duvara çarpıp mesafeyi aniden şişirmesini engeller; son bilinen geçerli hedef mesafesini dondurur (`last_valid_target_dist_m`).
 * **11-Boyutlu Eylem Geçmişli PPO Pekiştirmeli Öğrenme Ajanı:**
@@ -45,10 +63,9 @@ Bu proje; mikro/mini İHA'lar ve asimetrik hava tehditlerine karşı geliştiril
 * **Çift Modlu Algılama ve Sensör Füzyonu:** RGB Kamera (Logitech C270, 720p @ 30 FPS) ve TF-Luna ToF LiDAR sensörünün (100 Hz UART) yüksek hızlı veri füzyonu.
 * **Yapay Zeka Destekli Hedefleme:** Gerçek zamanlı YOLOv8n nesne tespiti ve ByteTrack tabanlı kilit sadakatli (lock persistence) çoklu hedef izleme algoritması.
 * **Balistik ve Kinematik Kestirim (Lead Pursuit):** Hedefin görüntü düzlemindeki konum ve hız vektörünü kestiren Kalman Filtresi (`kalman_filter.py`), dinamik mermi uçuş süresi önleme açısı (lead angle) ve yerçekimi balistik düşüş (süper-elevasyon) telafisi.
-* **Çok Katmanlı Üçlü Kontrol Mimarisi (`[M]` Tuşu ile Değiştirilebilir):**
-  * **`[P CONTROLLER]`:** Tip-1 ayrık integratör karakteristiği, 2-DOF Kalman hız ileri beslemesi (velocity feedforward) ve yumuşak ölü bölge (soft deadband) ile çalışan titreşimsiz kararlı açısal merkezleme.
-  * **`[HYBRID CONTROLLER (RL:X%)]`:** Kararlı P omurgasını korurken, hedef manevralarında gecikmeyi yenmek için devreye giren dinamik PPO takviyesi (maksimum %55 AI desteği). Kilit oturduğunda AI desteği sönümlenir.
-  * **`[RL CONTROLLER]`:** 11-boyutlu eylem geçmişli ve 80 ms donanım gecikme tamponlu tam otonom PPO ajanının doğrudan açısal hız kontrolü.
+* **İki Modlu Bağımsız Kontrol Mimarisi (`[M]` Tuşu ile Değiştirilebilir):**
+  * **`[P CONTROLLER]`:** Tip-1 ayrık integratör karakteristiği ve yumuşak ölü bölge (soft deadband) ile çalışan titreşimsiz kararlı açısal merkezleme.
+  * **`[RL CONTROLLER]`:** 11-boyutlu eylem geçmişli, asimetrik dikey sönümlemeli ve 80 ms donanım gecikme tamponlu tam otonom PPO ajanının doğrudan çevik takibi.
 * **Taktiksel Operatör HUD (Heads-Up Display):**
   * **Renk Disiplini:** Devriye modunda **Yeşil**, Takipte **Açık Mavi**, Hedef kilitlendiğinde ve atış anında **Kırmızı**.
   * **Operatör Yetkilendirme Paneli:** `TARGET LOCKED` / `AUTHORIZE FIRE? [Y/N]`.
@@ -84,6 +101,8 @@ Projenin elektriksel güç dağıtımı, sensör entegrasyonu ve aktüatör bağ
 
 Taretin 3D yazıcıdan üretilecek açık beşikli, minimal optik paralakslı ve gizli servo hornlu elektromekanik montaj tasarımı:
 
+![Turret FCS Elektromekanik Donanım Yerleşimi](mechanical_design.jpg)
+
 ![Turret FCS 3D Mekanik Montaj](turret_cad_render_annotated.jpg)
 
 ```text
@@ -105,7 +124,7 @@ Taretin 3D yazıcıdan üretilecek açık beşikli, minimal optik paralakslı ve
 +-----------------------------------------------------------------------------------+
 |                           KONTROL VE NİŞAN ALMA KATMANI                           |
 |  * Balistik Düşüş & Dinamik Önleme Açısı Hesaplama (Ballistics Engine)            |
-|  * Çok Modlu Kontrol: P + 2-DOF Hız İleri Beslemesi / Hibrit / Saf 11-D RL        |
+|  * Bağımsız Modlar: Yumuşak Ölü Bölgeli Tip-1 P / 11-D PPO RL                     |
 |  * 80 ms Taşıyıcı Gecikme Telafisi & Eylem Geçmişi Hafızası (Action History)       |
 +-----------------------------------------------------------------------------------+
                                          │
@@ -127,8 +146,8 @@ Sistemin arama, tespit, takip, kilitlenme ve atış sekansları [turret_fcs_flow
 
 * **DURUM 1 (Devriye / Arama):** Hedef yokken Lissajous parametrik tarama eğrileriyle (Pan: ±35°, Tilt: ±8°) hava sahası taranır; HUD yeşil renktedir.
 * **DURUM 2 (Tespit & Mesafe):** Hedef algılandığında TF-Luna LiDAR ile 100 Hz mesafe ve sinyal gücü doğrulanır; Menzil Kapılama ile duvar okumaları filtrelenir; hedef kimliği kilitlenir.
-* **DURUM 3 (Takip & Lead):** Kalman Filtresi hız kestirimi ve 2-DOF hız ileri beslemesi devreye girer; HUD açık mavi renge geçer.
-* **DURUM 4 (Hibrit / P Kontrol):** Tip-1 P kontrolcü (hız ileri beslemeli) ve 11-boyutlu PPO takviyesi ile açısal takip hatası minimuma indirilir.
+* **DURUM 3 (Takip & Lead):** Kalman Filtresi hedef konum ve hızını kestirir, atış önleme noktası (Lead Reticle) hesaplanır; HUD açık mavi renge geçer.
+* **DURUM 4 (P / RL Kontrol):** Yumuşak Ölü Bölgeli Tip-1 P kontrolcü (hassas merkezleme) veya 11-boyutlu PPO RL (çevik takip) ile açısal takip hatası minimuma indirilir.
 * **DURUM 5 (Hedefe Kilitlendi):** Hata toleransı sağlandığında ve kararlılık sayacı dolduğunda hedef kilitlenir (`TARGET LOCKED`), koyu amber operatör paneli açılır, `[Y]` atış yetkisi beklenir.
 * **DURUM 6 (Ateşleme):** Operatör onayıyla 120 ms yükselen kenar kilidiyle solenoid dartı fırlatır; ekranda 3 saniyelik balistik geri bildirim gösterilir.
 
@@ -194,7 +213,7 @@ main.bat
 
 * **`ESC` / `Q` :** Programı ve telemetri kaydını güvenli kapatma (`logs/telemetry_test_*.csv` diske kaydedilir).
 * **`SPACE` (Boşluk) :** Mandallı Acil Durdurma (E-STOP) — Motorları 90° merkeze çeker ve mandallar (Tekrar basınca takibe döner).
-* **`M` :** Kontrol Modu Döngüsü (`[P CONTROLLER]` <-> `[HYBRID CONTROLLER (RL:X%)]` <-> `[RL CONTROLLER]`).
+* **`M` :** Kontrol Modu Seçimi (`[P CONTROLLER (Hassas Kilit)]` <-> `[RL CONTROLLER (Çevik Takip)]`).
 * **`P` :** Lissajous parametrik devriye taramasını açma / kapatma.
 * **`Y` :** Manuel Atış Yetkisi (Authorize Fire).
 * **`N` :** Hedef Bırakma / Kilit İptali.
@@ -228,12 +247,16 @@ turret_fcs/
 ├── setup_env.bat              # Otomatik sanal ortam (venv) ve kütüphane kurulum aracı
 ├── main.bat                   # Tek tıkla gerçek zamanlı atış kontrol başlatıcısı
 ├── README.md                  # Proje mimarisi ve teknik dokümantasyon
-├── turret_fcs_architecture.png# 4K Turret FCS ana mimari şeması (v1.1)
-├── stm32_architecture.png     # 4K STM32 gömülü sürücü ve kesme mimarisi (v1.1)
-├── webots_architecture.png    # 4K Webots dijital ikiz simülasyon mimarisi (v1.1)
-├── turret_fcs_flowchart.svg   # Vektörel algoritmik durum akış şeması (Flowchart)
-├── turret_fcs_hardware.svg    # Vektörel elektriksel donanım ve güç dağıtım şeması
+├── mechanical_design.jpg      # 3D Elektromekanik donanım ve bileşen yerleşim şeması
+├── turret_cad_render_annotated.jpg # 3D Taret CAD montaj ve mekanik eksen tasarımı
+├── turret_fcs_architecture.png# 4K Turret FCS ana mimari şeması (v1.2)
+├── stm32_architecture.png     # 4K STM32 gömülü sürücü ve kesme mimarisi (v1.2)
+├── webots_architecture.png    # 4K Webots dijital ikiz simülasyon mimarisi (v1.2)
+├── turret_fcs_flowchart.svg   # Vektörel algoritmik durum akış şeması (Flowchart v1.2)
+├── turret_fcs_hardware.svg    # Vektörel elektriksel donanım ve güç dağıtım şeması (v1.2)
 ├── analysis/                  # Akademik kontrol ve sistem tanıma araçları
+│   ├── inspect_logs.py        # Konsolide donanım telemetri test teftiş ve metrik analiz motoru
+│   ├── generate_benchmark_plots.py # Yayın kalitesinde (300 DPI) P vs RL karşılaştırma grafik üreticisi
 │   ├── plot_tuned_system.py   # Python 6 panelli dinamik analiz motoru
 │   ├── system_identification.py # FOPDT basamak eğri uyumu ve Padé kök-yer eğrisi
 │   ├── turret_fcs_analysis.m  # MATLAB akademik analiz ikizi
@@ -244,10 +267,10 @@ turret_fcs/
 │   ├── telemetry.py           # Kare-kare donanım telemetri kaydedicisi
 │   ├── fcs_manager.py         # Hedef seçim, kilit, balistik ve menzil kapılama motoru
 │   ├── fcs_comm.py            # Ters kayan pencereli STM32 UART binary paket haberleşme sürücüsü
-│   ├── kalman_filter.py       # Kalman filtreli 3D yörünge ve hız kestirimi (2-DOF Feedforward)
+│   ├── kalman_filter.py       # Kalman filtreli 3D yörünge ve hız kestirimi (Lead Pursuit)
 │   ├── turret_hud.py          # Askeri standartta dinamik taktiksel HUD arayüzü
 │   ├── rl_controller.py       # 11-boyutlu eylem geçmişli PPO RL çıkarım motoru
-│   ├── p_controller.py        # 2-DOF hız ileri beslemeli ve yumuşak ölü bölgeli Tip-1 P kontrolcü
+│   ├── p_controller.py        # Yumuşak ölü bölgeli Tip-1 P motor kontrolcüsü
 │   ├── patrol_generator.py    # Lissajous eğrisi parametrik devriye motoru
 │   ├── target_selector.py     # Öncelikli hedef filtreleme algoritması
 │   ├── camera_thread.py       # Sıfır gecikmeli, watchdog korumalı kamera sürücüsü

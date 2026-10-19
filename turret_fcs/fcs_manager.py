@@ -13,8 +13,8 @@ GOREVLER VE ALGORITMALAR:
    alacagi yolu hesaplayip atis onleme acisi (Lead Angle) ve irtifa dususunu kompanse etme.
 4. Dinamik Kilit Yonetimi (Lock Manager): Histerezisli kilit penceresi ve analitik
    Gauss isabet olasiligi hesabi ile atis izni kontrolu.
-5. Hibrit Kontrol Harmanlama: Hedef hizina ve kilit kalitesine gore P kontrolcu ile PPO RL
-   arasinda dinamik agirliklandirma (%0 - %55 AI takviyesi).
+5. Mod Yonetimi ve Kontrolculer: Yumusak Olu Bolgeli Tip-1 P Kontrolcu (Hassas Kilit)
+   veya 11-Boyutlu PPO RL Kontrolcu (Cevik Takip).
 6. Sakin Dairesel Devriye: Hedef kayboldugunda 1.5 sn bekleme, merkeze donus ve 2 eksenli dairesel tarama.
 ================================================================================
 """
@@ -43,8 +43,8 @@ class FCSManager:
         self.rl_controller = RLController()
         self.patrol = PatrolGenerator()
 
-        self.control_mode = "P" if control_mode not in ["HYBRID", "RL"] else control_mode  # "P", "HYBRID", "RL"
-        self.current_rl_weight = 0.0
+        self.control_mode = "RL" if control_mode == "RL" else "P"  # "P" (Precision) veya "RL" (Agile)
+        self.current_rl_weight = 1.0 if self.control_mode == "RL" else 0.0
         self.patrol_enabled = bool(patrol_enabled)
         self.patrol_status = "STANDBY"
 
@@ -103,6 +103,7 @@ class FCSManager:
         dt = 0.033 if (dt is None or dt <= 0.0) else float(dt)
 
         if best_box is not None:
+            was_lost = (self.frames_since_lost > 0)
             self.frames_since_lost = 0
             x1, y1, x2, y2 = best_box
             bx = (x1 + x2) // 2
@@ -129,7 +130,7 @@ class FCSManager:
 
             if not is_firing:
                 # Taretin bir onceki karedeki donusunden kaynaklanan optik akis kaymasi (Ego-Motion)
-                if self.frames_since_lost == 0:
+                if not was_lost:
                     # 1. Derece aktüatör gecikme modeli (tau = 45 ms)
                     alpha_m = float(dt / (self.servo_tau + dt))
                     self.actual_motor_pan = (1.0 - alpha_m) * self.actual_motor_pan + alpha_m * self.last_cmd_pan
@@ -159,59 +160,15 @@ class FCSManager:
             self.gravity_comp_deg = self.p_controller.compute_gravity_comp(effective_dist_cm)
 
             # 4. Kilit durumu kontrolu
-            speed_mag = float(np.hypot(self.target_velocity[0], self.target_velocity[1]))
             self.lock_mgr.update(angular_err, self.target_velocity, is_firing=(is_firing or is_hud_firing), dist_m=d_m)
 
-            # 5. Motor kontrol komutu (Sabit kazanc, yumusak olu bolge ve Kalman Durum Gozlemcili D terimi)
+            # 5. Motor kontrol komutu (Yumusak olu bolgeli saf oransal Tip-1 P kontrolcu)
             active_pan = float(pan_deg + (self.firing_lead_offset[0] if (is_firing or is_hud_firing) else 0.0))
             active_tilt = float(tilt_deg + ((self.firing_lead_offset[1] + self.gravity_comp_deg) if (is_firing or is_hud_firing) else 0.0))
 
-            # Kalman Durum Gozlemcisinden (Observer) Acisal Hiz (Derece/sn)
-            vel_pan_deg_s, vel_tilt_deg_s = self.tracker.get_angular_velocity_deg_s(fx=fx, fy=fy)
+            u_p_pan, u_p_tilt = self.p_controller.compute_p(active_pan, active_tilt, dt=dt)
 
-            u_p_pan, u_p_tilt = self.p_controller.compute_p(
-                active_pan, active_tilt, dt=dt,
-                vel_pan_deg_s=vel_pan_deg_s, vel_tilt_deg_s=vel_tilt_deg_s
-            )
-
-            if self.control_mode == "HYBRID" and self.rl_controller.is_loaded:
-                screen_w = center_x * 2
-                screen_h = center_y * 2
-                d_pan_deg, d_tilt_deg = self.rl_controller.predict_angles(
-                    bx, by, center_x, center_y, screen_w, screen_h,
-                    self.target_velocity[0], self.target_velocity[1],
-                    d_m, float(pan_deg), float(tilt_deg), dt
-                )
-                
-                # Dinamik RL Agirligi (Hizli manevralarda gecikme telafisi icin %55'e kadar AI takviyesi)
-                lock_qual = float(self.lock_mgr.hit_probability)
-                speed_ratio = float(np.clip(speed_mag / 180.0, 0.0, 1.0))
-                weight_spd = 0.65 * speed_ratio
-                weight_err = float(np.clip(angular_err / 3.0, 0.0, 0.35))
-                raw_boost = weight_spd + weight_err
-                
-                # Kilit saglamlastikca RL agirligini azalt, olu bolgede sifir titresim sagla
-                lock_factor = 1.0 - float(np.clip((lock_qual - 35.0) / 60.0, 0.0, 0.85))
-                self.current_rl_weight = float(np.clip(raw_boost * lock_factor, 0.0, 0.55))
-                w = self.current_rl_weight
-
-                # Disbukey Harmanlama (Convex Blending): (1 - w)*P + w*RL
-                # Kazanc over-boost riski ortadan kalkar; olu bolgede P sakinligi, dinamik manevrada RL cevigi saglanir.
-                blend_pan = (1.0 - w) * u_p_pan + w * d_pan_deg
-                blend_tilt = (1.0 - w) * u_p_tilt + w * d_tilt_deg
-
-                u_pan = float(np.clip(blend_pan, -self.p_controller.max_output, self.p_controller.max_output))
-                u_tilt = float(np.clip(blend_tilt, -self.p_controller.max_output, self.p_controller.max_output))
-                self.last_cmd_pan = u_pan
-                self.last_cmd_tilt = u_tilt
-
-                # Hibrit modda servoya fiilen uygulanan komutu RL'in eylem hafizasina aktar
-                if hasattr(self.rl_controller, "update_applied_action"):
-                    self.rl_controller.update_applied_action(u_pan, u_tilt)
-
-                return u_pan, u_tilt
-
-            elif self.control_mode == "RL" and self.rl_controller.is_loaded:
+            if self.control_mode == "RL" and self.rl_controller.is_loaded:
                 self.current_rl_weight = 1.0
                 screen_w = center_x * 2
                 screen_h = center_y * 2
@@ -234,6 +191,8 @@ class FCSManager:
 
         else:
             self.frames_since_lost += 1
+            if hasattr(self.rl_controller, "on_target_lost"):
+                self.rl_controller.on_target_lost()
             if self.frames_since_lost >= self.max_lost_frames:
                 self.tracker.reset()
                 self.lock_mgr.reset()

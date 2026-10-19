@@ -70,9 +70,10 @@ class TurretEnv(gym.Env):
         # 2. Gercek Donanim Mekanik ve Servo Sinirlari
         self.max_pan_deg = 45.0          # Guvenli mekanik Pan siniri (+-45 deg)
         self.max_tilt_deg = 18.0         # Guvenli mekanik Tilt siniri (+-18 deg)
-        self.max_step_deg = 2.75         # Kare basi maksimum motor adimi (+-2.75 deg/kare)
-        self.deadband_pan = 0.90         # Gercek donanim olu bolgesi Pan (0.90 deg)
-        self.deadband_tilt = 0.95        # Gercek donanim olu bolgesi Tilt (0.95 deg)
+        self.max_step_pan_deg = 0.55     # Kare basi maksimum Pan adimi (+-0.55 deg/kare = 16.5 deg/s)
+        self.max_step_tilt_deg = 0.22    # Dikey agir volan namlu adimi (+-0.22 deg/kare = 6.6 deg/s)
+        self.max_step_deg = self.max_step_pan_deg
+        self.servo_deadband = 0.10       # STM32 0.1 deg UART kuantalama ve servo mekanik olu bolgesi
         self.servo_tau = 0.045           # 1. derece motor zaman sabiti (45 ms)
         self.yolo_noise_std = 3.5        # YOLO merkez gurultusu (piksel)
 
@@ -207,17 +208,15 @@ class TurretEnv(gym.Env):
         if self.enable_randomization:
             self.latency_steps = int(np.random.choice([1, 2, 3]))  # 33 ms - 100 ms degisken donanim gecikmesi
             self.obs_queue = deque(maxlen=self.latency_steps + 1)
-            self.servo_tau = float(np.random.uniform(0.035, 0.070))  # Servo gecikmesi (35 - 70 ms)
-            self.deadband_pan = float(np.random.uniform(0.75, 1.05))  # Pan mekanik olu bolge
-            self.deadband_tilt = float(np.random.uniform(0.80, 1.10)) # Tilt mekanik olu bolge
+            self.servo_tau = float(np.random.uniform(0.035, 0.065))  # Servo gecikmesi (35 - 65 ms)
+            self.servo_deadband = float(np.random.uniform(0.08, 0.14)) # STM32 0.1 deg kuantalamasi
             self.dt = float(np.random.uniform(0.028, 0.038))         # 26 - 36 FPS dalgalanmasi
             self.yolo_noise_std = float(np.random.uniform(2.0, 5.0))  # YOLO kutu titremesi (piksel)
         else:
             self.latency_steps = self.base_latency_steps
             self.obs_queue = deque(maxlen=self.latency_steps + 1)
             self.servo_tau = 0.045
-            self.deadband_pan = 0.90
-            self.deadband_tilt = 0.95
+            self.servo_deadband = 0.10
             self.dt = self.base_dt
             self.yolo_noise_std = 0.0
 
@@ -252,14 +251,21 @@ class TurretEnv(gym.Env):
         action = np.clip(action, -1.0, 1.0)
 
         # =====================================================================
-        # 1. GERCEK SERVO AKTÜATÖR FİZİĞİ (Deadband + Slew Limit + Motor Lag)
+        # 1. GERCEK SERVO AKTÜATÖR FİZİĞİ (Deadband + Asimetrik Eylemsizlik + Motor Lag)
         # =====================================================================
-        cmd_pan_step = float(action[0]) * self.max_step_deg
-        cmd_tilt_step = float(action[1]) * self.max_step_deg
+        cmd_pan_step = float(action[0]) * self.max_step_pan_deg
+        cmd_tilt_step = float(action[1]) * self.max_step_tilt_deg
 
-        # A) Olu Bolge (Deadband) Modeli: Eger komut olu bolgeden kucukse motor oynamaz
-        eff_pan_step = 0.0 if abs(cmd_pan_step) < self.deadband_pan else cmd_pan_step
-        eff_tilt_step = 0.0 if abs(cmd_tilt_step) < self.deadband_tilt else cmd_tilt_step
+        # A) STM32 Kuantalama ve Servo Olu Bolge Modeli (Yumusak Gecisli - Zero Jerk)
+        if abs(cmd_pan_step) < self.servo_deadband:
+            eff_pan_step = 0.0
+        else:
+            eff_pan_step = math.copysign(abs(cmd_pan_step) - self.servo_deadband * 0.5, cmd_pan_step)
+
+        if abs(cmd_tilt_step) < self.servo_deadband:
+            eff_tilt_step = 0.0
+        else:
+            eff_tilt_step = math.copysign(abs(cmd_tilt_step) - self.servo_deadband * 0.5, cmd_tilt_step)
 
         # B) 1. Derece Viskoz Motor Dinamigi (Lag Filtresi)
         alpha_m = self.dt / (self.servo_tau + self.dt)
@@ -313,17 +319,17 @@ class TurretEnv(gym.Env):
 
         # B) Sakinlik / Hız Faktoru: Merkezde savrulmadan durabilme yetenegi
         action_mag = float(np.hypot(action[0], action[1]))
-        calm_factor = math.exp(- 3.0 * (action_mag**2))
+        calm_factor = math.exp(- 4.0 * (action_mag**2))
 
         # C) Hedef Vizor Merkezindeyken Gauss Kilit Bonusu (Sakinlikle carpanli)
-        r_bullseye = self.w_bullseye * math.exp(- 18.0 * dist_sq) * (0.35 + 0.65 * calm_factor)
+        r_bullseye = self.w_bullseye * math.exp(- 20.0 * dist_sq) * (0.30 + 0.70 * calm_factor)
 
-        # D) Kilit Kararlilik Odulu: Hedef %5 alanda VE motor sakinse buyuk odul
-        is_calm_lock = (current_dist < 0.05) and (action_mag < 0.30)
-        r_lock = self.w_lock if is_calm_lock else (self.w_lock * 0.20 if current_dist < 0.05 else 0.0)
+        # D) Kilit Kararlilik Odulu: Hedef vizor merkezinde (%4 alan) VE motor sakinse buyuk odul
+        is_calm_lock = (current_dist < 0.04) and (action_mag < 0.20)
+        r_lock = self.w_lock if is_calm_lock else (self.w_lock * 0.25 if current_dist < 0.04 else 0.0)
 
-        # E) Yaklasma Ilerleme Odulu
-        r_progress = 10.0 * (self.last_dist_val - current_dist)
+        # E) Yaklasma Ilerleme Odulu (Asiri hiz tesvikini onlemek icin olculu)
+        r_progress = 3.5 * (self.last_dist_val - current_dist)
         self.last_dist_val = current_dist
 
         # F) Eylem Sarsinti / Jerk Cezasi (Motor titresimini sifirlar)
@@ -331,10 +337,17 @@ class TurretEnv(gym.Env):
         r_smooth = - self.w_smooth * action_diff
         self.last_action = action.copy()
 
-        # G) Merkezde gereksiz aksiyon alma cezasi (Hareketsiz sakin kilit tesviki)
-        r_center_still = - 1.5 * action_mag if current_dist < 0.08 else 0.0
+        # G) Surekli Eylem Buyuklugu Cezasi (L2 Action Regularization - Asiri komut basmayi onler)
+        r_act_reg = - 0.70 * (action[0]**2 + action[1]**2)
 
-        reward = r_dist + r_bullseye + r_lock + r_progress + r_smooth + r_center_still
+        # H) Merkezde gereksiz aksiyon alma cezasi (Hareketsiz sakin kilit tesviki)
+        r_center_still = - 2.5 * action_mag if current_dist < 0.06 else 0.0
+
+        # I) Kamera Hareket Bulanikligi (Motion Blur) Cezasi (Hizli savrulmada goruntu bozulur)
+        step_mag = math.hypot(cmd_pan_step, cmd_tilt_step)
+        r_blur = - 2.0 * (step_mag - 0.35) if step_mag > 0.35 else 0.0
+
+        reward = r_dist + r_bullseye + r_lock + r_progress + r_smooth + r_act_reg + r_center_still + r_blur
 
         terminated = False
         truncated = self.step_count >= self.max_steps

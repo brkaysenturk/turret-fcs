@@ -15,7 +15,7 @@ GOSTERGE VE TELEMETRI BILESENLERI:
 4. Balistik Onleme Ibre ve Oku (Lead Indicator Vector): Hedefin gelecekteki
    konumunu gosteren tahmin vizoru ve hedef yon oku.
 5. Canli Telemetri Paneli: FPS, TF-Luna LiDAR mesafesi, sinyal gucu, acisal sapma,
-   kontrol modu (P CONTROLLER / HYBRID CONTROLLER / RL CONTROLLER) ve akilli devriye durumu.
+   kontrol modu (P CONTROLLER / RL CONTROLLER) ve akilli devriye durumu.
 ================================================================================
 """
 

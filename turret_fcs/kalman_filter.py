@@ -41,11 +41,11 @@ class KalmanFilter:
     def __init__(
         self,
         dt=0.033,
-        r_var=25.0,          # Olcum gurultusu varyansi (pixel^2) - YOLO kutu titremesini yumusatmak icin artirildi
-        sigma_a_min=5.0,     # Kararli/yavas hedef ivme gurultusu (px/s^2)
-        sigma_a_max=320.0,   # Hizli manevra/yon degisimi ivme gurultusu (px/s^2)
-        residual_low=8.0,    # Alt inovasyon esigi (pixel)
-        residual_high=32.0,  # Ust inovasyon esigi (pixel)
+        r_var=64.0,          # Ev: 64.0 (Kutu titremesi sonumlendi) | Okul Orijinal: 25.0
+        sigma_a_min=4.0,     # Kararli/yavas hedef ivme gurultusu (px/s^2)
+        sigma_a_max=280.0,   # Hizli manevra ivme gurultusu (px/s^2)
+        residual_low=14.0,   # Ev: 14.0 (Kutu kaymalarinda sahte hiz onler) | Okul Orijinal: 8.0
+        residual_high=38.0,  # Ev: 38.0 | Okul Orijinal: 32.0
         jump_threshold=90.0  # Hedef atlamasi/yanlis tespit esigi (pixel)
     ):
         self.dt = float(dt)
@@ -162,16 +162,17 @@ class KalmanFilter:
 
         # 4. Duragan Hedef Hiz Olu Bolgesi (Velocity Deadband)
         speed = float(np.hypot(raw_vx, raw_vy))
-        if speed < 30.0:
-            deadband_decay = max(0.0, (speed - 8.0) / 22.0)
+        if speed < 45.0:  # Ev: 45.0 (Dururken sifir titresim) | Okul Orijinal: 30.0
+            deadband_decay = max(0.0, (speed - 12.0) / 33.0)
             raw_vx *= deadband_decay
             raw_vy *= deadband_decay
             self.x[2, 0] = raw_vx
             self.x[3, 0] = raw_vy
 
         # Hizi ustel yumusat (Exponential Moving Average)
-        self.smooth_vx = 0.70 * self.smooth_vx + 0.30 * raw_vx
-        self.smooth_vy = 0.70 * self.smooth_vy + 0.30 * raw_vy
+        # Ev: 0.82 / 0.18 (Dikey rezonans sonumlu) | Okul Orijinal: 0.70 / 0.30
+        self.smooth_vx = 0.82 * self.smooth_vx + 0.18 * raw_vx
+        self.smooth_vy = 0.82 * self.smooth_vy + 0.18 * raw_vy
 
         self.last_meas_x = mx
         self.last_meas_y = my
@@ -201,7 +202,7 @@ class KalmanFilter:
         """
         Kalman filtresinin kestirdigi piksel hizini (px/s)
         kamera optik odak uzakligina (fx, fy) gore acisal hiza (derece/saniye) donusturur.
-        P kontrolcuye 2-DOF Referans Hizi Ileri Beslemesi (Velocity Feedforward) icin gurultusu arindirilmis girdi saglar.
+        Telemetri ve acisal hedef takip analizi icin gurultuden arindirilmis girdi saglar.
         """
         fx_val = max(float(fx), 1.0)
         fy_val = max(float(fy), 1.0)
