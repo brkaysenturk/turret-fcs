@@ -7,7 +7,7 @@ Bu modul, gercek taret donaniminin olculmus fiziksel kisitlarini:
 2. Gercek servo olu bolgesi (Deadband: Pan +-0.90 deg, Tilt +-0.95 deg)
 3. Kare basi maksimum adim doyumu (Max Slew Limit: +-2.75 deg/kare)
 4. 1. Derece viskoz motor gecikmesi (Actuator Time Constant: tau = 35-70 ms)
-5. Logitech C270 gercek optik parametreleri (H_FOV = 53.0 deg, V_FOV = 31.5 deg)
+5. Logitech C270 gercek optik modeli (dFOV 55 deg -> H_FOV = 48.8 deg, V_FOV = 28.6 deg)
 6. Domain Randomization (YOLO gurultusu, degisken gecikme, oransal FPS dalgalanmasi)
 7. Eylem Gecmisi (Action History - 2 adimlik boru hatti farkindaligi)
 8. Sakinlik Sartli Odul Fonksiyonu (Merkezde titresim ve savrulmayi onleyen ceza)
@@ -62,8 +62,8 @@ class TurretEnv(gym.Env):
         self.screen_h = 720.0
         self.center_x = self.screen_w / 2.0
         self.center_y = self.screen_h / 2.0
-        self.h_fov = 53.0
-        self.v_fov = 31.5
+        self.h_fov = 48.8
+        self.v_fov = 28.6
         self.fx = (self.screen_w / 2.0) / math.tan(math.radians(self.h_fov / 2.0))
         self.fy = (self.screen_h / 2.0) / math.tan(math.radians(self.v_fov / 2.0))
 

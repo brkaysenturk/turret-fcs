@@ -275,13 +275,25 @@ class TurretHUD:
             black_layer = np.zeros_like(roi)
             frame[py1:py2, px1:px2] = cv2.addWeighted(roi, 0.35, black_layer, 0.65, 0)
 
-            # Hedef varken sari, yokken gri cerceve
-            box_border_color = (0, 191, 255) if target_detected else (90, 90, 90)
+            # Hedef varken sari, devriyede ayni devriye yesili (0, 255, 0), bostayken gri cerceve
+            is_patrol = status_line.startswith("PATROL")
+            if is_patrol:
+                box_border_color = (0, 255, 0)
+                text_color = (0, 255, 0)
+                angle_color = (0, 255, 0)
+                telemetry_line = "AIRSPACE SCAN: WIDE FIGURE-8 (8.0s)"
+            elif target_detected:
+                box_border_color = (0, 191, 255)
+                angle_color = angle_err_color if angle_err_color is not None else (200, 210, 220)
+            else:
+                box_border_color = (90, 90, 90)
+                angle_color = (200, 210, 220)
+
             cv2.rectangle(frame, (px1, py1), (px2, py2), box_border_color, 2)
 
             cv2.putText(frame, status_line, (26, py1 + 24), self.font, title_scale, status_color, thick, cv2.LINE_AA)
             cv2.putText(frame, telemetry_line, (26, py1 + 50), self.font, sub_scale, text_color, 1, cv2.LINE_AA)
-            cv2.putText(frame, angle_err_text, (26, py1 + 72), self.font, sub_scale, (200, 210, 220), 1, cv2.LINE_AA)
+            cv2.putText(frame, angle_err_text, (26, py1 + 72), self.font, sub_scale, angle_color, 1, cv2.LINE_AA)
 
         # Sag ust FPS parametresi (Takip ve devriyede aktif; kilit ve atis aninda gizlenir)
         if not (is_locked or firing):

@@ -46,8 +46,8 @@ def main():
     fcs = FCSManager(control_mode="P")
     telemetry = TelemetryLogger() if ENABLE_TELEMETRY else None
 
-    # Logitech C270 Resmi Datasheet Gorus Acilari (dFOV 60° -> 16:9 Projeksiyon)
-    H_FOV, V_FOV = 53.0, 31.5
+    # Logitech C270 Resmi Donanim Optigi (dFOV 55° -> 16:9 Projeksiyon)
+    H_FOV, V_FOV = 48.8, 28.6
     fx = (1280 / 2.0) / np.tan(np.radians(H_FOV / 2.0))
     fy = (720 / 2.0) / np.tan(np.radians(V_FOV / 2.0))
 
@@ -189,9 +189,14 @@ def main():
                         hud.draw_tracking_line(frame, center_x, center_y, bx, by, status_color)
                     hud.draw_lead_indicator(frame, bx, by, int(fcs.pred_center[0]), int(fcs.pred_center[1]))
             else:
-                status_text = "STATUS: PATROLLING" if fcs.patrol_enabled else "STATUS: STANDBY"
-                status_color = (0, 255, 0) if fcs.patrol_enabled else (180, 180, 180)
-                angle_err_text = "ANGULAR ERR:   [--, --] deg"
+                if fcs.patrol_enabled:
+                    status_text = f"PATROL: {fcs.patrol_status}"
+                    status_color = (0, 255, 0)
+                    angle_err_text = f"TURRET POSE:   [{fcs.turret_pan_deg:+.1f} , {fcs.turret_tilt_deg:+.1f}] deg"
+                else:
+                    status_text = "STATUS: STANDBY"
+                    status_color = (180, 180, 180)
+                    angle_err_text = "ANGULAR ERR:   [--, --] deg"
 
                 # Hedef yokken devriye etkinse komutlari tarete ilet (fcs.update zaten 142. satirda calisti)
                 if fcs.patrol_enabled:
@@ -260,8 +265,15 @@ def main():
                 mode_label = "P CONTROLLER (PRECISION LOCK)"
                 mode_color = (0, 255, 255)
 
-            patrol_tag = "PATROL: AUTO" if fcs.patrol_enabled else "PATROL: OFF"
-            banner_text = f"[{mode_label}]  |  [{patrol_tag}]"
+            if fcs.patrol_enabled:
+                banner_text = f"[{mode_label}]  |  [PATROL: FIGURE-8]"
+                banner_color = (0, 255, 0)
+                banner_border = (0, 255, 0)
+            else:
+                banner_text = f"[{mode_label}]  |  [PATROL: OFF]"
+                banner_color = mode_color
+                banner_border = (90, 100, 110)
+
             (b_w, _), _ = cv2.getTextSize(banner_text, cv2.FONT_HERSHEY_SIMPLEX, 0.56, 2)
             banner_x = max(10, center_x - (b_w // 2))
 
@@ -272,9 +284,9 @@ def main():
             roi_b = frame[by1:by2, bx1:bx2]
             black_b = np.zeros_like(roi_b)
             frame[by1:by2, bx1:bx2] = cv2.addWeighted(roi_b, 0.30, black_b, 0.70, 0)
-            cv2.rectangle(frame, (bx1, by1), (bx2, by2), (90, 100, 110), 1)
+            cv2.rectangle(frame, (bx1, by1), (bx2, by2), banner_border, 1)
 
-            cv2.putText(frame, banner_text, (banner_x, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.56, mode_color, 2, cv2.LINE_AA)
+            cv2.putText(frame, banner_text, (banner_x, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.56, banner_color, 2, cv2.LINE_AA)
 
             # Alt operator kontrol lejandi
             footer_text = "[M] Mode (P/RL)  |  [P] Patrol  |  [SPACE] E-Stop  |  [Y] Fire  |  [Q] Quit"
@@ -301,8 +313,8 @@ def main():
                 hud.log_event(f"[MODE] {mode_str}", color=(0, 215, 255))
             elif key == ord("p") or key == ord("P"):
                 fcs.patrol_enabled = not fcs.patrol_enabled
-                p_text = "CIRCULAR SCAN ENGAGED" if fcs.patrol_enabled else "STANDBY (DISABLED)"
-                p_color = (0, 255, 128) if fcs.patrol_enabled else (180, 180, 180)
+                p_text = "FIGURE-8 SCAN ENGAGED" if fcs.patrol_enabled else "STANDBY (DISABLED)"
+                p_color = (0, 255, 0) if fcs.patrol_enabled else (180, 180, 180)
                 hud.log_event(f"[PATROL] {p_text}", color=p_color)
             elif key == 32:  # E-STOP (Bosluk tusu)
                 is_estop = not is_estop

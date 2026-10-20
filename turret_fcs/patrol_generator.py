@@ -30,17 +30,17 @@ import numpy as np
 
 class PatrolGenerator:
     """
-    1.5s bekleme, sakin merkeze donus ve 2 eksenli dairesel taramali devriye ureteci.
+    1.5s hold, smooth return-to-center (odometry-aware), and Figure-8 airspace scan generator.
     """
 
     def __init__(
         self,
-        wait_delay_sec=1.5,      # Hedef kaybolduktan sonra bekleme suresi (1.5 saniye)
-        scan_pan_amp=35.0,       # Yatay tarama genligi (+/- 35 derece -> FOV ile ~125 derece hava sahasi)
-        scan_tilt_amp=8.0,       # Dikey tarama genligi (+/- 8 derece -> FOV ile ~48 derece dikey koridor)
-        scan_period_sec=5.0,     # 1 tam 8-sekli (sonsuzluk) turu suresi (5.0 saniye -> dinamik ve seri tarama)
-        return_speed_dps=20.0,   # Merkeze donus acisal hizi (20 derece/saniye)
-        max_slew_per_frame=1.5,  # Kare basi maksimum motor adimi (derece - kirkilmayi onler)
+        wait_delay_sec=1.5,      # Wait delay after losing target before initiating patrol (seconds)
+        scan_pan_amp=45.0,       # Horizontal scan amplitude (+/- 45 deg -> with FOV covers ~140 deg airspace)
+        scan_tilt_amp=16.0,      # Vertical scan amplitude (+/- 16 deg -> with FOV covers ~65 deg vertical corridor)
+        scan_period_sec=8.0,     # Full scan cycle duration (8.0s -> smooth, low-jerk servo motion)
+        return_speed_dps=20.0,   # Return-to-center angular speed (20 deg/s)
+        max_slew_per_frame=1.5,  # Maximum step per frame (deg/frame - prevents servo shock)
     ):
         self.wait_delay_sec = float(wait_delay_sec)
         self.scan_pan_amp = float(scan_pan_amp)
@@ -56,45 +56,44 @@ class PatrolGenerator:
         self.current_tilt = 0.0
 
     def on_target_detected(self, actual_pan=0.0, actual_tilt=0.0):
-        """Hedef tespit edildiginde devriye beklemede kalir, zamanlayici sifirlanir."""
+        """Reset patrol generator upon target acquisition."""
         self.state = "WAITING"
         self.lost_timer = 0.0
         self.scan_time = 0.0
-        self.current_pan = 0.0
-        self.current_tilt = 0.0
+        self.current_pan = float(actual_pan)
+        self.current_tilt = float(actual_tilt)
 
     def update(self, dt, current_pan=None, current_tilt=None):
         """
-        Hedef yokken bir sonraki devriye adimini (delta_pan, delta_tilt) ve durum metnini dondurur.
+        Calculates the next patrol step (delta_pan, delta_tilt) and status text.
         """
         dt = 0.033 if (dt is None or dt <= 0.0) else float(dt)
         curr_p = self.current_pan if current_pan is None else float(current_pan)
         curr_t = self.current_tilt if current_tilt is None else float(current_tilt)
 
-        # 1. ASAMA: HEDEF KAYBOLDUKTAN SONRA 1.5 SANIYE YERINDE SAKINCE BEKLE
+        # STAGE 1: HOLD LAST KNOWN POSITION FOR 1.5s
         if self.state == "WAITING":
             self.lost_timer += dt
             if self.lost_timer < self.wait_delay_sec:
                 remaining = self.wait_delay_sec - self.lost_timer
-                return 0.0, 0.0, f"BEKLEMEDE ({remaining:.1f}s)"
+                return 0.0, 0.0, f"HOLDING ({remaining:.1f}s)"
             else:
                 self.state = "RETURNING"
 
-        # 2. ASAMA: SAKINCE MERKEZE DONUS (0, 0)
+        # STAGE 2: SMOOTH RETURN TO BORESIGHT CENTER (0, 0)
         if self.state == "RETURNING":
             err_pan = -curr_p
             err_tilt = -curr_t
             dist_to_center = float(np.hypot(err_pan, err_tilt))
 
-            # Merkeze yeterince yaklastiysak 8-sekli taramaya basla
+            # When within 1.0 degree of center, transition to scanning
             if dist_to_center < 1.0:
                 self.state = "SCANNING"
                 self.scan_time = 0.0
-                self.current_pan = 0.0
-                self.current_tilt = 0.0
-                return 0.0, 0.0, "MERKEZE ULASILDI -> 8-SEKLI TARAMA BASLIYOR"
+                self.current_pan = curr_p
+                self.current_tilt = curr_t
+                return 0.0, 0.0, "BORESIGHT LOCKED -> COMMENCING SCAN"
 
-            # Merkeze dogru sakin adim
             step = min(self.return_speed_dps * dt, self.max_slew)
             dir_pan = float(np.sign(err_pan))
             dir_tilt = float(np.sign(err_tilt))
@@ -102,18 +101,18 @@ class PatrolGenerator:
             delta_p = float(np.clip(dir_pan * min(abs(err_pan), step), -self.max_slew, self.max_slew))
             delta_t = float(np.clip(dir_tilt * min(abs(err_tilt), step), -self.max_slew, self.max_slew))
 
-            self.current_pan += delta_p
-            self.current_tilt += delta_t
-            return delta_p, delta_t, f"MERKEZE DONUYOR ({dist_to_center:.1f}°)"
+            self.current_pan = curr_p + delta_p
+            self.current_tilt = curr_t + delta_t
+            return delta_p, delta_t, f"RTB BORESIGHT ({dist_to_center:.1f} deg)"
 
-        # 3. ASAMA: 8-SEKLI (SONSUZLUK) LISSAJOUS TARAMASI (Pan: ±35°, Tilt: ±8°)
+        # STAGE 3: SMOOTH FIGURE-8 LISSAJOUS SCAN PATTERN (+/-45 x +/-16 deg)
         elif self.state == "SCANNING":
             self.scan_time += dt
 
-            # Merkezden 8 sekline gecerken 2 saniyelik yumusak spiral genisleme (sifir vuruntu)
+            # 2.0s smooth spiral expansion from center (zero step-jerk)
             ramp = min(1.0, self.scan_time / 2.0)
 
-            # 1:2 frekans orani ile yatay sonsuzluk (figure-8) yorungesi
+            # 1:2 Figure-8 Lissajous infinity scan (passes through center twice per loop)
             target_pan = ramp * self.scan_pan_amp * float(np.sin(self.scan_freq * self.scan_time))
             target_tilt = ramp * self.scan_tilt_amp * float(np.sin(2.0 * self.scan_freq * self.scan_time))
 
@@ -123,14 +122,14 @@ class PatrolGenerator:
             delta_p = float(np.clip(err_pan, -self.max_slew, self.max_slew))
             delta_t = float(np.clip(err_tilt, -self.max_slew, self.max_slew))
 
-            self.current_pan += delta_p
-            self.current_tilt += delta_t
-            return delta_p, delta_t, f"8-SEKLI TARAMA (±{int(self.scan_pan_amp)}° x ±{int(self.scan_tilt_amp)}°)"
+            self.current_pan = curr_p + delta_p
+            self.current_tilt = curr_t + delta_t
+            return delta_p, delta_t, f"FIGURE-8 SCAN (+/-{int(self.scan_pan_amp)} x +/-{int(self.scan_tilt_amp)} deg)"
 
         return 0.0, 0.0, "STANDBY"
 
     def reset(self):
-        """Devriye durumunu sifirlar."""
+        """Resets the patrol generator state."""
         self.state = "WAITING"
         self.lost_timer = 0.0
         self.scan_time = 0.0

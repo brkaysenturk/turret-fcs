@@ -72,7 +72,10 @@ class TelemetryLogger:
             "rl_weight",         # Yapay zeka agirlik katsayisi (%0.0 - 1.0)
             "is_locked",         # Kilit durumu (1 / 0)
             "lock_counter",      # Kilit kararlilik sayaci (0 - 10)
-            "hit_prob"           # Balistik isabet olasiligi (%0.0 - 100.0)
+            "hit_prob",          # Balistik isabet olasiligi (%0.0 - 100.0)
+            "turret_pan",        # Taret dead-reckoning yatay yonelim acisi (derece)
+            "turret_tilt",       # Taret dead-reckoning dikey yonelim acisi (derece)
+            "patrol_status"      # Otonom devriye durum metni
         ]
 
         self._init_csv()
@@ -124,6 +127,9 @@ class TelemetryLogger:
         is_locked_flag = 1 if getattr(fcs, "is_locked", False) else 0
         lock_counter = int(getattr(fcs, "lock_counter", 0)) if fcs else 0
         hit_prob = round(float(getattr(fcs, "hit_probability", 0.0)), 1) if fcs else 0.0
+        turret_p = round(float(getattr(fcs, "turret_pan_deg", 0.0)), 2) if fcs else 0.0
+        turret_t = round(float(getattr(fcs, "turret_tilt_deg", 0.0)), 2) if fcs else 0.0
+        p_status = str(getattr(fcs, "patrol_status", "STANDBY")) if fcs else "STANDBY"
 
         row = [
             elapsed_sec,
@@ -146,7 +152,10 @@ class TelemetryLogger:
             rl_weight,
             is_locked_flag,
             lock_counter,
-            hit_prob
+            hit_prob,
+            turret_p,
+            turret_t,
+            p_status
         ]
 
         self.buffer.append(row)

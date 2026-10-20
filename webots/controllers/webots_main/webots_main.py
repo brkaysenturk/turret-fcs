@@ -28,8 +28,8 @@ def main():
     WINDOW_NAME = "Turret FCS - Webots Predictive"
     cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
 
-    # 3. Optik Kamera Parametreleri (Logitech C270)
-    H_FOV, V_FOV = 53.0, 31.5
+    # 3. Optik Kamera Parametreleri (Logitech C270 dFOV 55° -> 16:9)
+    H_FOV, V_FOV = 48.8, 28.6
     fx = (hw.w_cam / 2.0) / np.tan(np.radians(H_FOV / 2.0))
     fy = (hw.h_cam / 2.0) / np.tan(np.radians(V_FOV / 2.0))
     center_x, center_y = hw.w_cam // 2, hw.h_cam // 2

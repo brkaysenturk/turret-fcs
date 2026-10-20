@@ -60,6 +60,14 @@ class FCSManager:
         self.last_cmd_pan = 0.0
         self.last_cmd_tilt = 0.0
 
+        # Taret Açısal Konum Kestirimi (Dead-Reckoning Odometri - Devriye ve Emniyet Sinirlari)
+        self.turret_pan_deg = 0.0
+        self.turret_tilt_deg = 0.0
+        self.PAN_LIMIT_MIN = -75.0
+        self.PAN_LIMIT_MAX = 75.0
+        self.TILT_LIMIT_MIN = -25.0
+        self.TILT_LIMIT_MAX = 25.0
+
         # Aktuator Durum Gozlemcisi (Actuator State Observer - 1. derece motor dinamigi tau=45ms)
         self.servo_tau = 0.045
         self.actual_motor_pan = 0.0
@@ -109,8 +117,8 @@ class FCSManager:
             bx = (x1 + x2) // 2
             by = (y1 + y2) // 2 
 
-            # Devriye modulune hedefin son bilinen koordinatlarini bildir
-            self.patrol.on_target_detected(self.actual_pan, self.actual_tilt)
+            # Devriye modulune hedefin son bilinen taret koordinatlarini bildir
+            self.patrol.on_target_detected(self.turret_pan_deg, self.turret_tilt_deg)
             self.patrol_status = "TRACKING"
 
             # 1. Kamera merkezinden hedef acilari ve acisal hata
@@ -179,12 +187,16 @@ class FCSManager:
                 )
                 u_pan = float(np.clip(d_pan_deg, -self.p_controller.max_output, self.p_controller.max_output))
                 u_tilt = float(np.clip(d_tilt_deg, -self.p_controller.max_output, self.p_controller.max_output))
+                self.turret_pan_deg = float(np.clip(self.turret_pan_deg + u_pan, self.PAN_LIMIT_MIN, self.PAN_LIMIT_MAX))
+                self.turret_tilt_deg = float(np.clip(self.turret_tilt_deg + u_tilt, self.TILT_LIMIT_MIN, self.TILT_LIMIT_MAX))
                 self.last_cmd_pan = u_pan
                 self.last_cmd_tilt = u_tilt
                 return u_pan, u_tilt
 
             else:
                 self.current_rl_weight = 0.0
+                self.turret_pan_deg = float(np.clip(self.turret_pan_deg + u_p_pan, self.PAN_LIMIT_MIN, self.PAN_LIMIT_MAX))
+                self.turret_tilt_deg = float(np.clip(self.turret_tilt_deg + u_p_tilt, self.TILT_LIMIT_MIN, self.TILT_LIMIT_MAX))
                 self.last_cmd_pan = u_p_pan
                 self.last_cmd_tilt = u_p_tilt
                 return u_p_pan, u_p_tilt
@@ -201,9 +213,13 @@ class FCSManager:
                 self.actual_motor_pan = 0.0
                 self.actual_motor_tilt = 0.0
 
-            # Hedef yokken: Devriye modu aciksa sakin dairesel tarama
+            # Hedef yokken: Devriye modu aciksa sakin dairesel tarama (odometri ile merkeze donus)
             if self.patrol_enabled:
-                d_p, d_t, self.patrol_status = self.patrol.update(dt)
+                d_p, d_t, self.patrol_status = self.patrol.update(
+                    dt, current_pan=self.turret_pan_deg, current_tilt=self.turret_tilt_deg
+                )
+                self.turret_pan_deg = float(np.clip(self.turret_pan_deg + d_p, self.PAN_LIMIT_MIN, self.PAN_LIMIT_MAX))
+                self.turret_tilt_deg = float(np.clip(self.turret_tilt_deg + d_t, self.TILT_LIMIT_MIN, self.TILT_LIMIT_MAX))
                 self.p_controller.actual_pan = 0.0
                 self.p_controller.actual_tilt = 0.0
                 self.last_cmd_pan = d_p
@@ -225,6 +241,8 @@ class FCSManager:
         self.gravity_comp_deg = 0.0
         self.last_cmd_pan = 0.0
         self.last_cmd_tilt = 0.0
+        self.turret_pan_deg = 0.0
+        self.turret_tilt_deg = 0.0
         self.actual_motor_pan = 0.0
         self.actual_motor_tilt = 0.0
         self.tracker.reset()
