@@ -181,7 +181,7 @@ def main():
                 stm.send(active_pan_cmd, active_tilt_cmd, fcs_state)
 
                 angle_err_text = f"ANGULAR ERR:   [{fcs.actual_pan:+.1f} , {fcs.actual_tilt:+.1f}] deg"
-                target_label = "" if is_hud_firing else hud.get_box_label(dist_cm, target_centered, fcs.is_locked)
+                target_label = "" if is_hud_firing else hud.get_box_label(dist_cm, target_centered, fcs.is_locked, conf=fcs.target_conf)
                 hud.draw_corner_box(frame, x1, y1, x2, y2, color=status_color, length=30, thickness=2, label=target_label)
 
                 if not is_hud_firing:

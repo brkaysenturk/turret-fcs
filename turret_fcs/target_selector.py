@@ -23,28 +23,39 @@ class TargetSelector:
     """
 
     def __init__(self, min_conf=0.28, min_area=400, max_area=400000, min_dim=18):
-        self.min_conf = min_conf  # Ev: 0.28 | Okul: 0.45
+        self.search_min_conf = float(min_conf)  # Ilk tespit arama esigi (Ev: 0.28 | Okul: 0.45)
+        self.track_min_conf = 0.16              # Kilitliyken hareket bulanikligi (motion-blur) tolerans esigi
         self.min_area = min_area
         self.max_area = max_area
         self.min_dim = min_dim
         self.locked_track_id = None
         self.lost_counter = 0
+        self.last_target_conf = 0.0
+
+    @property
+    def min_conf(self):
+        """Kilitli hedef takipteyken hareket bulanikligi aninda kopmamasi icin dinamik esik (Histerezis)."""
+        if self.locked_track_id is not None:
+            return self.track_min_conf
+        return self.search_min_conf
 
     def select_best_target(self, boxes, center_x, center_y):
         if len(boxes) == 0:
             self.lost_counter += 1
             if self.lost_counter > 8:  # Ev: 8 | Okul: 5
                 self.locked_track_id = None
+            self.last_target_conf = 0.0
             return None
 
         candidates = []
+        effective_conf_thresh = self.min_conf
         for box in boxes:
             try:
                 conf = float(box.conf[0].cpu().numpy()) if hasattr(box.conf[0], "cpu") else float(box.conf[0])
             except Exception:
                 conf = float(box.conf) if hasattr(box, "conf") else 0.0
 
-            if conf < self.min_conf:
+            if conf < effective_conf_thresh:
                 continue
 
             try:
@@ -86,6 +97,7 @@ class TargetSelector:
             self.lost_counter += 1
             if self.lost_counter > 5:
                 self.locked_track_id = None
+            self.last_target_conf = 0.0
             return None
 
         # 1. Kilitli hedef kimligi (track_id) hala kadrajdaysa ona sadik kal (Hedef atlamasini onler)
@@ -93,15 +105,18 @@ class TargetSelector:
             for c in candidates:
                 if c["track_id"] is not None and c["track_id"] == self.locked_track_id:
                     self.lost_counter = 0
+                    self.last_target_conf = float(c["conf"])
                     return c["box"]
 
         # 2. Kilitli hedef yoksa veya kaybolduysa merkeze en yakin olani sec ve kilitle
         best = min(candidates, key=lambda c: c["dist_sq"])
         self.locked_track_id = best["track_id"]
         self.lost_counter = 0
+        self.last_target_conf = float(best["conf"])
         return best["box"]
 
     def reset(self):
         """Hedef secici kilit hafizasini sifirlar."""
         self.locked_track_id = None
         self.lost_counter = 0
+        self.last_target_conf = 0.0

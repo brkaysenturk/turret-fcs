@@ -56,6 +56,7 @@ class TelemetryLogger:
             "dt",                # Kare delta zamani (s)
             "fps",               # Anlik FPS
             "target_detected",   # Hedef algilandi mi (1 / 0)
+            "target_conf",       # Hedef YOLO guven skoru (0.00 - 1.00)
             "box_cx",            # Hedef merkez x (pixel)
             "box_cy",            # Hedef merkez y (pixel)
             "angular_err_pan",   # Aci hatasi Pan (derece)
@@ -130,12 +131,14 @@ class TelemetryLogger:
         turret_p = round(float(getattr(fcs, "turret_pan_deg", 0.0)), 2) if fcs else 0.0
         turret_t = round(float(getattr(fcs, "turret_tilt_deg", 0.0)), 2) if fcs else 0.0
         p_status = str(getattr(fcs, "patrol_status", "STANDBY")) if fcs else "STANDBY"
+        target_conf = round(float(getattr(fcs, "target_conf", 0.0)), 3) if (fcs and target_detected) else 0.0
 
         row = [
             elapsed_sec,
             round(dt, 4),
             int(fps),
             1 if target_detected else 0,
+            target_conf,
             box_cx,
             box_cy,
             err_pan,

@@ -73,8 +73,9 @@
   1. **Tilt Ekseninde Limit Cycle'ın Sıfırlanması:** Smith Predictor uygulanan eylem belleği (`act_hist_1`, `act_hist_2`) ölü bölge sonrasına taşındı; asimetrik ölü bölgeler (Pan 0.85°, Tilt 0.95°), kilit yakını sönümleme (0.45 - 1.0) ve sıfır jerk dikey EMA filtresi ile fiziksel testte %50.2 kilitlenme oranı, 13.16 saniye (1.061 kare) aralıksız rekor kilit serisi ve dikeyde %0.0 yön değişimi (sıfır titreşim) elde edildi.
   2. **Hedef Kayıp Toleransı Koruması:** `main.py` içinde hedefin 1 karelik geçici tespit kaçışında erken `fcs.reset()` çağrısı engellendi, `max_lost_frames=4` toleransı korundu.
   3. **Ego-Hareket Aktüatör Gözlemcisi İlklendirmesi:** `fcs_manager.py` içinde hedef yeni yakalandığında (`was_lost`) aktüatör gözlemcisinin sıfırdan başlaması sağlanarak önceki artık hareket komutlarından kaynaklanan sahte optik akış sıçraması engellendi.
-  4. **Mimari ve Vektörel Şemalar:** `turret_fcs_flowchart.svg`, `turret_fcs_hardware.svg` ve `turret_fcs_architecture.png` v1.2 ayrık A/B kontrol mimarisine güncellendi; `mechanical_design.jpg` 3D donanım yerleşimi dokümantasyona bağlandı.
-  5. **Konsolide Analiz Paketi:** 12 dağınık analiz betiği `analysis/inspect_logs.py` ve `analysis/generate_benchmark_plots.py` altında tek çatıya kavuşturuldu.
+  6. **Patrol Birikimli Adımlayıcı (Step Accumulator):** 80-100 FPS döngüde merkeze dönerken 0.20° gibi minik adımların MG996R ölü bölgesinde takılı kalmasını önlemek için `patrol_generator.py` içine birikimli adım mekanizması eklendi; komutlar birikip `0.95°` eşiğini aştığında taret 90-90 mekanik merkezine net torklu adımlarla döner hale getirildi.
+  7. **Dinamik Kalman Hız Ölü Bölgesi (Dynamic Velocity Deadband):** Taret dönüş hızı (`ego_speed`) ve hedef mesafesine (`dist_m < 1.2m`) bağlı olarak Kalman hız ölü bölgesi 45 px/s'den 120 px/s'ye dinamik genişletildi. Yakın mesafedeki sahte hız dalgalanmaları 358.3 px/s'den 70.2 px/s'ye (5 kat sakin) düşürüldü.
+  8. **Takip Histerezisi & CONF HUD:** `target_selector.py` arama modunda `conf = 0.28`, kilitli takip modunda ise `conf = 0.16` dinamik toleransına geçirildi. Taret hızla dönerken ve hareket bulanıklığı oluştuğunda hedefin kopması engellendi; anlık güven skoru (% CONF) hem HUD retikülüne hem de CSV telemetrisine bağlandı.
 
 ---
 

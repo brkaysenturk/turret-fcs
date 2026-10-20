@@ -46,8 +46,11 @@ class TurretHUD:
         """Optik merkez / vizor hedef kutusunun icinde mi kontrolu."""
         return (x1 <= center_x <= x2) and (y1 <= center_y <= y2)
 
-    def get_box_label(self, dist_cm=None, target_centered=False, is_locked=False):
+    def get_box_label(self, dist_cm=None, target_centered=False, is_locked=False, conf=None):
         """Hedef cercevesinin gorsel etiket metnini dondurur."""
+        if conf is not None and conf > 0.0:
+            pct = int(conf * 100) if conf <= 1.0 else int(conf)
+            return f"TARGET %{pct}"
         return "TARGET"
 
     def draw_corner_box(self, img, x1, y1, x2, y2, color, length=18, thickness=2, label=None):

@@ -55,11 +55,18 @@ class PatrolGenerator:
         self.current_pan = 0.0
         self.current_tilt = 0.0
 
+        # Birikimli Geri Donus Adimlayici (MG996R 0.90 deg mekanik olu bolgeyi kirmak icin)
+        self.accum_pan = 0.0
+        self.accum_tilt = 0.0
+        self.min_dispatch_deg = 0.95  # Minimum mekanik hareket esigi (derece)
+
     def on_target_detected(self, actual_pan=0.0, actual_tilt=0.0):
         """Reset patrol generator upon target acquisition."""
         self.state = "WAITING"
         self.lost_timer = 0.0
         self.scan_time = 0.0
+        self.accum_pan = 0.0
+        self.accum_tilt = 0.0
         self.current_pan = float(actual_pan)
         self.current_tilt = float(actual_tilt)
 
@@ -80,26 +87,40 @@ class PatrolGenerator:
             else:
                 self.state = "RETURNING"
 
-        # STAGE 2: SMOOTH RETURN TO BORESIGHT CENTER (0, 0)
+        # STAGE 2: SMOOTH RETURN TO BORESIGHT CENTER (0, 0) WITH ACCUMULATOR
         if self.state == "RETURNING":
             err_pan = -curr_p
             err_tilt = -curr_t
             dist_to_center = float(np.hypot(err_pan, err_tilt))
 
-            # When within 1.0 degree of center, transition to scanning
-            if dist_to_center < 1.0:
+            # Merkeze tam yerlestiğinde (veya cok yaklastiginda) taramaya gec
+            if dist_to_center < 0.6:
                 self.state = "SCANNING"
                 self.scan_time = 0.0
+                self.accum_pan = 0.0
+                self.accum_tilt = 0.0
                 self.current_pan = curr_p
                 self.current_tilt = curr_t
                 return 0.0, 0.0, "BORESIGHT LOCKED -> COMMENCING SCAN"
 
+            # 1. Her karedeki donus payini biriktiriciye ekle
             step = min(self.return_speed_dps * dt, self.max_slew)
             dir_pan = float(np.sign(err_pan))
             dir_tilt = float(np.sign(err_tilt))
 
-            delta_p = float(np.clip(dir_pan * min(abs(err_pan), step), -self.max_slew, self.max_slew))
-            delta_t = float(np.clip(dir_tilt * min(abs(err_tilt), step), -self.max_slew, self.max_slew))
+            self.accum_pan += dir_pan * min(abs(err_pan), step)
+            self.accum_tilt += dir_tilt * min(abs(err_tilt), step)
+
+            # 2. Biriken aci servo olu bolgesini (0.95 deg) astiginda veya son adimsa motoru tetikle
+            delta_p = 0.0
+            if abs(self.accum_pan) >= self.min_dispatch_deg or abs(err_pan) <= self.min_dispatch_deg:
+                delta_p = float(np.clip(self.accum_pan, -self.max_slew, self.max_slew))
+                self.accum_pan -= delta_p
+
+            delta_t = 0.0
+            if abs(self.accum_tilt) >= self.min_dispatch_deg or abs(err_tilt) <= self.min_dispatch_deg:
+                delta_t = float(np.clip(self.accum_tilt, -self.max_slew, self.max_slew))
+                self.accum_tilt -= delta_t
 
             self.current_pan = curr_p + delta_p
             self.current_tilt = curr_t + delta_t
@@ -133,5 +154,7 @@ class PatrolGenerator:
         self.state = "WAITING"
         self.lost_timer = 0.0
         self.scan_time = 0.0
+        self.accum_pan = 0.0
+        self.accum_tilt = 0.0
         self.current_pan = 0.0
         self.current_tilt = 0.0

@@ -18,7 +18,16 @@ Bu proje; mikro/mini İHA'lar ve asimetrik hava tehditlerine karşı geliştiril
 ---
 
 ## 🚀 v1.2
-
+ 
+* **Otonom Devriye Birikimli Adımlayıcısı (Patrol Step Accumulator):**
+  * 80-100 FPS yüksek döngü hızında merkeze dönerken 0.20° gibi küçük adımların MG996R mekanik ölü bölgesine takılıp motorun yolda kalması önlendi.
+  * `patrol_generator.py` içine birikimli adım mekanizması eklendi; biriken açı servonun ölü bölgesini aşınca (`min_dispatch_deg = 0.95 derece`) motora tek ve net bir mekanik tork olarak iletilerek taretin 90-90 merkezine eksiksiz oturması sağlandı.
+* **Dinamik Kalman Hız Ölü Bölgesi (Dynamic Velocity Deadband):**
+  * Taret dönme hızına (`ego_speed`) ve hedef yakınlığına (`dist_m < 1.2 metre`) bağlı olarak Kalman hız ölü bölgesi 45 px/s'den 120 px/s'ye kadar dinamik olarak genişletildi.
+  * Taret manevralarında ve yakın mesafedeki YOLO kutu titreşimlerinde oluşan sahte hız gürültüsü 358.3 px/s'den 70.2 px/s'ye (5 kat sakin) düşürüldü.
+* **Takip Histerezisi ve Anlık Güven (% CONF) Göstergesi:**
+  * Hedef arama modunda yanlış tespitleri önlemek için güven eşiği `conf = 0.28`, kilitli takip modunda ise hareket bulanıklığı (motion blur) anında hedefin kopmaması için eşik dinamik olarak `conf = 0.16` seviyesine gevşetildi.
+  * Anlık hedef güven skoru (% CONF) hem HUD retikülüne hem de CSV telemetri kütüğüne eklendi; minimum %17 güvende bile hedefin kopmadan takip edildiği doğrulandı.
 * **Asimetrik Eylemsizlik ve Dikey Stick-Slip Limit Cycle Çözümü:**
   * Dikey eksendeki 300g pirinç volan namlu ağırlığının yarattığı yerçekimi momenti ve dişli boşluğu sönümlendi.
   * Eksen bazlı asimetrik yumuşak ölü bölge devreye alındı: Pan 0.85 derece, Tilt 0.95 derece.

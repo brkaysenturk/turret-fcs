@@ -104,6 +104,10 @@ class FCSManager:
     def actual_tilt(self):
         return self.p_controller.actual_tilt
 
+    @property
+    def target_conf(self):
+        return getattr(self.selector, "last_target_conf", 0.0)
+
     def select_best_target(self, boxes, center_x, center_y):
         return self.selector.select_best_target(boxes, center_x, center_y)
 
@@ -152,7 +156,7 @@ class FCSManager:
                     ego_dx = 0.0
                     ego_dy = 0.0
 
-                kwx, kwy, kvx, kvy = self.tracker.update((float(bx), float(by)), dt=dt, ego_dx=ego_dx, ego_dy=ego_dy)
+                kwx, kwy, kvx, kvy = self.tracker.update((float(bx), float(by)), dt=dt, ego_dx=ego_dx, ego_dy=ego_dy, dist_m=d_m)
                 pred_px, pred_py, _, _ = self.tracker.predict_next_position(lead_time=lead_time)
                 self.target_velocity = np.array([kvx, kvy], dtype=float)
 

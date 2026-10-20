@@ -77,10 +77,11 @@ class KalmanFilter:
         self.smooth_vx = 0.0
         self.smooth_vy = 0.0
 
-    def update(self, measurement, dt=0.033, ego_dx=0.0, ego_dy=0.0):
+    def update(self, measurement, dt=0.033, ego_dx=0.0, ego_dy=0.0, dist_m=None):
         """
         Durum kestirimi ve Joseph formunda kovaryans guncellemesi.
         ego_dx, ego_dy: Taretin kendi donusunden kaynaklanan piksel kaymasi (Ego-Motion).
+        dist_m: Hedefin dogrulanmis mesafesi (Mesafe bazli dinamik olu bolge icin).
         Returns: px, py, smooth_vx, smooth_vy
         """
         dt = max(0.010, min(float(dt), 0.1))
@@ -160,10 +161,24 @@ class KalmanFilter:
         raw_vx = float(np.clip(self.x[2, 0], -MAX_VEL, MAX_VEL))
         raw_vy = float(np.clip(self.x[3, 0], -MAX_VEL, MAX_VEL))
 
-        # 4. Duragan Hedef Hiz Olu Bolgesi (Velocity Deadband)
+        # 4. Dinamik Hedef Hiz Olu Bolgesi (Dynamic Velocity Deadband)
+        # Ego-motion (taret donusu) ve yakin mesafe (YOLO bounding box jitter) durumlarinda
+        # olu bolge dinamik olarak genisler, taret hareket halindeyken olusan sahte 
+        # optik dalgalanmalari ve mikrotitremeleri sifirlar.
+        ego_speed = float(np.hypot(ego_dx, ego_dy)) / dt
+        ego_expansion = min(85.0, 0.40 * ego_speed)
+
+        near_expansion = 0.0
+        if dist_m is not None and dist_m < 1.2:
+            near_expansion = min(65.0, max(0.0, (1.2 - float(dist_m)) * 80.0))
+
+        vel_threshold_high = float(45.0 + ego_expansion + near_expansion)
+        vel_threshold_low = float(vel_threshold_high * 0.35)
+
         speed = float(np.hypot(raw_vx, raw_vy))
-        if speed < 45.0:  # Ev: 45.0 | Okul: 30.0
-            deadband_decay = max(0.0, (speed - 12.0) / 33.0)
+        if speed < vel_threshold_high:
+            decay_range = max(1.0, vel_threshold_high - vel_threshold_low)
+            deadband_decay = max(0.0, (speed - vel_threshold_low) / decay_range)
             raw_vx *= deadband_decay
             raw_vy *= deadband_decay
             self.x[2, 0] = raw_vx
