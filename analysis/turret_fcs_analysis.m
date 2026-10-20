@@ -4,10 +4,10 @@
 %  OPTIMIZE EDILMIS KONTROLCU VE SISTEM DINAMIK ANALIZ MOTORU
 % =========================================================================
 %  Bu script gercek donanimda dogrulanan son sistem parametrelerini analiz eder:
-%    - Kp_pan = 0.10 -> 0.16 (Hiz Uyarlamali), Kp_tilt = 0.07 -> 0.12
+%    - Kp_pan = 0.055 (Ev: 0.055 | Okul: 0.10), Kp_tilt = 0.030 (Ev: 0.030 | Okul: 0.06)
 %    - Ki = 0.00, Kd = 0.00 (Saf Kritik Sonumlu, Gurultusuz Kontrol)
-%    - Soft Deadband: 0.90 deg -> 0.20 deg (Dinamik Daralma)
-%    - Slew Rate Limiti: MAX_OUTPUT_DEG = 2.75 deg/frame (82.5 deg/s)
+%    - Soft Deadband: 0.85 deg (Pan) | 0.95 deg (Tilt)
+%    - Slew Rate Limiti: MAX_OUTPUT_DEG = 1.35 deg/frame (40.5 deg/s) | Okul: 2.75
 %    - Donanim Gecikmesi: theta = 80 ms (Kamera + YOLOv8 + USB UART)
 %    - Eksiksiz ASCII etiketler, profesyonel lejantlar ve 300 DPI PNG kaydi
 % =========================================================================
@@ -48,11 +48,11 @@ t_vec  = 0:dt_sim:t_end;
 N_pts  = length(t_vec);
 
 step_target = 20.0;           % 20 derece ani hedef sapmasi
-delay_sec   = 0.090;          % 90 ms toplam gecikme
+delay_sec   = 0.080;          % 80 ms toplam gecikme
 delay_steps = round(delay_sec / dt_sim);
 
-% Guncel Donanim Parametreleri (Yumusak Olu Bolgeli Saf P Kontrolcu)
-kp = 0.10; ki = 0.00; kd = 0.00; deadband = 0.90; max_slew = 2.75;
+% Guncel Donanim Parametreleri (v1.2 Yumusak Olu Bolgeli Saf P Kontrolcu)
+kp = 0.055; ki = 0.00; kd = 0.00; deadband = 0.85; max_slew = 1.35;
 
 y_pos  = zeros(1, N_pts);
 u_vel  = zeros(1, N_pts);

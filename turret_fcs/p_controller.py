@@ -36,14 +36,14 @@ class PController:
     GRAVITY_ACCEL = 9.81         # m/s^2 (Yercekimi ivmesi)
 
     # --- KALIBRASYON DEGERLERI ---
-    MAX_OUTPUT_DEG = 1.35        # Ev: 1.35 (Sonumlu/Kritik) | Okul: 2.75
-    DEADBAND_PAN_DEG = 0.85      # Yatay eksen yumusak olu bolgesi (deg)
-    DEADBAND_TILT_DEG = 0.95     # Dikey eksen 300g pirinc namlu olu bolgesi (deg)
+    MAX_OUTPUT_DEG = 1.35        # Ev: 1.35 | Okul: 2.75
+    DEADBAND_PAN_DEG = 0.85      # Ev: 0.85 | Okul: 0.85
+    DEADBAND_TILT_DEG = 0.95     # Ev: 0.95 | Okul: 0.95
 
     def __init__(
         self,
         kp_pan=0.055,            # Ev: 0.055 | Okul: 0.10
-        kp_tilt=0.030,           # Ev: 0.030 | Okul: 0.06 (Dikey agir namlu kararliligi)
+        kp_tilt=0.030,           # Ev: 0.030 | Okul: 0.06
         alpha=0.75,
         max_output=MAX_OUTPUT_DEG,
         deadband_pan=DEADBAND_PAN_DEG,

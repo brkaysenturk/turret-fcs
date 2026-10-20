@@ -23,8 +23,7 @@ class TargetSelector:
     """
 
     def __init__(self, min_conf=0.28, min_area=400, max_area=400000, min_dim=18):
-        # min_conf: Ev/Los Isik Bulanikligi: 0.28 | Okul Orijinal: 0.45
-        self.min_conf = min_conf
+        self.min_conf = min_conf  # Ev: 0.28 | Okul: 0.45
         self.min_area = min_area
         self.max_area = max_area
         self.min_dim = min_dim
@@ -34,7 +33,7 @@ class TargetSelector:
     def select_best_target(self, boxes, center_x, center_y):
         if len(boxes) == 0:
             self.lost_counter += 1
-            if self.lost_counter > 8:  # Ev: 8 | Okul Orijinal: 5
+            if self.lost_counter > 8:  # Ev: 8 | Okul: 5
                 self.locked_track_id = None
             return None
 

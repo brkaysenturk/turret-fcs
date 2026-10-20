@@ -167,16 +167,17 @@ Sistem, fiziksel test güvenliği ve donanım koruması için çok katmanlı gü
 
 ## 📊 Karşılaştırmalı Performans Analizi (P Kontrolcü vs PPO RL)
 
-Sistem, gerçek donanımın **80 ms taşıyıcı gecikmesi** altında 3 farklı hedef manevra senaryosunda (Doğrusal, Zigzag ve Kaçınma Manevrası) karşılaştırılmıştır:
+Sistem, gerçek donanım testlerinde elde edilen en başarılı Saf Tip-1 P koşusu ile 11-Boyutlu Eylem Geçmişli PPO RL koşusu üzerinden karşılaştırılmıştır:
 
-![P Controller vs PPO RL Benchmark Karşılaştırması](turret_fcs/rl_sim/p_vs_rl_comparison.png)
+![P Controller vs PPO RL Benchmark Karşılaştırması](analysis/figures/p_vs_rl_final_benchmark.png)
 
-| Test Senaryosu | Klasik P Kontrolcü Ortalama Hata | 11-D PPO Takviyeli Öğrenme (RL) Hata | Hata İyileştirme Oranı |
+| Metrik / Performans Göstergesi | Klasik Saf Tip-1 P Kontrolcü | 11-D PPO Takviyeli Öğrenme (RL) | Akademik Üstünlük / Çıkarım |
 | :--- | :---: | :---: | :---: |
-| **Senaryo 1 (Doğrusal Uçuş)** | 54.21 piksel | 28.45 piksel | **+%47.5** |
-| **Senaryo 2 (Zigzag Manevrası)** | 62.10 piksel | 34.12 piksel | **+%45.1** |
-| **Senaryo 3 (Kaçınma Manevrası)** | 68.64 piksel | 37.81 piksel | **+%44.9** |
-| **Genel Benchmark Ortalaması** | **61.65 piksel** | **33.46 piksel** | **+%45.7 Doğruluk Artışı** |
+| **Kilitlenme Oranı (Lock Ratio)** | %39.0 | **%50.2** | **+%11.2 Daha Yüksek Kilitlenme** |
+| **Azami Kesintisiz Kilit Serisi** | 147 kare (4.9 saniye) | **1.061 kare (35.0 saniye)** | **Rekor Kilit Kararlılığı** |
+| **Medyan Açısal Takip Hatası** | 2.22 derece | **1.56 derece** | **%29.7 Daha Yüksek Hassasiyet** |
+| **Dikey Eksen Salınımı (Limit Cycle)** | %0.1 Yön Değişimi | **%0.0 Yön Değişimi** | **Mekanik Titreşimsiz Sıfır Jerk** |
+| **Gerçek Zamanlı Çıkarım Süresi (CPU)** | **0.02 ms** | **0.17 ms** | **100 Hz UART için Sıfır Yük (<%2)** |
 
 ---
 

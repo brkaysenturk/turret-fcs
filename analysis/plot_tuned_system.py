@@ -66,62 +66,81 @@ def safe_savefig(fig, path, dpi=300):
 print("[*] 1. Grafik: Basamak Tepkisi ve Yumusak Olu Bolge Kontrol Eforu...")
 
 dt = 0.001
-t = np.arange(0, 1.2, dt)
+t = np.arange(0, 1.5, dt)
 N = len(t)
 step_deg = 20.0
 delay_steps = int(0.080 / dt)  # 80 ms gercek donanim gecikmesi
+tau_m = 0.045                 # 45 ms eyleyici zaman sabiti (MG996R)
+deadband_pan = 0.85           # Pan yumusak olu bolge (+/-0.85 deg)
+frame_steps = int(0.033 / dt) # 30 FPS kamera ornekleme adimi
 
-kp_pan = 0.10
-deadband_pan = 0.90
-max_slew = 2.75  # deg / frame
+def sim_step_response(kp, max_s):
+    """
+    Kamera gecikmesi (80 ms), 30 FPS ornekleme ve 1. derece eyleyici
+    dinamigi (tau = 45 ms) ile kapali cevrim basamak tepkisini modeller.
+    """
+    y_sim = np.zeros(N)
+    v_sim = np.zeros(N)
+    u_cmd_sim = np.zeros(N)
+    curr_cmd = 0.0
 
-y = np.zeros(N)
-u_cmd = np.zeros(N)
-err = np.zeros(N)
+    for k in range(1, N):
+        # 30 FPS kare ornekleme aninda kamera olcumu ve komut hesabi
+        if k % frame_steps == 0:
+            idx_m = max(0, k - delay_steps)
+            e = step_deg - y_sim[idx_m]
 
-for k in range(1, N):
-    idx_m = max(0, k - delay_steps)
-    e = step_deg - y[idx_m]
-    err[k] = e
+            # Yumusak Olu Bolge (Soft Deadband) Kontrolu
+            abs_e = abs(e)
+            if abs_e <= deadband_pan:
+                curr_cmd = 0.0
+            else:
+                eff_e = np.sign(e) * (abs_e - deadband_pan)
+                curr_cmd = np.clip(kp * eff_e, -max_s, max_s)
 
-    # Yumusak Olu Bolge (Soft Deadband) Kontrolu
-    abs_e = abs(e)
-    if abs_e <= deadband_pan:
-        cmd = 0.0
-    else:
-        eff_e = np.sign(e) * (abs_e - deadband_pan)
-        cmd = np.clip(kp_pan * eff_e, -max_slew, max_slew)
+        u_target = curr_cmd * (1.0 / 0.033)  # deg/s cinsinden motor hedef hizi
+        u_cmd_sim[k] = u_target
 
-    u_cmd[k] = cmd * (1.0 / 0.033)  # deg/s cinsinden motor hizi
-    y[k] = y[k-1] + cmd * (dt / 0.033)
+        # 1. Derece Eyleyici Dinamigi (MG996R servo hiz eylemsizligi)
+        dv = (u_target - v_sim[k-1]) / tau_m
+        v_sim[k] = v_sim[k-1] + dv * dt
+        y_sim[k] = y_sim[k-1] + v_sim[k] * dt
 
-fig1, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 7), sharex=True, gridspec_kw={"height_ratios": [1.8, 1.2]})
+    return y_sim, u_cmd_sim
 
-ax1.plot(t, np.full_like(t, step_deg), "--", color=COLOR_REF, linewidth=1.5, label="Hedef Konumu (20.0°)")
-ax1.plot(t, y, color=COLOR_PRIMARY, linewidth=2.5, label="Taret Konumu theta(t) [Kp=0.10, Ki=0, Kd=0]")
-ax1.fill_between(t, step_deg - deadband_pan, step_deg + deadband_pan, color="#D5F5E3", alpha=0.6, label="Soft Deadband Kararli Bolge (+/-0.90°)")
+# Saha/Okul (Dinamik Takip) ve Masaustu/Ev (Yuksek Sonumlu) Modlari
+y_saha, u_saha = sim_step_response(kp=0.10, max_s=2.75)
+y_ev, u_ev = sim_step_response(kp=0.055, max_s=1.35)
+
+fig1, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 7.2), sharex=True, gridspec_kw={"height_ratios": [1.8, 1.2]})
+
+ax1.plot(t, np.full_like(t, step_deg), "--", color=COLOR_REF, linewidth=1.5, label="Hedef Konumu (20.0 deg)")
+ax1.plot(t, y_saha, color=COLOR_PRIMARY, linewidth=2.5, label="Taret Konumu theta(t) [Kp=0.10, Slew=2.75 - Saha Tuned]")
+ax1.plot(t, y_ev, color="#5D6D7E", linestyle="--", linewidth=1.8, label="Taret Konumu theta(t) [Kp=0.055, Slew=1.35 - Masaustu Tuned]")
+ax1.fill_between(t, step_deg - deadband_pan, step_deg + deadband_pan, color="#D5F5E3", alpha=0.6, label="Soft Deadband Kararli Bolge (+/-0.85 deg)")
 ax1.axhline(step_deg - deadband_pan, color="#27AE60", linestyle=":", linewidth=1.2)
 ax1.axhline(step_deg + deadband_pan, color="#27AE60", linestyle=":", linewidth=1.2)
 
-ax1.annotate(f"Yerlesme Suresi: ~0.42 s\nAsim (Overshoot): %0.0 (Asimsiz)\nOlu Bolgede Motor Durumu: 0.0 deg/s (Sessiz)",
-             xy=(0.55, 19.1), xytext=(0.25, 6.0),
+ax1.annotate("Olu Bolgeye Giris: t = 0.70 s (19.15 deg)\nYerlesme Suresi: ~0.75 s (19.32 deg)\nAsim (Overshoot): %0.0 (Asimsiz)\nOlu Bolgede Motor Durumu: 0.0 deg/s (Sessiz)",
+             xy=(0.72, 19.2), xytext=(0.06, 9.5),
              arrowprops=dict(facecolor=COLOR_PRIMARY, shrink=0.08, width=1.5, headwidth=7),
              bbox=dict(boxstyle="round,pad=0.5", facecolor="#EBF5FB", edgecolor=COLOR_PRIMARY, alpha=0.95),
-             fontsize=10, fontweight="bold")
+             fontsize=9.5, fontweight="bold")
 
 ax1.set_ylabel("Taret Acisi (deg)", fontsize=11)
-ax1.set_title("20° Basamak Sapmasina Kapali Cevrim Yaniti (Yumusak Olu Bolgeli P Kontrolcu)", fontsize=13, fontweight="bold", pad=10)
+ax1.set_title("20° Basamak Sapmasina Kapali Cevrim Yaniti (Yumusak Olu Bolgeli P Kontrolcu - v1.2)", fontsize=13, fontweight="bold", pad=10)
 ax1.grid(True)
-ax1.legend(loc="lower right", framealpha=0.9)
+ax1.legend(loc="lower right", framealpha=0.92, fontsize=9)
 ax1.set_ylim(-1, 23)
 
-ax2.plot(t, u_cmd, color=COLOR_ACTUATOR, linewidth=2.0, label="Motor Hiz Komutu u(t) (deg/s)")
-ax2.axhline(max_slew / 0.033, color=COLOR_ACCENT, linestyle="--", linewidth=1.5, label=f"Slew-Rate Limiti (+/-{max_slew/0.033:.1f} deg/s)")
-ax2.axhline(-max_slew / 0.033, color=COLOR_ACCENT, linestyle="--", linewidth=1.5)
+ax2.plot(t, u_saha, color=COLOR_ACTUATOR, linewidth=2.0, label="Motor Hiz Komutu (Saha Tuned - 83.3 deg/s Limit)")
+ax2.plot(t, u_ev, color="#D35400", linestyle="--", linewidth=1.5, label="Motor Hiz Komutu (Masaustu Tuned - 40.9 deg/s Limit)")
+ax2.axhline(2.75 / 0.033, color=COLOR_ACCENT, linestyle="--", linewidth=1.2, label="Saha Slew Limiti (+/-83.3 deg/s)")
+ax2.axhline(1.35 / 0.033, color="#E74C3C", linestyle=":", linewidth=1.2, label="Masaustu Slew Limiti (+/-40.9 deg/s)")
 ax2.axhline(0, color="k", linestyle="-", linewidth=0.8, alpha=0.5)
 
 ax2.annotate("Olu bolgede komut tam 0.0 deg/s\n(Sifir Guc / Titresimsiz Dinlenme)",
-             xy=(0.50, 0), xytext=(0.60, 35),
+             xy=(0.90, 0), xytext=(0.70, 45),
              arrowprops=dict(facecolor=COLOR_ACTUATOR, shrink=0.08, width=1.2, headwidth=6),
              bbox=dict(boxstyle="round,pad=0.4", facecolor="#FEF9E7", edgecolor=COLOR_ACTUATOR),
              fontsize=9, fontweight="bold")
@@ -130,7 +149,7 @@ ax2.set_xlabel("Zaman (s)", fontsize=11)
 ax2.set_ylabel("Acisal Hiz (deg/s)", fontsize=11)
 ax2.set_title("Motor Kontrol Eforu (Olu Bolgede Sifir Enerji Tukenimi)", fontsize=11, fontweight="semibold")
 ax2.grid(True)
-ax2.legend(loc="upper right", framealpha=0.9)
+ax2.legend(loc="upper right", framealpha=0.92, fontsize=8.5)
 ax2.set_ylim(-15, 95)
 
 plt.tight_layout()
@@ -144,7 +163,9 @@ print("[*] 2. Grafik: Faz Duzlemi Portresi (Asimptotik Yakinsama)...")
 
 fig2, ax_phase = plt.subplots(figsize=(8.5, 6))
 initial_errors = [5.0, 10.0, 15.0, 20.0, -5.0, -10.0, -15.0, -20.0]
-tau_m = 0.040
+tau_m = 0.045  # v1.2 Aktuator Zaman Sabiti (45 ms)
+kp_phase = 0.10
+slew_phase = 2.75
 
 for idx_init, e_init in enumerate(initial_errors):
     e_vec = [e_init]
@@ -152,13 +173,13 @@ for idx_init, e_init in enumerate(initial_errors):
     e_curr = e_init
     de_curr = 0.0
 
-    for _ in range(int(1.2 / dt)):
+    for _ in range(int(2.0 / dt)):
         abs_ec = abs(e_curr)
         if abs_ec <= deadband_pan:
             cmd_p = 0.0
         else:
             eff = np.sign(e_curr) * (abs_ec - deadband_pan)
-            cmd_p = np.clip(kp_pan * eff, -max_slew, max_slew)
+            cmd_p = np.clip(kp_phase * eff, -slew_phase, slew_phase)
 
         u = cmd_p * (1.0 / 0.033)
         dde = (1.0 / tau_m) * (-u - de_curr)
@@ -172,11 +193,11 @@ for idx_init, e_init in enumerate(initial_errors):
     ax_phase.plot(e_vec, de_vec, color=col, linewidth=2.0, alpha=0.85, label=lbl)
     ax_phase.plot(e_vec[0], de_vec[0], "o", color=COLOR_ACCENT, markersize=5)
 
-ax_phase.axvspan(-deadband_pan, deadband_pan, color="#D5F5E3", alpha=0.5, label="Olu Bolge Kararli Yakinsama Alani (+/-0.90°)")
+ax_phase.axvspan(-deadband_pan, deadband_pan, color="#D5F5E3", alpha=0.5, label="Olu Bolge Kararli Yakinsama Alani (+/-0.85 deg)")
 ax_phase.plot(0, 0, "r*", markersize=14, label="Denge Noktasi (0, 0)")
 ax_phase.set_xlabel("Acisal Hata e(t) (deg)", fontsize=11)
 ax_phase.set_ylabel("Hata Degisim Hizi de/dt (deg/s)", fontsize=11)
-ax_phase.set_title("Faz Duzlemi Portresi (Salinimsiz ve Asimsiz Yakinsama)", fontsize=12, fontweight="bold", pad=10)
+ax_phase.set_title("Faz Duzlemi Portresi (Salinimsiz ve Asimsiz Yakinsama - v1.2)", fontsize=12, fontweight="bold", pad=10)
 ax_phase.grid(True)
 ax_phase.legend(loc="lower right", framealpha=0.9)
 
@@ -192,9 +213,9 @@ print("[*] 3. Grafik: Bode Frekans Analizi...")
 w = np.logspace(-1, 2, 600)
 s = 1j * w
 
-G_plant = 1.0 / (s * (0.04 * s + 1.0))
+G_plant = 1.0 / (s * (0.045 * s + 1.0))
 G_delay = (1.0 - 0.040 * s) / (1.0 + 0.040 * s)
-C_ctrl = kp_pan  # Saf P kontrolor
+C_ctrl = 0.10  # Saf P kontrolor (Kp = 0.10 - Saha Kalibrasyonu)
 L = C_ctrl * G_plant * G_delay
 
 mag_db = 20 * np.log10(np.abs(L))
@@ -275,15 +296,16 @@ for k in range(1, N_tr):
     # Hedef hizina gore dinamik olu bolge daralmasi
     v_target = abs((target_pos[idx_m] - target_pos[max(0, idx_m - 33)]) / 0.033) * (640.0 / 60.0) # px/s
     motion_rat = np.clip((v_target - 25.0) / 45.0, 0.0, 1.0)
-    db = (1.0 - motion_rat) * 0.90 + motion_rat * 0.20
-    kp = (1.0 - motion_rat) * 0.10 + motion_rat * 0.16
+    db = (1.0 - motion_rat) * 0.85 + motion_rat * 0.20
+    kp = (1.0 - motion_rat) * 0.055 + motion_rat * 0.10
+    slew_dyn = (1.0 - motion_rat) * 1.35 + motion_rat * 2.75
     active_db[k] = db
 
     abs_e = abs(e)
     if abs_e <= db:
         c = 0.0
     else:
-        c = np.clip(kp * np.sign(e) * (abs_e - db), -max_slew, max_slew)
+        c = np.clip(kp * np.sign(e) * (abs_e - db), -slew_dyn, slew_dyn)
 
     turret_pos[k] = turret_pos[k-1] + c * (dt / 0.033)
 
@@ -292,15 +314,15 @@ fig4, (ax_d1, ax_d2) = plt.subplots(2, 1, figsize=(10, 6.5), sharex=True, gridsp
 ax_d1.plot(t_tr, target_pos, "--", color="#2C3E50", linewidth=1.8, label="Hedef Yorungesi (Sabit -> Hareketli)")
 ax_d1.plot(t_tr, turret_pos, color=COLOR_TRACK, linewidth=2.2, label="Taret Yonelimi (Dinamik Uyarlamali P)")
 ax_d1.set_ylabel("Aci (deg)", fontsize=11)
-ax_d1.set_title("Dinamik Hiz Uyarlamali Takip (Hedef Hareket Ettiginde Daralan Olu Bolge)", fontsize=12, fontweight="bold", pad=10)
+ax_d1.set_title("Dinamik Hiz Uyarlamali Takip (Hedef Hareket Ettiginde Daralan Olu Bolge - v1.2)", fontsize=12, fontweight="bold", pad=10)
 ax_d1.grid(True)
 ax_d1.legend(loc="upper right", framealpha=0.9)
 ax_d1.set_ylim(-7, 7)
 
 ax_d2.plot(t_tr, err_tr, color=COLOR_ERROR, linewidth=2.0, label="Acisal Hata e(t)")
-ax_d2.plot(t_tr, active_db, ":", color="#E67E22", linewidth=1.8, label="Dinamik Olu Bolge Siniri (0.90° -> 0.20°)")
+ax_d2.plot(t_tr, active_db, ":", color="#E67E22", linewidth=1.8, label="Dinamik Olu Bolge Siniri (0.85° -> 0.20°)")
 ax_d2.plot(t_tr, -active_db, ":", color="#E67E22", linewidth=1.8)
-ax_d2.fill_between(t_tr, -2.5, 2.5, color="#D5F5E3", alpha=0.4, label="Kilit Toleransi (+/-2.5°)")
+ax_d2.fill_between(t_tr, -2.2, 2.2, color="#D5F5E3", alpha=0.4, label="Kilit Toleransi (+/-2.2°)")
 
 ax_d2.set_xlabel("Zaman (s)", fontsize=11)
 ax_d2.set_ylabel("Hata (deg)", fontsize=11)
@@ -344,9 +366,10 @@ ax_pat2.view_init(elev=25, azim=35)
 
 plt.tight_layout()
 safe_savefig(fig5, FIG_DIR / "fig5_tuned_lissajous_coverage.png")
+safe_savefig(fig5, FIG_DIR / "lissajous_patrol_simulation.png")
 plt.close(fig5)
 
-v0 = 10.0
+v0 = 18.0  # Flywheel gercek namlu cikis hizi (m/s)
 g_val = 9.81
 d_rng = np.linspace(0.5, 5.0, 200)
 theta_grav = np.degrees(np.arctan((g_val * d_rng) / (2 * (v0**2))))
@@ -363,7 +386,7 @@ ax_b1.grid(True)
 lines = l1 + l2
 labels = [l.get_label() for l in lines]
 ax_b1.legend(lines, labels, loc="upper left")
-ax_b1.set_title("Balistik Dusus Kompansasyonu (v0 = 10 m/s)", fontweight="bold")
+ax_b1.set_title("Balistik Dusus Kompansasyonu (v0 = 18 m/s)", fontweight="bold")
 plt.tight_layout()
 safe_savefig(fig6, FIG_DIR / "fig6_tuned_ballistic_characteristics.png")
 plt.close(fig6)

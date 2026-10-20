@@ -41,11 +41,11 @@ class KalmanFilter:
     def __init__(
         self,
         dt=0.033,
-        r_var=64.0,          # Ev: 64.0 (Kutu titremesi sonumlendi) | Okul Orijinal: 25.0
+        r_var=64.0,          # Ev: 64.0 | Okul: 25.0
         sigma_a_min=4.0,     # Kararli/yavas hedef ivme gurultusu (px/s^2)
         sigma_a_max=280.0,   # Hizli manevra ivme gurultusu (px/s^2)
-        residual_low=14.0,   # Ev: 14.0 (Kutu kaymalarinda sahte hiz onler) | Okul Orijinal: 8.0
-        residual_high=38.0,  # Ev: 38.0 | Okul Orijinal: 32.0
+        residual_low=14.0,   # Ev: 14.0 | Okul: 8.0
+        residual_high=38.0,  # Ev: 38.0 | Okul: 32.0
         jump_threshold=90.0  # Hedef atlamasi/yanlis tespit esigi (pixel)
     ):
         self.dt = float(dt)
@@ -162,7 +162,7 @@ class KalmanFilter:
 
         # 4. Duragan Hedef Hiz Olu Bolgesi (Velocity Deadband)
         speed = float(np.hypot(raw_vx, raw_vy))
-        if speed < 45.0:  # Ev: 45.0 (Dururken sifir titresim) | Okul Orijinal: 30.0
+        if speed < 45.0:  # Ev: 45.0 | Okul: 30.0
             deadband_decay = max(0.0, (speed - 12.0) / 33.0)
             raw_vx *= deadband_decay
             raw_vy *= deadband_decay
@@ -170,7 +170,7 @@ class KalmanFilter:
             self.x[3, 0] = raw_vy
 
         # Hizi ustel yumusat (Exponential Moving Average)
-        # Ev: 0.82 / 0.18 (Dikey rezonans sonumlu) | Okul Orijinal: 0.70 / 0.30
+        # Ev: 0.82 / 0.18 | Okul: 0.70 / 0.30
         self.smooth_vx = 0.82 * self.smooth_vx + 0.18 * raw_vx
         self.smooth_vy = 0.82 * self.smooth_vy + 0.18 * raw_vy
 

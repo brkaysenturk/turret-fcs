@@ -225,8 +225,9 @@ def run_system_identification():
     crit_kp = crit_kv * 0.03333
 
     # Calisma Noktalari:
-    # 1. Statik Mod: Kp = 0.10 -> Kv = 0.10 / 0.03333 = 3.0 s^-1
-    # 2. Dinamik Mod: Kp = 0.16 -> Kv = 0.16 / 0.03333 = 4.8 s^-1
+    # 1. v1.2 Tuned Mod: Kp = 0.055 -> Kv = 0.055 / 0.03333 = 1.65 s^-1
+    # 2. Okul Statik Mod: Kp = 0.10 -> Kv = 0.10 / 0.03333 = 3.0 s^-1
+    # 3. Dinamik Takip Modu: Kp = 0.16 -> Kv = 0.16 / 0.03333 = 4.8 s^-1
     def get_roots_for_kp(kp_val):
         kv = kp_val / 0.03333
         c4 = 1.0
@@ -236,13 +237,15 @@ def run_system_identification():
         c0 = kv * wn_sopdt**2 * z_pade
         return np.roots([c4, c3, c2, c1, c0])
 
+    roots_tuned = get_roots_for_kp(0.055)
     roots_stat = get_roots_for_kp(0.10)
     roots_dyn = get_roots_for_kp(0.16)
 
     print(f"\n[OK] S-Duzlemi Kararlilik Siniri (Kritik Kazanc):")
     print(f"     Kritik Hiz Kazanci Kv_crit = {crit_kv:.2f} s^-1 (Kp_crit = {crit_kp:.3f})")
-    print(f"     Statik Calisma Noktasi (Kp=0.10, Kv=3.0): Kararli, Baskin Kutup: s = {roots_stat[2].real:.2f} +- j{abs(roots_stat[2].imag):.2f}")
-    print(f"     Dinamik Calisma Noktasi (Kp=0.16, Kv=4.8): Kararli, Baskin Kutup: s = {roots_dyn[2].real:.2f} +- j{abs(roots_dyn[2].imag):.2f}")
+    print(f"     v1.2 Tuned Noktasi   (Kp=0.055, Kv=1.65): Baskin Kutup: s = {roots_tuned[2].real:.2f} +- j{abs(roots_tuned[2].imag):.2f}")
+    print(f"     Okul Statik Noktasi  (Kp=0.100, Kv=3.00): Baskin Kutup: s = {roots_stat[2].real:.2f} +- j{abs(roots_stat[2].imag):.2f}")
+    print(f"     Dinamik Mod Noktasi  (Kp=0.160, Kv=4.80): Baskin Kutup: s = {roots_dyn[2].real:.2f} +- j{abs(roots_dyn[2].imag):.2f}")
 
     # -------------------------------------------------------------------------
     # ADIM 5: FREKANS YANITI (BODE) VE KARARLILIK MARJLARI
@@ -377,8 +380,10 @@ def run_system_identification():
         ax2.plot(locus_roots[:, i].real, locus_roots[:, i].imag, "b-", lw=1.5, alpha=0.85)
 
     # Calisma noktalari
-    ax2.plot(roots_stat[2].real, roots_stat[2].imag, "r*", markersize=12, label="Statik Calisma (Kp=0.10, zeta=0.72)")
-    ax2.plot(roots_stat[2].real, -roots_stat[2].imag, "r*", markersize=12)
+    ax2.plot(roots_tuned[2].real, roots_tuned[2].imag, "b*", markersize=13, label="v1.2 Tuned (Kp=0.055, zeta=0.85)")
+    ax2.plot(roots_tuned[2].real, -roots_tuned[2].imag, "b*", markersize=13)
+    ax2.plot(roots_stat[2].real, roots_stat[2].imag, "r*", markersize=11, label="Okul Statik (Kp=0.10, zeta=0.72)")
+    ax2.plot(roots_stat[2].real, -roots_stat[2].imag, "r*", markersize=11)
     ax2.plot(roots_dyn[2].real, roots_dyn[2].imag, "g^", markersize=9, label="Dinamik Calisma (Kp=0.16)")
     ax2.plot(roots_dyn[2].real, -roots_dyn[2].imag, "g^", markersize=9)
 
@@ -420,8 +425,8 @@ def run_system_identification():
     ax4.plot(t_sim * 1000, np.ones_like(t_sim), "k--", lw=1.5, label="Referans Hedef (Step = 1.0)")
     ax4.plot(t_sim * 1000, y_cohen, color="#D9534F", ls=":", lw=1.8, label="Klasik PID (Asiri Titresim / Windup)")
     ax4.plot(t_sim * 1000, y_hard_p, color="#E67E22", ls="--", lw=1.8, label="Sert P (Olu Bolgesiz / Titremeli)")
-    ax4.plot(t_sim * 1000, y_soft_p, color="#0055A5", lw=2.4, label="Son Sistem: Yumusak Olu Bolgeli P")
-    ax4.fill_between(t_sim * 1000, 1.0 - deadband_norm, 1.0 + deadband_norm, color="#27AE60", alpha=0.20, label="Olu Bolge Kararli Alan (+-0.90 deg)")
+    ax4.plot(t_sim * 1000, y_soft_p, color="#0055A5", lw=2.4, label="Son Sistem: Yumusak Olu Bolgeli P (v1.2)")
+    ax4.fill_between(t_sim * 1000, 1.0 - deadband_norm, 1.0 + deadband_norm, color="#27AE60", alpha=0.20, label="Olu Bolge Kararli Alan (+-0.85 deg)")
 
     ax4.set_title("4. Kapali Cevrim Kontrolcu Performans Dogrulamasi", fontweight="bold", fontsize=11)
     ax4.set_xlabel("Zaman (ms)")

@@ -31,10 +31,9 @@ class LockManager:
     """
 
     # --- KILIT ESIGI VE TOLERANS KALIBRASYONU ---
-    def __init__(self, lock_threshold_frames=10, lock_exit_margin_deg=0.60, lock_exit_deg=None):
-        self.lock_threshold_frames = lock_threshold_frames  # Kararlilik karesi (10 kare = 0.33 sn)
-        self.lock_exit_margin_deg = lock_exit_margin_deg    # Dinamik giris esigine bagli histerezis payi (+0.60 deg)
-        self.lock_exit_deg = lock_exit_deg  # Geriye uyumluluk
+    def __init__(self, lock_threshold_frames=10, lock_exit_margin_deg=0.60):
+        self.lock_threshold_frames = lock_threshold_frames  # Ev: 10 | Okul: 10
+        self.lock_exit_margin_deg = lock_exit_margin_deg    # Ev: 0.60 | Okul: 0.60
 
         self.stability_counter = 0
         self.is_locked = False
@@ -44,10 +43,10 @@ class LockManager:
     def compute_dynamic_threshold(self, target_velocity):
         speed_mag = float(np.hypot(target_velocity[0], target_velocity[1]))
         if speed_mag < 15.0:
-            return 1.60  # Ev: 1.60 (Hassas gercek kilit) | Okul Orijinal: 2.00
+            return 1.60  # Ev: 1.60 | Okul: 2.00
         if speed_mag < 45.0:
-            return 2.20  # Ev: 2.20 | Okul Orijinal: 2.50
-        return 3.00
+            return 2.20  # Ev: 2.20 | Okul: 2.50
+        return 3.00      # Ev: 3.00 | Okul: 3.00
 
     def compute_hit_probability(self, angular_error_deg, target_velocity, dist_m=2.0, target_radius_m=0.15):
         """
