@@ -48,19 +48,23 @@ int main(void)
   uint32_t last_pc_cmd_time = HAL_GetTick();
 
   /* Infinite loop ------------------------------------------------------------*/
+  uint32_t last_led_time = 0;
+
   while (1)
   {
-    // 1. Sensorden yeni mesafe geldiginde PC'ye 6 baytlik binary telemetri ilet
-    if (Luna_IsDataReady())
-    {
-      FCS_Comm_SendTelemetry(Luna_GetDistance(), Luna_GetStrength());
-    }
+    // 1. Sabit 100 Hz Periyodik Telemetri: LiDAR'dan bagimsiz periyodik gonderim
+    // (LiDAR kopuk veya gecikmeli olsa bile servo geri bildirimi ve odometri asla kesilmez)
+    uint16_t dist = Luna_GetDistance();
+    uint16_t strength = Luna_GetStrength();
+    FCS_Comm_SendTelemetry(dist, strength, Servo_GetPan(), Servo_GetTilt());
 
-    // 2. PC'den yeni aci duzeltme komutu geldiginde motorlari sur
-    if (FCS_Comm_IsNewCommand())
+    // 2. PC'den yeni aci duzeltme komutu geldiginde motorlari sur (Atomik okuma ile veri yarisi onlendi)
+    float d_pan = 0.0f;
+    float d_tilt = 0.0f;
+    uint8_t state = 0;
+    if (FCS_Comm_GetCommand(&d_pan, &d_tilt, &state))
     {
       last_pc_cmd_time = HAL_GetTick();
-      uint8_t state = FCS_Comm_GetState();
       if (state == 3)
       {
         // Acil Durdurma: Motorlari dogrudan mekanik merkez pozisyonuna (90°, 90°) dondur
@@ -70,8 +74,6 @@ int main(void)
       }
       else
       {
-        float d_pan = FCS_Comm_GetPan();
-        float d_tilt = FCS_Comm_GetTilt();
         Servo_ApplyCorrection(d_pan, d_tilt);
       }
 
@@ -83,16 +85,22 @@ int main(void)
       // }
       // prev_fcs_state = state;
     }
-    else
+
+    // 3. 300 ms Heartbeat Zaman Asimi: if/else disinda KOSULSUZ kontrol edilir
+    // (PC 100 Hz hizinda komut gonderse bile zaman asimi guvenlik bekcisi her turda calisir)
+    if (HAL_GetTick() - last_pc_cmd_time > 300)
     {
-      // 300 ms Heartbeat Zaman Asimi: PC baglantisi veya yazilim kilitlenirse tum eyleyicileri kes
-      if (HAL_GetTick() - last_pc_cmd_time > 300)
-      {
-        Launcher_EmergencyStop();
-      }
+      Launcher_EmergencyStop();
     }
 
-    // 3. Firlatici durum makinesi (Firlatici donanimi eklendiginde acilabilir)
+    // 4. Sistem Kalp Atisi LED Gostergesi (500 ms periyot - ISR yukunu onler)
+    if (HAL_GetTick() - last_led_time >= 500)
+    {
+      last_led_time = HAL_GetTick();
+      HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+    }
+
+    // 5. Firlatici durum makinesi (Firlatici donanimi eklendiginde acilabilir)
     // Launcher_Update();
 
     HAL_Delay(10); // 100 Hz kontrol dongusu
@@ -106,7 +114,6 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
   if (huart->Instance == USART1)
   {
-    HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
     Luna_RxCallback(huart);
   }
   else if (huart->Instance == USART2)

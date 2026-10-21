@@ -97,6 +97,12 @@ void Servo_SetTilt(float angle_deg)
 
 void Servo_ApplyCorrection(float d_pan, float d_tilt)
 {
+    // Maksimum adim sinirlamasi (Mekanik asiri tork ve disli korumasi)
+    if (d_pan > MAX_STEP_PAN_DEG) d_pan = MAX_STEP_PAN_DEG;
+    if (d_pan < -MAX_STEP_PAN_DEG) d_pan = -MAX_STEP_PAN_DEG;
+    if (d_tilt > MAX_STEP_TILT_DEG) d_tilt = MAX_STEP_TILT_DEG;
+    if (d_tilt < -MAX_STEP_TILT_DEG) d_tilt = -MAX_STEP_TILT_DEG;
+
 #if PAN_DIR_INVERT
     d_pan = -d_pan;
 #endif

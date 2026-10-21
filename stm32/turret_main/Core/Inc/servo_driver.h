@@ -8,14 +8,19 @@
 #define SERVO_MID_PULSE   1520  // 90 derece (Merkez)
 #define SERVO_MAX_PULSE   2470  // 180 derece
 
-// Guvenli Aci Sinirlari
-#define PAN_MIN_DEG       0.0f
-#define PAN_MAX_DEG       180.0f
-#define TILT_MIN_DEG      20.0f  // Mekanik carpma siniri
-#define TILT_MAX_DEG      160.0f
+// Guvenli Aci Sinirlari (Config Mount Limitleri: Pan +-75 deg, Tilt -25/+25 deg)
+#define PAN_MIN_DEG       15.0f   // 90.0 - 75.0 deg
+#define PAN_MAX_DEG       165.0f  // 90.0 + 75.0 deg
+#define TILT_MIN_DEG      65.0f   // 90.0 - 25.0 deg (Mekanik kasa carpma ve disli siyirma korumasi)
+#define TILT_MAX_DEG      115.0f  // 90.0 + 25.0 deg
+
+// Donanim Koruma: Tek Dongude Maksimum Aci Adimi (Delta Clamping)
+#define MAX_STEP_PAN_DEG  1.5f    // 100 Hz dongude ani tork sokunu engeller
+#define MAX_STEP_TILT_DEG 1.5f
 
 // Motor Donus Yoni Tersleme (0: Normal, 1: Ters Yon)
-// Montaj sekline gore taret hedeften uzaklasiyorsa 1 yapilir
+// NOT: Donus yonu tersleme PC katmaninda (PAN_INVERT=True) SSOT tarafindan yonetilir.
+// Firmware katmaninda varsayilan 0 (Normal) olarak tutulmalidir.
 #define PAN_DIR_INVERT    0
 #define TILT_DIR_INVERT   0
 

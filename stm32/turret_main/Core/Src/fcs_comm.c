@@ -71,29 +71,39 @@ void FCS_Comm_HandleError(void)
     if (fcs_huart != NULL)
     {
         __HAL_UART_CLEAR_OREFLAG(fcs_huart);
+        __HAL_UART_CLEAR_NEFLAG(fcs_huart);
+        __HAL_UART_CLEAR_FEFLAG(fcs_huart);
+        __HAL_UART_CLEAR_PEFLAG(fcs_huart);
         HAL_UART_Receive_IT(fcs_huart, &fcs_rx_byte, 1);
     }
 }
 
-void FCS_Comm_SendTelemetry(uint16_t distance_cm, uint16_t signal_strength)
+void FCS_Comm_SendTelemetry(uint16_t distance_cm, uint16_t signal_strength, float pan_deg, float tilt_deg)
 {
     if (fcs_huart == NULL) return;
 
-    uint8_t tx_pkt[6];
-    tx_pkt[0] = FCS_HEADER_TX;
+    uint8_t tx_pkt[10];
+    tx_pkt[0] = FCS_HEADER_TX; // 0x55
     tx_pkt[1] = (uint8_t)(distance_cm & 0xFF);
     tx_pkt[2] = (uint8_t)(distance_cm >> 8);
     tx_pkt[3] = (uint8_t)(signal_strength & 0xFF);
     tx_pkt[4] = (uint8_t)(signal_strength >> 8);
 
+    int16_t p = (int16_t)(pan_deg * 10.0f);
+    int16_t t = (int16_t)(tilt_deg * 10.0f);
+    tx_pkt[5] = (uint8_t)(p & 0xFF);
+    tx_pkt[6] = (uint8_t)(p >> 8);
+    tx_pkt[7] = (uint8_t)(t & 0xFF);
+    tx_pkt[8] = (uint8_t)(t >> 8);
+
     uint8_t csum = 0;
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i < 9; i++)
     {
         csum += tx_pkt[i];
     }
-    tx_pkt[5] = csum;
+    tx_pkt[9] = csum;
 
-    HAL_UART_Transmit(fcs_huart, tx_pkt, 6, 10);
+    HAL_UART_Transmit(fcs_huart, tx_pkt, 10, 10);
 }
 
 bool FCS_Comm_IsNewCommand(void)
@@ -104,6 +114,23 @@ bool FCS_Comm_IsNewCommand(void)
         return true;
     }
     return false;
+}
+
+bool FCS_Comm_GetCommand(float *pan, float *tilt, uint8_t *state)
+{
+    if (!new_cmd_flag)
+    {
+        return false;
+    }
+
+    __disable_irq();
+    *pan = cmd_pan;
+    *tilt = cmd_tilt;
+    *state = cmd_state;
+    new_cmd_flag = false;
+    __enable_irq();
+
+    return true;
 }
 
 float FCS_Comm_GetPan(void)
@@ -120,3 +147,4 @@ uint8_t FCS_Comm_GetState(void)
 {
     return cmd_state;
 }
+

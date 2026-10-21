@@ -36,7 +36,7 @@ void Luna_RxCallback(UART_HandleTypeDef *huart)
         if (byte == 0x59)
             luna_buffer[luna_index++] = byte;
         else
-            luna_index = (byte == 0x59) ? 1 : 0;
+            luna_index = 0;
     }
     else
     {
@@ -73,6 +73,9 @@ void Luna_HandleError(void)
     if (luna_huart != NULL)
     {
         __HAL_UART_CLEAR_OREFLAG(luna_huart);
+        __HAL_UART_CLEAR_NEFLAG(luna_huart);
+        __HAL_UART_CLEAR_FEFLAG(luna_huart);
+        __HAL_UART_CLEAR_PEFLAG(luna_huart);
         HAL_UART_Receive_IT(luna_huart, &luna_rx_byte, 1);
     }
 }
