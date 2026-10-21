@@ -18,22 +18,40 @@ TEMEL GOREVLER VE AKIS:
 ================================================================================
 """
 
+import sys
 import time
 from pathlib import Path
 import cv2
 import numpy as np
 from ultralytics import YOLO
 
-from camera_thread import CameraThread
-from fcs_comm import FCSCommunicator
-from fcs_manager import FCSManager
-from turret_hud import TurretHUD
-from telemetry import TelemetryLogger
+# Paket ve dogrudan betik calistirma uyumlulugu (sys.path oto-cozucu)
+_pkg_root = Path(__file__).resolve().parent
+if str(_pkg_root) not in sys.path:
+    sys.path.insert(0, str(_pkg_root))
+
+try:
+    from .camera_thread import CameraThread
+    from .fcs_comm import FCSCommunicator
+    from .fcs_manager import FCSManager
+    from .turret_hud import TurretHUD
+    from .telemetry import TelemetryLogger
+    from .config import CONFIG, FCSState
+except (ImportError, ValueError):
+    from camera_thread import CameraThread
+    from fcs_comm import FCSCommunicator
+    from fcs_manager import FCSManager
+    from turret_hud import TurretHUD
+    from telemetry import TelemetryLogger
+    from config import CONFIG, FCSState
 
 
 def main():
     ENABLE_TELEMETRY = True
-    model_path = Path(__file__).resolve().parents[1] / "runs/detect/balloon_detector/weights/best.pt"
+    project_root = Path(__file__).resolve().parents[1]
+    model_path = project_root / CONFIG.paths.yolo_model
+    if not model_path.exists():
+        model_path = project_root / CONFIG.paths.fallback_yolo_model
     model = YOLO(str(model_path))
 
     cap = CameraThread()
@@ -46,22 +64,23 @@ def main():
     fcs = FCSManager(control_mode="P")
     telemetry = TelemetryLogger() if ENABLE_TELEMETRY else None
 
-    # Logitech C270 Resmi Donanim Optigi (dFOV 55° -> 16:9 Projeksiyon)
-    H_FOV, V_FOV = 48.8, 28.6
-    fx = (1280 / 2.0) / np.tan(np.radians(H_FOV / 2.0))
-    fy = (720 / 2.0) / np.tan(np.radians(V_FOV / 2.0))
+    # Logitech C270 kamera optik parametreleri (SSOT)
+    fx = CONFIG.optics.compute_fx(CONFIG.optics.default_width)
+    fy = CONFIG.optics.compute_fy(CONFIG.optics.default_height)
 
     prev_frame_time = time.time()
     fire_start_time = 0.0
-    GUN_FIRE_DURATION = 0.12  # STM32 solenoid tetik sinyali (120ms < 230ms mekanik saykl, cift atisi kesin onler)
-    ENGAGING_DISPLAY_DURATION = 1.00
-    BALLISTIC_DISPLAY_DURATION = 2.00
-    FIRE_DISPLAY_DURATION = ENGAGING_DISPLAY_DURATION + BALLISTIC_DISPLAY_DURATION
+    # 2 Asamali Balistik Atis ve Spin-Up Senkronizasyon Parametreleri (SSOT):
+    SPINUP_DURATION = CONFIG.ballistics.spinup_time_s
+    GUN_FIRE_DURATION = CONFIG.ballistics.firing_pulse_s
+    RECOVER_DURATION = CONFIG.ballistics.recovery_time_s
+    BALLISTIC_DISPLAY_DURATION = 1.50
+    TOTAL_FIRE_CYCLE = SPINUP_DURATION + GUN_FIRE_DURATION + RECOVER_DURATION + BALLISTIC_DISPLAY_DURATION
 
     prev_target_detected = False
     is_estop = False
-    PAN_INVERT = True   # Yatay servo mekanik montaj acisina gore tersleme (True: -pan_cmd, False: +pan_cmd)
-    TILT_INVERT = False  # Dikey servo mekanik montaj acisina gore tersleme (True: -tilt_cmd, False: +tilt_cmd)
+    PAN_INVERT = CONFIG.mount.pan_invert
+    TILT_INVERT = CONFIG.mount.tilt_invert
 
     # 1. Sistem baslangic durumu
     hud.log_event("[SYS] TURRET FCS INITIALIZED & OPERATIONAL", color=(0, 255, 128))
@@ -114,7 +133,7 @@ def main():
                 else:
                     hud.log_event("[LIDAR] TF-LUNA TIMEOUT / OFFLINE", color=(0, 0, 255))
 
-            ret, frame = cap.read()
+            ret, frame = cap.read(wait_for_new=True)
             if not ret or frame is None:
                 hud.log_event("[CAM] FRAME TIMEOUT / CAMERA OFFLINE", color=(0, 0, 255))
                 break
@@ -124,35 +143,80 @@ def main():
             fps = int(1.0 / max(0.001, now - prev_frame_time))
             prev_frame_time = now
 
-            fcs_state = 0
+            fcs_state = FCSState.TRACKING
             active_pan_cmd = 0.0
             active_tilt_cmd = 0.0
 
             h, w, _ = frame.shape
             center_x, center_y = w // 2, h // 2
-            dist_cm, strength, _ = stm.get_luna_data()
+            fx = CONFIG.optics.compute_fx(w)
+            fy = CONFIG.optics.compute_fy(h)
+            dist_cm, strength, temp_c = stm.get_luna_data()
+            hw_pan, hw_tilt = stm.get_servo_angles()
+            if hw_pan is not None and hw_tilt is not None:
+                eff_hw_pan = -hw_pan if PAN_INVERT else hw_pan
+                eff_hw_tilt = -hw_tilt if TILT_INVERT else hw_tilt
+                fcs.sync_turret_pose(eff_hw_pan, eff_hw_tilt)
 
             conf_val = fcs.selector.min_conf
             results = model.track(frame, imgsz=640, conf=conf_val, persist=True, tracker="bytetrack.yaml", verbose=False)
             boxes = results[0].boxes if len(results) > 0 else []
 
-            is_gun_firing = (now - fire_start_time) < GUN_FIRE_DURATION
-            is_hud_firing = (now - fire_start_time) < FIRE_DISPLAY_DURATION
+            # 2 Asamali Balistik Firlatma Durum Makinesi (500 ms Spin-up & Slew Senkronizasyonu)
+            t_fire = (now - fire_start_time) if fire_start_time > 0 else 999.0
+            if fire_start_time > 0 and t_fire < TOTAL_FIRE_CYCLE:
+                is_hud_firing = True
+                if t_fire < SPINUP_DURATION:
+                    fire_stage = "SPINUP"
+                    spinup_progress = float(t_fire / SPINUP_DURATION)
+                    # S-Egrisi ile yumusak suzulme (Cosine Ease-in-out)
+                    slew_factor = float(0.5 * (1.0 - np.cos(np.pi * spinup_progress)))
+                    fcs_fire_cmd_state = FCSState.FIRING  # STM32 volan motorlarini ac
+                elif t_fire < (SPINUP_DURATION + GUN_FIRE_DURATION):
+                    fire_stage = "FIRING"
+                    spinup_progress = 1.0
+                    slew_factor = 1.0
+                    fcs_fire_cmd_state = FCSState.FIRING  # Solenoid tahrigi
+                elif t_fire < (SPINUP_DURATION + GUN_FIRE_DURATION + RECOVER_DURATION):
+                    fire_stage = "RECOVER"
+                    spinup_progress = 1.0
+                    rec_p = float((t_fire - SPINUP_DURATION - GUN_FIRE_DURATION) / RECOVER_DURATION)
+                    slew_factor = float(0.5 * (1.0 + np.cos(np.pi * rec_p)))
+                    fcs_fire_cmd_state = FCSState.LOCKED if fcs.is_locked else FCSState.TRACKING
+                else:
+                    fire_stage = "EVAL"
+                    spinup_progress = 1.0
+                    slew_factor = 0.0
+                    fcs_fire_cmd_state = FCSState.LOCKED if fcs.is_locked else FCSState.TRACKING
+            else:
+                fire_stage = None
+                spinup_progress = None
+                slew_factor = 0.0
+                is_hud_firing = False
+                fcs_fire_cmd_state = FCSState.LOCKED if fcs.is_locked else FCSState.TRACKING
+                if fire_start_time > 0:
+                    fire_start_time = 0.0
+
+            # Fiziksel atis ve slew hareketi yalnizca SPINUP, FIRING ve RECOVER asamalari boyunca surer.
+            # EVAL asamasinda taret merkezdedir; kilit durumu donmaz ve gercek hedef durumunu yansitir.
+            is_physical_firing = fire_stage in ("SPINUP", "FIRING", "RECOVER")
 
             best_box = fcs.select_best_target(boxes, center_x, center_y)
             pan_cmd, tilt_cmd = fcs.update(
                 best_box, center_x, center_y, fx, fy, dt, 
-                is_firing=is_gun_firing, is_hud_firing=is_hud_firing, dist_cm=dist_cm
+                is_firing=is_physical_firing, 
+                dist_cm=dist_cm,
+                slew_factor=slew_factor
             )
 
             target_detected = best_box is not None
             target_centered = False
 
             if is_estop:
-                fcs_state = 3
+                fcs_state = FCSState.ESTOP
                 active_pan_cmd = 0.0
                 active_tilt_cmd = 0.0
-                stm.send(0.0, 0.0, 3)
+                stm.send(0.0, 0.0, FCSState.ESTOP)
                 status_text = "STATUS: EMERGENCY STOP (LATCHED)"
                 status_color = (0, 0, 255)
                 angle_err_text = "ANGULAR ERR:   [HALTED] deg"
@@ -165,7 +229,20 @@ def main():
                 bx, by = (x1 + x2) // 2, (y1 + y2) // 2
                 target_centered = hud.is_target_centered(center_x, center_y, x1, y1, x2, y2)
 
-                if is_hud_firing:
+                if fire_stage == "SPINUP":
+                    ms_left = max(0, int((1.0 - spinup_progress) * SPINUP_DURATION * 1000))
+                    status_text = f"STATUS: SPIN-UP & SLEW ({ms_left:3d}ms)"
+                    status_color = (0, 215, 255)
+                elif fire_stage == "FIRING":
+                    status_text = "STATUS: ENGAGING (SOLENOID RELEASE)"
+                    status_color = (0, 0, 255)
+                elif fire_stage == "RECOVER":
+                    status_text = "STATUS: RECOVERING BORESIGHT"
+                    status_color = (0, 255, 128)
+                elif fire_stage == "EVAL":
+                    status_text = "STATUS: ENGAGEMENT SUCCESSFUL"
+                    status_color = (0, 255, 0)
+                elif is_hud_firing:
                     status_text = "STATUS: ENGAGING TARGET"
                     status_color = (0, 0, 255)
                 elif fcs.is_locked:
@@ -175,14 +252,17 @@ def main():
                     status_text = "STATUS: TRACKING"
                     status_color = (0, 191, 255)
 
-                fcs_state = 2 if (fcs.is_locked and is_gun_firing) else (1 if fcs.is_locked else 0)
+                fcs_state = fcs_fire_cmd_state if (target_detected and (fcs.is_locked or is_hud_firing)) else (FCSState.LOCKED if fcs.is_locked else FCSState.TRACKING)
                 active_pan_cmd = -pan_cmd if PAN_INVERT else pan_cmd
                 active_tilt_cmd = -tilt_cmd if TILT_INVERT else tilt_cmd
                 stm.send(active_pan_cmd, active_tilt_cmd, fcs_state)
 
                 angle_err_text = f"ANGULAR ERR:   [{fcs.actual_pan:+.1f} , {fcs.actual_tilt:+.1f}] deg"
-                target_label = "" if is_hud_firing else hud.get_box_label(dist_cm, target_centered, fcs.is_locked, conf=fcs.target_conf)
-                hud.draw_corner_box(frame, x1, y1, x2, y2, color=status_color, length=30, thickness=2, label=target_label)
+                # Nisangah ve Hedef Kutusu: Takipte sari (0, 191, 255); Kilit ve Atis evresinde sabit kirmizi (0, 0, 255)
+                # Bilgilendirme paneli evrelere gore renk degistirirken hedef kutusu ve nisangah kirmizi kalir
+                box_color = (0, 0, 255) if (fcs.is_locked or is_hud_firing) else status_color
+                target_label = "TARGET (LOCKED)" if is_hud_firing else hud.get_box_label(dist_cm, target_centered, fcs.is_locked, conf=fcs.target_conf)
+                hud.draw_corner_box(frame, x1, y1, x2, y2, color=box_color, length=30, thickness=2, label=target_label)
 
                 if not is_hud_firing:
                     if not fcs.is_locked:
@@ -202,13 +282,13 @@ def main():
                 if fcs.patrol_enabled:
                     active_pan_cmd = -pan_cmd if PAN_INVERT else pan_cmd
                     active_tilt_cmd = -tilt_cmd if TILT_INVERT else tilt_cmd
-                    stm.send(active_pan_cmd, active_tilt_cmd, 0)
+                    stm.send(active_pan_cmd, active_tilt_cmd, FCSState.TRACKING)
                     prev_target_detected = False
                 else:
                     active_pan_cmd = 0.0
                     active_tilt_cmd = 0.0
                     if prev_target_detected:
-                        stm.send(0.0, 0.0, 0)
+                        stm.send(0.0, 0.0, FCSState.TRACKING)
                         if fcs.frames_since_lost >= fcs.max_lost_frames:
                             prev_target_detected = False
 
@@ -223,16 +303,21 @@ def main():
                     tilt_cmd=active_tilt_cmd if (target_detected or fcs.patrol_enabled) else 0.0,
                     dist_cm=dist_cm,
                     strength=strength,
-                    fcs_state=fcs_state if target_detected else 0,
+                    temp_c=temp_c,
+                    fcs_state=int(fcs_state if target_detected else FCSState.TRACKING),
+                    servo_pan_fb=hw_pan,
+                    servo_tilt_fb=hw_tilt,
+                    frame_id=cap.current_frame_id if cap else None,
                 )
 
-            hud.draw_grid_and_reticle(frame, center_x, center_y, reticle_color=status_color)
+            reticle_color = (0, 0, 255) if (fcs.is_locked or is_hud_firing) else status_color
+            hud.draw_grid_and_reticle(frame, center_x, center_y, reticle_color=reticle_color)
 
             ballistic_hud_data = None
             if is_hud_firing:
                 elapsed_fire = now - fire_start_time
-                if elapsed_fire >= ENGAGING_DISPLAY_DURATION:
-                    ballistic_hud_data = ("BURST COMPLETED", (0, 255, 0))
+                if elapsed_fire >= (SPINUP_DURATION + GUN_FIRE_DURATION):
+                    ballistic_hud_data = ("ENGAGEMENT SUCCESSFUL", (0, 255, 0))
 
             hud.draw_telemetry(
                 frame,
@@ -250,6 +335,8 @@ def main():
                 center_x=center_x,
                 center_y=center_y,
                 ballistic_result=ballistic_hud_data,
+                fire_stage=fire_stage,
+                spinup_progress=spinup_progress,
             )
 
             # Atis sirasinda kilit bari ve isabet olasiligi gizlenir
@@ -257,44 +344,10 @@ def main():
                 hud.draw_lock_bar(frame, center_x, center_y, fcs.lock_counter, fcs.LOCK_THRESHOLD_FRAMES, fcs.is_locked)
                 hud.draw_lock_quality(frame, center_x, center_y, fcs.last_lock_quality)
 
-            # Kontrol Modu ve Devriye Durum Banneri (HUD)
-            if fcs.control_mode == "RL":
-                mode_label = "RL CONTROLLER (AGILE PURSUIT)"
-                mode_color = (0, 255, 128)
-            else:
-                mode_label = "P CONTROLLER (PRECISION LOCK)"
-                mode_color = (0, 255, 255)
-
-            if fcs.patrol_enabled:
-                banner_text = f"[{mode_label}]  |  [PATROL: FIGURE-8]"
-                banner_color = (0, 255, 0)
-                banner_border = (0, 255, 0)
-            else:
-                banner_text = f"[{mode_label}]  |  [PATROL: OFF]"
-                banner_color = mode_color
-                banner_border = (90, 100, 110)
-
-            (b_w, _), _ = cv2.getTextSize(banner_text, cv2.FONT_HERSHEY_SIMPLEX, 0.56, 2)
-            banner_x = max(10, center_x - (b_w // 2))
-
-            # Yari saydam ust baslik paneli
-            pad_x, pad_y = 12, 5
-            bx1, by1 = max(0, banner_x - pad_x), max(0, 26 - 16 - pad_y)
-            bx2, by2 = min(frame.shape[1], banner_x + b_w + pad_x), min(frame.shape[0], 26 + pad_y)
-            roi_b = frame[by1:by2, bx1:bx2]
-            black_b = np.zeros_like(roi_b)
-            frame[by1:by2, bx1:bx2] = cv2.addWeighted(roi_b, 0.30, black_b, 0.70, 0)
-            cv2.rectangle(frame, (bx1, by1), (bx2, by2), banner_border, 1)
-
-            cv2.putText(frame, banner_text, (banner_x, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.56, banner_color, 2, cv2.LINE_AA)
-
-            # Alt operator kontrol lejandi
-            footer_text = "[M] Mode (P/RL)  |  [P] Patrol  |  [SPACE] E-Stop  |  [Y] Fire  |  [Q] Quit"
-            (f_w, _), _ = cv2.getTextSize(footer_text, cv2.FONT_HERSHEY_SIMPLEX, 0.42, 1)
-            cv2.putText(frame, footer_text, (center_x - f_w // 2, frame.shape[0] - 14), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (160, 170, 180), 1, cv2.LINE_AA)
-
-            # Sol alt terminal olay gunlugu (Console Event Log)
-            hud.draw_event_log(frame)
+            # HUD Bilesenleri (Panel gorunurluk kurallari ve declutter TurretHUD icinde yonetilir)
+            hud.draw_mode_banner(frame, fcs.control_mode, fcs.patrol_enabled, is_locked=fcs.is_locked, firing=is_hud_firing)
+            hud.draw_footer(frame, is_locked=fcs.is_locked, firing=is_hud_firing)
+            hud.draw_event_log(frame, is_locked=fcs.is_locked, firing=is_hud_firing)
 
             cv2.imshow(WINDOW_NAME, frame)
             key = cv2.waitKey(1) & 0xFF
@@ -322,14 +375,14 @@ def main():
                 fire_start_time = 0.0
                 if is_estop:
                     fcs.patrol_enabled = False
-                    stm.send(0.0, 0.0, 3)
+                    stm.send(0.0, 0.0, FCSState.ESTOP)
                     hud.log_event("[E-STOP] MOTORS HALTED & ZEROED (LATCHED)", color=(0, 0, 255))
                 else:
-                    stm.send(0.0, 0.0, 0)
+                    stm.send(0.0, 0.0, FCSState.TRACKING)
                     hud.log_event("[E-STOP] DISENGAGED - RESUMING FCS", color=(0, 255, 128))
-            elif key in [ord("y"), ord("Y")] and fcs.is_locked:
+            elif key in [ord("y"), ord("Y")] and fcs.is_locked and fire_stage is None:
                 fire_start_time = time.time()
-                hud.log_event("[FIRE] SOLENOID TRIGGERED", color=(0, 0, 255))
+                hud.log_event("[FIRE] 2-STAGE ENGAGEMENT: SPIN-UP & SLEW ENGAGED", color=(0, 215, 255))
             elif key in [ord("n"), ord("N")]:
                 fcs.reset()
                 fire_start_time = 0.0

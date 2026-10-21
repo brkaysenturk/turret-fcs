@@ -4,7 +4,7 @@ MODUL: ADAPTIF DURUM KESTIRIMI VE KALMAN FILTRESI (KALMAN FILTER)
 ================================================================================
 Bu modul, kamera piksel duzleminde hedefin konumunu (x, y) ve hiz vektorunu (vx, vy)
 kestiren, olcum gurultusunu suzen ve balistik atis onleme (Lead Time) kestirimi yapan
-Surekli Beyaz Gurultulu Ivme (CWNA) tabanli genisletilmis Kalman Filtresidir.
+Surekli Beyaz Gurultulu Ivme (CWNA) tabanli dogrusal (lineer) Kalman Filtresidir.
 
 DURUM VE OLCUM UZAYI:
 - Durum Vektoru: X = [x, y, vx, vy]^T
@@ -13,10 +13,10 @@ DURUM VE OLCUM UZAYI:
 
 GELISMIS OZELLIKLER:
 1. Inovasyon Tabanli Adaptif Surec Gurultusu (Adaptive Q Matrisi):
-   Hedef sabitken kucuk varyans (sigma_a_min=5.0 px/s^2) ile mukemmel gurultu suzme;
-   hedef ani yon degistirdiginde (residual > 32 px) sigma_a_max=320.0 px/s^2 seviyesine
+   Hedef sabitken kucuk varyans (sigma_a_min=4.0 px/s^2) ile mukemmel gurultu suzme;
+   hedef ani yon degistirdiginde (residual > 38 px) sigma_a_max=280.0 px/s^2 seviyesine
    yukselerek gecikmesiz hizli manevra takibi.
-2. Olcum Gurultusu Kovaryansi R_var = 25.0 px^2:
+2. Olcum Gurultusu Kovaryansi R_var = 64.0 px^2:
    YOLOv8 sinirlayici kutu titresimlerini (jitter) motora iletmeden duzlestirir.
 3. Cift Kademeli Hiz Yumusatma (Exponential Velocity Smoothing):
    Hiz turevindeki anlik pikleri (spike) suzerek atis onleme noktasinin (Lead Reticle)
@@ -25,6 +25,11 @@ GELISMIS OZELLIKLER:
 """
 
 import numpy as np
+
+try:
+    from .config import CONFIG
+except (ImportError, ValueError):
+    from config import CONFIG
 
 
 class KalmanFilter:
@@ -46,7 +51,7 @@ class KalmanFilter:
         sigma_a_max=280.0,   # Hizli manevra ivme gurultusu (px/s^2)
         residual_low=14.0,   # Ev: 14.0 | Okul: 8.0
         residual_high=38.0,  # Ev: 38.0 | Okul: 32.0
-        jump_threshold=90.0  # Hedef atlamasi/yanlis tespit esigi (pixel)
+        jump_threshold=240.0 # Hedef atlamasi/yanlis tespit esigi (pixel, ~9.8 deg)
     ):
         self.dt = float(dt)
         self.r_var = float(r_var)
@@ -72,6 +77,8 @@ class KalmanFilter:
 
         self.last_meas_x = 0.0
         self.last_meas_y = 0.0
+        self.raw_vx = 0.0
+        self.raw_vy = 0.0
         self.last_residual = 0.0
         self.current_sigma_a = self.sigma_a_min
         self.smooth_vx = 0.0
@@ -160,34 +167,32 @@ class KalmanFilter:
         MAX_VEL = 700.0  # px/s
         raw_vx = float(np.clip(self.x[2, 0], -MAX_VEL, MAX_VEL))
         raw_vy = float(np.clip(self.x[3, 0], -MAX_VEL, MAX_VEL))
+        self.raw_vx = raw_vx
+        self.raw_vy = raw_vy
 
-        # 4. Dinamik Hedef Hiz Olu Bolgesi (Dynamic Velocity Deadband)
-        # Ego-motion (taret donusu) ve yakin mesafe (YOLO bounding box jitter) durumlarinda
-        # olu bolge dinamik olarak genisler, taret hareket halindeyken olusan sahte 
-        # optik dalgalanmalari ve mikrotitremeleri sifirlar.
-        ego_speed = float(np.hypot(ego_dx, ego_dy)) / dt
-        ego_expansion = min(85.0, 0.40 * ego_speed)
-
+        # 4. Hedef Hiz Titresim Filtresi (Sub-pixel Jitter Deadband)
+        # Ego-hareket durum gecisinde zaten telafi edildiginden (x_pred += ego_step)
+        # buradaki olu bolge yalnizca statik hedeflerdeki YOLO kutu gurultusunu (5-10 px/s)
+        # suzer; gercek hedef hareketlerini (1 deg/s = 24.6 px/s) kesinlikle bastirmaz.
         near_expansion = 0.0
-        if dist_m is not None and dist_m < 1.2:
-            near_expansion = min(65.0, max(0.0, (1.2 - float(dist_m)) * 80.0))
+        if dist_m is not None and dist_m < 1.0:
+            near_expansion = min(8.0, max(0.0, (1.0 - float(dist_m)) * 16.0))
 
-        vel_threshold_high = float(45.0 + ego_expansion + near_expansion)
-        vel_threshold_low = float(vel_threshold_high * 0.35)
+        vel_threshold_high = float(14.0 + near_expansion)
+        vel_threshold_low = float(6.0 + 0.40 * near_expansion)
 
         speed = float(np.hypot(raw_vx, raw_vy))
+        out_vx = raw_vx
+        out_vy = raw_vy
         if speed < vel_threshold_high:
             decay_range = max(1.0, vel_threshold_high - vel_threshold_low)
             deadband_decay = max(0.0, (speed - vel_threshold_low) / decay_range)
-            raw_vx *= deadband_decay
-            raw_vy *= deadband_decay
-            self.x[2, 0] = raw_vx
-            self.x[3, 0] = raw_vy
+            out_vx *= deadband_decay
+            out_vy *= deadband_decay
 
-        # Hizi ustel yumusat (Exponential Moving Average)
-        # Ev: 0.82 / 0.18 | Okul: 0.70 / 0.30
-        self.smooth_vx = 0.82 * self.smooth_vx + 0.18 * raw_vx
-        self.smooth_vy = 0.82 * self.smooth_vy + 0.18 * raw_vy
+        # Cikti hizini ustel olarak yumusat (EMA)
+        self.smooth_vx = 0.82 * self.smooth_vx + 0.18 * out_vx
+        self.smooth_vy = 0.82 * self.smooth_vy + 0.18 * out_vy
 
         self.last_meas_x = mx
         self.last_meas_y = my
@@ -205,7 +210,8 @@ class KalmanFilter:
         vx, vy = float(self.smooth_vx), float(self.smooth_vy)
         speed = float(np.hypot(vx, vy))
 
-        attenuation = float(np.clip((speed - 25.0) / 35.0, 0.0, 1.0))
+        # Cikti olu bolgesi (6-14 px/s) ile uyumlu yumusak baslangic sonumlemesi
+        attenuation = float(np.clip((speed - 6.0) / 8.0, 0.0, 1.0))
         effective_lead = float(lead_time) * attenuation
 
         pred_x = px + (vx * effective_lead)
@@ -213,16 +219,20 @@ class KalmanFilter:
 
         return float(pred_x), float(pred_y), float(vx * attenuation), float(vy * attenuation)
 
-    def get_angular_velocity_deg_s(self, fx=1276.0, fy=1276.0):
+    def get_velocity(self):
+        """Filtrelenmis hedef hizini (vx, vy) px/s olarak doner."""
+        return float(self.smooth_vx), float(self.smooth_vy)
+
+    def get_angular_velocity_deg_s(self, fx=None, fy=None):
         """
         Kalman filtresinin kestirdigi piksel hizini (px/s)
         kamera optik odak uzakligina (fx, fy) gore acisal hiza (derece/saniye) donusturur.
         Telemetri ve acisal hedef takip analizi icin gurultuden arindirilmis girdi saglar.
         """
-        fx_val = max(float(fx), 1.0)
-        fy_val = max(float(fy), 1.0)
-        omega_pan = float(np.degrees(np.arctan2(float(self.smooth_vx), fx_val)))
-        omega_tilt = - float(np.degrees(np.arctan2(float(self.smooth_vy), fy_val)))
+        fx_val = max(float(fx), 1.0) if fx is not None else CONFIG.optics.compute_fx(CONFIG.optics.default_width)
+        fy_val = max(float(fy), 1.0) if fy is not None else CONFIG.optics.compute_fy(CONFIG.optics.default_height)
+        omega_pan = float(np.degrees(float(self.smooth_vx) / fx_val))
+        omega_tilt = - float(np.degrees(float(self.smooth_vy) / fy_val))
         return omega_pan, omega_tilt
 
     def reset(self):

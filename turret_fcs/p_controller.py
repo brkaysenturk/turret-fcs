@@ -7,22 +7,33 @@ atis onleme acilarini ve gercek donanimda dogrulanmis yumusak olu bolgeli (Soft 
 saf oransal (Tip-1 P) motor kontrol komutlarini hesaplar.
 
 KONTROL PARAMETRELERI:
-- Pan:  Kp = 0.055 - 0.10, Deadband = 0.85 - 0.90 deg
-- Tilt: Kp = 0.030 - 0.06, Deadband = 0.85 - 0.95 deg (Agir volan namlu sonumlu)
+- Pan:  Kp = 0.10 (30 FPS bazinda, dt normalizasyonu ile Kp_s = 3.0 1/s), Deadband = 0.85 deg
+- Tilt: Kp = 0.05 (30 FPS bazinda, dt normalizasyonu ile Kp_s = 1.5 1/s), Deadband = 0.95 deg
 - Filtre: alpha = 0.75 (EMA)
-- Komut Limiti: max_output = 1.35 - 2.75 deg/kare
+- Komut Limiti: max_output = 1.35 deg (Tek kare mekanik jerk ve adim tavani ile korunur)
 
 KONTROL TEORISI GEREKCESI:
-STM32 gometim yazilimindaki pozisyon biriktiricisi theta(k) = theta(k-1) + delta_theta
+STM32 gomulu yazilimindaki pozisyon biriktiricisi theta(k) = theta(k-1) + delta_theta
 ayrik zamanda dogal bir integrator gibi davranir (Tip-1 Servomekanizma).
-Bu sayede sistem harici bir integral (Ki) veya turev (Kd / D-termi) gerektirmeden
-dogal olarak sifir kalici durum hatasi (zero steady-state error) ile hedefe kilitlenir.
-Kamera gurultusunu motora tasimamak ve disli titresimini engellemek icin turev (D)
-terimi kullanilmaz; sifir jerk ile kalkis icin Yumusak Olu Bolge (Soft Deadband) uygulanir.
+Klasik kontrol teorisine gore (Ogata / Franklin):
+1. Statik Hedefler (Konum Basamak Girisi): Tip-1 acik cevrim integratoru sayesinde
+   harici bir yazilimsal integral (Ki) terimine ihtiyac duymadan sifir kalici durum hatasi (e_ss = 0) saglar.
+2. Hareketli Hedefler (Acisal Hiz Rampa Girisi): Tip-1 sistemlerde rampa hatasi e_ss = omega / Kv olur.
+   Sistemimiz bu sonlu rampa gecikmesini, Kalman filtresi hedef hiz kestirimi ve
+   balistik atis onleme ofseti (kinematik lead offset) ile telafi eder;
+   cevik manevralarda ise yapay zeka (RL) denetleyicisi devreye girer.
+Yazilima harici bir Ki integrali konulmamasinin temel sebebi, acik cevrime ikinci bir kutup
+ekleyerek (Tip-2 rezonansi) faz cokmesine ve servo limit dongusu titresimine yol acmasini engellemektir.
+Kamera gurultusunu servolara tasimamak icin turev (D) terimi yerine Yumusak Olu Bolge (Soft Deadband) kullanilir.
 ===============================================================================
 """
 
 import numpy as np
+
+try:
+    from .config import CONFIG
+except (ImportError, ValueError):
+    from config import CONFIG
 
 
 class PController:
@@ -31,27 +42,29 @@ class PController:
     saf oransal (Tip-1 P) motor duzeltme komutlarini hesaplar.
     """
 
-    DEFAULT_DISTANCE_M = 2.0
-    PROJECTILE_SPEED_MPS = 10.0  # m/s (Mermi namlu cikis hizi)
-    GRAVITY_ACCEL = 9.81         # m/s^2 (Yercekimi ivmesi)
+    DEFAULT_DISTANCE_M = CONFIG.ballistics.default_distance_m
+    PROJECTILE_SPEED_MPS = CONFIG.ballistics.projectile_speed_mps
+    GRAVITY_ACCEL = CONFIG.ballistics.gravity_accel
 
-    # --- KALIBRASYON DEGERLERI ---
-    MAX_OUTPUT_DEG = 1.35        # Ev: 1.35 | Okul: 2.75
-    DEADBAND_PAN_DEG = 0.85      # Ev: 0.85 | Okul: 0.85
-    DEADBAND_TILT_DEG = 0.95     # Ev: 0.95 | Okul: 0.95
+    MAX_OUTPUT_DEG = CONFIG.control.max_output_deg
+    DEADBAND_PAN_DEG = CONFIG.control.deadband_pan_deg
+    DEADBAND_TILT_DEG = CONFIG.control.deadband_tilt_deg
 
     def __init__(
         self,
-        kp_pan=0.055,            # Ev: 0.055 | Okul: 0.10
-        kp_tilt=0.030,           # Ev: 0.030 | Okul: 0.06
-        alpha=0.75,
+        kp_pan=CONFIG.control.kp_pan,
+        kp_tilt=CONFIG.control.kp_tilt,
+        alpha=CONFIG.control.alpha_filter,
         max_output=MAX_OUTPUT_DEG,
         deadband_pan=DEADBAND_PAN_DEG,
         deadband_tilt=DEADBAND_TILT_DEG,
     ):
-        # Oransal kazanclar (P)
-        self.kp_pan = float(kp_pan)
-        self.kp_tilt = float(kp_tilt)
+        # 30 FPS bazinda girilen kazanci surekli zaman formuna (1/s) donusturur
+        self.kp_frame_pan = float(kp_pan)
+        self.kp_frame_tilt = float(kp_tilt)
+
+        self.kp_pan = self.kp_frame_pan if self.kp_frame_pan >= 1.0 else (self.kp_frame_pan / 0.03333)
+        self.kp_tilt = self.kp_frame_tilt if self.kp_frame_tilt >= 1.0 else (self.kp_frame_tilt / 0.03333)
 
         # Filtre ve sinirlar
         self.alpha = float(alpha)
@@ -89,10 +102,10 @@ class PController:
         return float(lead_pan), float(lead_tilt)
 
     def compute_p(self, active_pan, active_tilt, dt=0.033, **kwargs):
-        """
-        Yumusak olu bolgeli (Soft Deadband) ve ayrik eksenli saf oransal (Tip-1 P)
-        motor komutunu hesaplar. Sifir jerk ile puzursuz kalkis saglar.
-        """
+        """Yumusak olu bolgeli ve dt-normalizasyonlu Tip-1 P motor komutunu hesaplar."""
+        # Dongu gecikmelerinde maksimum dt sinirlamasi (50 ms)
+        effective_dt = max(0.010, min(float(dt), 0.050))
+
         self.filtered_pan = self.alpha * active_pan + (1.0 - self.alpha) * self.filtered_pan
         self.filtered_tilt = self.alpha * active_tilt + (1.0 - self.alpha) * self.filtered_tilt
 
@@ -104,7 +117,7 @@ class PController:
             u_pan = 0.0
         else:
             eff_pan = np.sign(self.filtered_pan) * (abs_pan - self.deadband_pan)
-            u_pan = self.kp_pan * eff_pan
+            u_pan = self.kp_pan * eff_pan * effective_dt
 
         # =========================================================================
         # 2. TILT EKSENI (Dikey)
@@ -114,11 +127,12 @@ class PController:
             u_tilt = 0.0
         else:
             eff_tilt = np.sign(self.filtered_tilt) * (abs_tilt - self.deadband_tilt)
-            u_tilt = self.kp_tilt * eff_tilt
+            u_tilt = self.kp_tilt * eff_tilt * effective_dt
 
-        # Eyleyici mekanik sinirlamasi (Maksimum motor komutu)
-        u_pan = float(np.clip(u_pan, -self.max_output, self.max_output))
-        u_tilt = float(np.clip(u_tilt, -self.max_output, self.max_output))
+        # Tek karede verilebilecek maksimum mekanik adim siniri
+        max_step = float(min(self.max_output, self.max_output * (effective_dt / 0.03333)))
+        u_pan = float(np.clip(u_pan, -max_step, max_step))
+        u_tilt = float(np.clip(u_tilt, -max_step, max_step))
 
         return u_pan, u_tilt
 

@@ -1,9 +1,9 @@
 """
 ================================================================================
-MODUL: SAKIN MERKEZE DONUS VE DAIRESEL SEKTOR DEVIYE URETECI (PATROL GENERATOR)
+MODUL: SAKIN MERKEZE DONUS VE LISSAJOUS SEKIZ (FIGURE-8) DEVIYE URETECI
 ================================================================================
-Bu modul, hedef gorunmediginde taretin sakin ve kararli bir sekilde alan taramasi
-yapmasini saglar:
+Bu modul, hedef gorunmediginde taretin sakin ve kararli bir sekilde hava sahasi
+taramasi yapmasini saglar:
 
 1. HEDEF KAYBOLDUGUNDA (1.5 SANIYE BEKLEME):
    - Hedef kadrajdan ciktiginda veya anlik kesintilerde taret hemen yerinden oynamaz.
@@ -14,10 +14,10 @@ yapmasini saglar:
    - 1.5 saniye icinde hedef donmezse, taret sakin ve orta duzey bir hizla (20°/s)
      merkez (0°, 0°) noktasina doner.
 
-3. DAIRESEL / ELIPTIK SEKTOR TARAMASI (Pan: +/- 28°, Tilt: +/- 8°):
-   - Merkeze ulasinca hem yatay hem dikey eksenleri eszamanli (sin/cos) calistirarak
-     gokyuzunde genis bir konik cember/elips taramasi yapar.
-   - Merkezden cembere gecerken yumusak bir spiral ile acilir (sifir vuruntu).
+3. LISSAJOUS SEKIZ (FIGURE-8) HAVA SAHASI TARAMASI (Pan: +/- 45°, Tilt: +/- 16°, 8.0s Periyot):
+   - Merkeze ulasinca hem yatay hem dikey eksenleri harmonik frekanslarda (1:2 oraninda)
+     calistirarak gokyuzunde genis bir sonsuzluk / sekiz motifi (Figure-8) taramasi yapar.
+   - Merkezden sekiz motifine gecerken yumusak bir gecis ile acilir (sifir jerk/vuruntu).
    - Koseli hareket olmadigi icin servolar surekli akici, titresimsiz ve sakin doner.
 
 4. HEDEF GORULDUGUNDE:

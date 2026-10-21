@@ -8,20 +8,27 @@ olasiligi modeli ile hedefe tam oturulmadan atis yapilmasini onler.
 
 ALGORITMA VE GUCLU MEKANIZMALAR:
 1. Histerezisli Dinamik Kilit Penceresi (Hysteresis Window):
-   - Kilit Giris Esigi: Hedeften uzakliga ve hiza bagli (2.0° - 3.0°).
-   - Kilit Cikis Esigi: 3.5° (Genis tolerans).
+   - Kilit Giris Esigi: Hedeften uzakliga ve hiza bagli dinamik esik (1.60° - 3.00°).
+   - Kilit Cikis Esigi: Dinamik esik + 0.60° (2.20° - 3.60°).
    - Kilit Titremesi Onleme: Hedef tam esik cizgisinde hareket ederken kilidin
      anlik acilip kapanmasini (chattering / flickering) onler.
 2. Kararlilik Sayaci (Stability Counter):
    - Hedef kilit penceresine girdikten sonra art arda 10 kare (~0.33 sn) boyunca
      pencere icinde kalmasi zorunludur. Anlik hedef gecislerinde atis yapilmaz.
 3. Analitik Gauss Isabet Olasiligi Modeli (Hit Probability):
-   - P_hit = exp(-theta_err^2 / (2 * sigma_eff^2)) formulu ile hedef mesafesine (TF-Luna LiDAR)
-     ve hedef hizina gore 0 - 100% arasinda gercekci balistik vurus olasiligi hesaplar.
+   - Tam 2B Dairesel Gauss Integrali (Merkezi Olmayan Ki-Kare CDF / Marcum Q) ile
+     hedef geometrisi, ucus suresi, gecikme ve sacilmaya gore %0.0 - %100.0 arasi hesaplar.
 ================================================================================
 """
 
 import numpy as np
+from scipy.stats import ncx2
+
+
+try:
+    from .config import CONFIG
+except (ImportError, ValueError):
+    from config import CONFIG
 
 
 class LockManager:
@@ -30,52 +37,107 @@ class LockManager:
     hedef kilit kalitesi puanini gercek zamanli turret FCS icin yonetir.
     """
 
-    # --- KILIT ESIGI VE TOLERANS KALIBRASYONU ---
-    def __init__(self, lock_threshold_frames=10, lock_exit_margin_deg=0.60):
-        self.lock_threshold_frames = lock_threshold_frames  # Ev: 10 | Okul: 10
-        self.lock_exit_margin_deg = lock_exit_margin_deg    # Ev: 0.60 | Okul: 0.60
+    def __init__(
+        self,
+        lock_threshold_frames=CONFIG.lock.lock_threshold_frames,
+        lock_exit_margin_deg=CONFIG.lock.lock_exit_margin_deg,
+        fx=None,
+    ):
+        self.lock_threshold_frames = lock_threshold_frames
+        self.lock_exit_margin_deg = lock_exit_margin_deg
+        self.fx = float(fx) if fx is not None else CONFIG.optics.compute_fx(CONFIG.optics.default_width)
 
         self.stability_counter = 0
         self.is_locked = False
         self.lock_quality = 0.0
         self.hit_probability = 0.0
+        self._prev_is_firing = False
+        self._post_fire_grace_frames = 0
+        self.post_fire_grace_duration_frames = CONFIG.lock.post_fire_grace_duration_frames  # 0.75 saniye @ 30 FPS kilit muafiyeti (grace period)
 
     def compute_dynamic_threshold(self, target_velocity):
         speed_mag = float(np.hypot(target_velocity[0], target_velocity[1]))
         if speed_mag < 15.0:
-            return 1.60  # Ev: 1.60 | Okul: 2.00
+            return 1.60
         if speed_mag < 45.0:
-            return 2.20  # Ev: 2.20 | Okul: 2.50
-        return 3.00      # Ev: 3.00 | Okul: 3.00
+            return 2.20
+        return 3.00
 
-    def compute_hit_probability(self, angular_error_deg, target_velocity, dist_m=2.0, target_radius_m=0.15):
+    def compute_hit_probability(
+        self,
+        angular_error_deg,
+        target_velocity,
+        dist_m=CONFIG.ballistics.default_distance_m,
+        target_radius_m=CONFIG.lock.target_radius_m,
+        fx=None,
+        fy=None,
+        box_dim=None,
+    ):
         """
-        Analitik Bivariate Gaussian Isabet Olasiligi Modeli (P_hit):
-        Hedef geometrisi, menzil, namlu dagilimi ve hedef hiz belirsizligini
-        birlestiren kapali form balistik model (%0.0 - %100.0).
+        Tam 2B Dairesel Gauss Integrali (Non-Central Chi-Squared CDF / Marcum Q):
+        Hedef geometrisi (Bounding Box optik boyutu veya mesafe kokenli acisal cap),
+        gercek mermi ucus suresi (t_flight), sistem gecikmesi ve kalibre edilmis namlu sacilmasini
+        birlestiren tam analitik balistik model (%0.0 - %100.0).
         """
-        d = max(0.5, float(dist_m)) if dist_m is not None else 2.0
-        theta_target = np.degrees(np.arctan(target_radius_m / d))
+        d = max(0.5, float(dist_m)) if dist_m is not None else CONFIG.ballistics.default_distance_m
+        effective_fx = float(fx) if (fx is not None and fx > 100.0) else self.fx
+        effective_fy = float(fy) if (fy is not None and fy > 100.0) else (effective_fx * (9.0 / 16.0))
 
-        t_flight = (d / 10.0) + 0.08
-        speed_mag = float(np.hypot(target_velocity[0], target_velocity[1]))
-        speed_deg_s = speed_mag * (57.3 / 642.0)
+        # 1. Hedef Acisal Yaricapi: Varsa dogrudan YOLO kutu boyutundan, yoksa mesafeden cikar
+        if box_dim is not None and len(box_dim) >= 2 and box_dim[0] > 0 and box_dim[1] > 0:
+            bw, bh = float(box_dim[0]), float(box_dim[1])
+            theta_pan = float(np.degrees(np.arctan((bw / 2.0) / effective_fx)))
+            theta_tilt = float(np.degrees(np.arctan((bh / 2.0) / effective_fy)))
+            theta_target = float(0.5 * (theta_pan + theta_tilt))
+        else:
+            theta_target = float(np.degrees(np.arctan(target_radius_m / d)))
 
-        sigma_motion = 0.25 * speed_deg_s * t_flight
-        sigma_weapon = 0.75  # Flywheel ic balistik sacilmasi (derece)
-        sigma_total = np.sqrt(sigma_weapon**2 + sigma_motion**2)
+        theta_target = max(0.10, theta_target)
 
-        p_zero = 1.0 - np.exp(-(theta_target**2) / (2.0 * (sigma_total**2)))
-        p_hit = p_zero * np.exp(-(angular_error_deg**2) / (2.0 * (sigma_total**2 + 0.5 * (theta_target**2))))
-        return float(np.clip(p_hit * 100.0, 0.0, 100.0))
+        # 2. Ucus Suresi ve Sistem Gecikmesi Ayrilimi
+        v_proj = CONFIG.ballistics.projectile_speed_mps
+        t_flight = d / max(1.0, v_proj)
+        system_latency_s = CONFIG.ballistics.system_latency_s
+        total_lead_time = t_flight + system_latency_s
 
-    def update(self, angular_error_deg, target_velocity, is_firing=False, dist_m=2.0):
+        # 3. Anizotropik Acisal Hedef Hizi (pan ve tilt ayrik odak uzakliklariyla)
+        vx_deg_s = float(np.degrees(target_velocity[0] / effective_fx))
+        vy_deg_s = float(np.degrees(target_velocity[1] / effective_fy))
+        speed_deg_s = float(np.hypot(vx_deg_s, vy_deg_s))
+
+        # 4. Saçılma Bileşenleri
+        sigma_motion = 0.25 * speed_deg_s * total_lead_time
+        sigma_weapon = CONFIG.lock.sigma_weapon_deg
+        sigma_total = float(np.sqrt(sigma_weapon**2 + sigma_motion**2))
+        sigma_safe = max(0.01, sigma_total)
+
+        # 5. Tam 2B Gauss Integrali: Merkezi Olmayan Ki-Kare (ncx2) CDF
+        # Serbestlik derecesi: df = 2, Merkezsizlik: nc = (hata / sigma)^2, Ust Sinir: x = (theta_target / sigma)^2
+        err_mag = max(0.0, float(angular_error_deg))
+        nc_param = float((err_mag / sigma_safe) ** 2)
+        x_cutoff = float((theta_target / sigma_safe) ** 2)
+
+        p_hit_ratio = float(ncx2.cdf(x_cutoff, df=2, nc=nc_param))
+        return float(np.clip(p_hit_ratio * 100.0, 0.0, 100.0))
+
+    def update(self, angular_error_deg, target_velocity, is_firing=False, dist_m=2.0, fx=None, fy=None, box_dim=None):
         if is_firing:
-            self.is_locked = True
-            self.stability_counter = self.lock_threshold_frames
+            self._prev_is_firing = True
+            # Atis ve geri toparlanma (recover) dongusu boyunca mevcut kilit durumunu dondurarak koru
             return self.is_locked, self.stability_counter, self.hit_probability
 
-        self.hit_probability = self.compute_hit_probability(angular_error_deg, target_velocity, dist_m=dist_m)
+        # Atis sekansi henuz bittiyse (is_firing True -> False gecisi), 1 saniyelik grace period baslat
+        if self._prev_is_firing:
+            self._prev_is_firing = False
+            self._post_fire_grace_frames = self.post_fire_grace_duration_frames
+
+        in_grace_period = self._post_fire_grace_frames > 0
+        if in_grace_period:
+            self._post_fire_grace_frames -= 1
+
+        self.hit_probability = self.compute_hit_probability(
+            angular_error_deg, target_velocity, dist_m=dist_m, fx=fx, fy=fy, box_dim=box_dim
+        )
         self.lock_quality = self.hit_probability / 100.0
 
         dynamic_threshold = self.compute_dynamic_threshold(target_velocity)
@@ -93,11 +155,15 @@ class LockManager:
             if self.stability_counter >= self.lock_threshold_frames:
                 self.is_locked = True
         else:
-            # Hedef histerezis esiginden uzaklasirsa (> dynamic_exit_threshold) veya sayac yariya duserse kilit bozulur
-            if angular_error_deg > dynamic_exit_threshold or self.stability_counter < (self.lock_threshold_frames // 2):
-                self.is_locked = False
-                if angular_error_deg > dynamic_exit_threshold:
-                    self.stability_counter = 0
+            # Atis sonrasi taret merkeze donerken (grace period) kilidi erken ve sahte sekilde dusurme
+            if in_grace_period:
+                self.stability_counter = max(self.lock_threshold_frames // 2, self.stability_counter)
+            else:
+                # Hedef histerezis esiginden uzaklasirsa (> dynamic_exit_threshold) veya sayac yariya duserse kilit bozulur
+                if angular_error_deg > dynamic_exit_threshold or self.stability_counter < (self.lock_threshold_frames // 2):
+                    self.is_locked = False
+                    if angular_error_deg > dynamic_exit_threshold:
+                        self.stability_counter = 0
 
         return self.is_locked, self.stability_counter, self.hit_probability
 
@@ -106,3 +172,5 @@ class LockManager:
         self.is_locked = False
         self.lock_quality = 0.0
         self.hit_probability = 0.0
+        self._prev_is_firing = False
+        self._post_fire_grace_frames = 0

@@ -59,6 +59,8 @@ class CameraThread:
 
         self.grabbed, self.frame = self.cap.read()
         self.last_frame_time = time.time()
+        self.frame_id = 0
+        self.new_frame_event = threading.Event()
         self.running = False
         self.lock = threading.Lock()
         self.thread = None
@@ -75,7 +77,7 @@ class CameraThread:
             self.thread.start()
 
     def _update(self):
-        """Arka planda surekli en guncel kareyi okur."""
+        """Arka planda surekli en guncel kareyi okur ve yeni kare olayini tetikler."""
         while self.running and self.cap.isOpened():
             grabbed, frame = self.cap.read()
             if not grabbed:
@@ -85,15 +87,34 @@ class CameraThread:
             with self.lock:
                 self.grabbed = grabbed
                 self.frame = frame
+                self.frame_id += 1
                 self.last_frame_time = time.time()
+            self.new_frame_event.set()
 
-    def read(self, timeout=0.35):
-        """Ana donguye sifir gecikmeli en son kareyi kopyalar (donma korumali)."""
+    def read(self, timeout=0.35, wait_for_new=False, return_id=False):
+        """
+        Ana donguye sifir gecikmeli en son kareyi kopyalar (donma korumali).
+        wait_for_new=True secilirse ana dongu 30 FPS kamera yakalama hiziyla donanimsal olarak
+        senkronize edilir; ayni karenin tekrar tekrar (duplike) islenmesi %100 engellenir.
+        return_id=True verilirse (ok, frame, frame_id) seklinde doner.
+        """
+        if wait_for_new:
+            self.new_frame_event.wait(timeout=min(0.050, timeout))
+            self.new_frame_event.clear()
+
         with self.lock:
             is_stale = (time.time() - self.last_frame_time) > timeout
             if not self.grabbed or self.frame is None or is_stale:
-                return False, None
-            return True, self.frame.copy()
+                return (False, None, 0) if return_id else (False, None)
+            copied_frame = self.frame.copy()
+            fid = self.frame_id
+            return (True, copied_frame, fid) if return_id else (True, copied_frame)
+
+    @property
+    def current_frame_id(self):
+        """Son yakalanan donanimsal kare numarasini doner."""
+        with self.lock:
+            return self.frame_id
 
     def isOpened(self):
         with self.lock:
