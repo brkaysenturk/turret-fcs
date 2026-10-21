@@ -8,8 +8,8 @@ tam cift yonlu (Full-Duplex), asenkron ve binary paketli iletisim katmanidir.
 PROTOKOL VE PAKET YAPISI (115200 Baud):
 1. TX Paketi (PC -> STM32) [7 Bayt]:
    [0xAA (Header)] [Pan Delta * 10: int16 (2B, 0.1 deg)] [Tilt Delta * 10: int16 (2B, 0.1 deg)] [State/Fire: uint8 (1B)] [Checksum: uint8 (1B)]
-2. RX Paketi (STM32 -> PC) [6 Bayt]:
-   [0x55 (Header)] [TF-Luna Mesafe: uint16 (2B)] [Sinyal Gucu: uint16 (2B)] [Checksum: uint8 (1B)]
+2. RX Paketi (STM32 -> PC) [10 Bayt]:
+   [0x55 (Header)] [TF-Luna Mesafe: uint16 (2B)] [Sinyal Gucu: uint16 (2B)] [Pan Acisi * 10: int16 (2B, 0.1 deg)] [Tilt Acisi * 10: int16 (2B, 0.1 deg)] [Checksum: uint8 (1B)]
 
 GELISMIS OZELLIKLER:
 - Otomatik Port Tespiti (Auto Plug-and-Play): Windows COM portlarini tarayarak
@@ -23,7 +23,12 @@ GELISMIS OZELLIKLER:
 import struct
 import threading
 import time
-import serial
+
+try:
+    import serial
+    import serial.tools.list_ports
+except ImportError:
+    serial = None
 
 
 class FCSCommunicator:
@@ -34,8 +39,8 @@ class FCSCommunicator:
       1. TX (PC -> STM32) [7 Bayt]:
          [0xAA] [Pan: int16 (2B)] [Tilt: int16 (2B)] [State: uint8] [Checksum: uint8]
          
-      2. RX (STM32 -> PC) [6 Bayt]:
-         [0x55] [Mesafe: uint16 (2B)] [Sinyal: uint16 (2B)] [Checksum: uint8]
+      2. RX (STM32 -> PC) [10 Bayt]:
+         [0x55] [Mesafe: uint16 (2B)] [Sinyal: uint16 (2B)] [Pan*10: int16 (2B)] [Tilt*10: int16 (2B)] [Checksum: uint8]
          
     Baglanti: Herhangi bir sabit COM port girmeden ST-Link / STM32 USB VID (0483) 
     veya bagli tek USB seri portu otomatik olarak tarayip baglanir.
@@ -55,10 +60,13 @@ class FCSCommunicator:
         self._lock = threading.Lock()
         self._warned_offline = False
 
-        # TF-Luna telemetri verileri
+        # TF-Luna ve Taret Aci telemetri verileri
         self.distance = 0
         self.strength = 0
         self.temp = 0.0
+        self.servo_pan_deg = 0.0
+        self.servo_tilt_deg = 0.0
+        self.has_servo_telemetry = False
         self.last_valid_time = 0.0
 
         # Kuantalama Artik Biriktiricisi (Quantization Residue Accumulator: 0.1 deg alti adimlari korur)
@@ -194,7 +202,7 @@ class FCSCommunicator:
             self._disconnect_port()
 
     def _binary_reader_worker(self):
-        """STM32'den gelen 6 baytlik ikili telemetri paketlerini okur (kopmaz surekli thread)."""
+        """STM32'den gelen 10 baytlik ikili telemetri paketlerini okur (kopmaz surekli thread)."""
         while self.running:
             if not self.is_connected:
                 now = time.time()
@@ -233,14 +241,31 @@ class FCSCommunicator:
                 # Boylece eski bayat paketler otomatik atlanir ve desenkronizasyon riski sifirlanir
                 for i in range(len(raw_bytes) - 6, -1, -1):
                     if raw_bytes[i:i+1] == self.HEADER_RX:
-                        payload = raw_bytes[i+1 : i+6]
-                        calc_csum = (0x55 + sum(payload[:4])) & 0xFF
-                        if calc_csum == payload[4]:
-                            dist, strength = struct.unpack("<HH", payload[:4])
-                            self.distance = dist
-                            self.strength = strength
-                            self.last_valid_time = time.time()
-                            break
+                        # 1. Oncelik: v1.3 10 Baytlik Tam Telemetri Paketi (Mesafe + Guc + Pan + Tilt + Csum)
+                        if len(raw_bytes) >= i + 10:
+                            payload = raw_bytes[i+1 : i+10] # 9 bayt
+                            calc_csum = (0x55 + sum(payload[:8])) & 0xFF
+                            if calc_csum == payload[8]:
+                                dist, strength, p_raw, t_raw = struct.unpack("<HHhh", payload[:8])
+                                self.distance = dist
+                                self.strength = strength
+                                # STM32 mutlak acisi [0 - 180], merkez 90 deg -> Bagil aci [-90, +90]
+                                self.servo_pan_deg = (p_raw / 10.0) - 90.0
+                                self.servo_tilt_deg = (t_raw / 10.0) - 90.0
+                                self.has_servo_telemetry = True
+                                self.last_valid_time = time.time()
+                                break
+
+                        # 2. Geriye Donuk Uyumluluk: v1.2 6 Baytlik Telemetri Paketi (Yalnizca LiDAR)
+                        if len(raw_bytes) >= i + 6:
+                            payload = raw_bytes[i+1 : i+6]
+                            calc_csum = (0x55 + sum(payload[:4])) & 0xFF
+                            if calc_csum == payload[4]:
+                                dist, strength = struct.unpack("<HH", payload[:4])
+                                self.distance = dist
+                                self.strength = strength
+                                self.last_valid_time = time.time()
+                                break
 
             except (serial.SerialException, OSError):
                 self._disconnect_port()
@@ -253,6 +278,15 @@ class FCSCommunicator:
         if time.time() - self.last_valid_time > self.stale_timeout:
             return 0, 0, 0.0
         return self.distance, self.strength, self.temp
+
+    def get_servo_angles(self):
+        """
+        STM32 mikrodenetleyicisinden donen gercek servo acilarini (bagil derece cinsinden) dondurur.
+        Telemetri bagli degilse veya bayatsa (None, None) dondurur.
+        """
+        if not self.has_servo_telemetry or (time.time() - self.last_valid_time > self.stale_timeout):
+            return None, None
+        return self.servo_pan_deg, self.servo_tilt_deg
 
     def close(self):
         """Seri portu ve okuma thread'ini guvenli kapatir (Sadece ana uygulama cikisinda)."""

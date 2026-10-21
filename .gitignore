@@ -50,23 +50,35 @@ webots/worlds/.*.wbproj
 webots/worlds/.*.jpg
 webots/worlds/.*.png
 
-# Logs, Metrics & TensorBoard
-logs/*
-!logs/*.csv
+# Logs, Metrics & Telemetry (Representative evidence kept in docs/evidence/)
+logs/
+webots/analysis/*.csv
 *.tfevents.*
 *.log
 *.tmp
+*.db
 temp/
 scratch/
+*system_identification_analysis.png
+
+# Datasets and Legacy Code
+datasets/
+legacy/
 
 # Large 3D CAD models
 *.stl
 *.step
+!docs/cad/*.stl
 
-# Checkpoints (Keep only final production models)
+# Model Weights & Checkpoints (Keep only active trained production weights)
+weights/
+*.pt
+*.zip
 turret_fcs/rl_sim/models/*_steps.zip
+turret_fcs/rl_sim/models/*_250k.zip
+runs/**/last.pt
 
-# Keep only active trained weights and models
+# Whitelist production neural network weights and 3D assets
 !runs/detect/balloon_detector/weights/best.pt
 !turret_fcs/rl_sim/models/turret_ppo_final.zip
 !webots/worlds/red_ballonn/red ballon.obj

@@ -1,18 +1,34 @@
-# Turret FCS - Python Bağımlılıkları
-# Kurulum için: pip install -r requirements.txt
+# ==============================================================================
+# Turret FCS - Python Bagimliliklari (Production Dependencies)
+# Kurulum: pip install -r requirements.txt
+#
+# NOT: Bagimlilik kaymasini (dependency drift) ve C-ABI uyumsuzlugunu onlemek icin
+# surum araliklari sinirlandirilmistir.
+# UYARI: 'opencv-python' ile 'opencv-contrib-python' paketlerini ASLA ayni anda
+# kurmayiniz. Ayni anda kurulmasi C++ sembol ve DLL cakismasina yol acar.
+# ==============================================================================
 
+# Temel Sayisal Hesaplama ve Goruntu Isleme
 numpy>=1.24.0
-opencv-python>=4.8.0
+opencv-python>=4.8.0,<5.0.0
+scipy>=1.11.0
+matplotlib>=3.7.0,<4.0.0
+
+# Derin Ogrenme ve Nesne Tespiti (YOLOv8 ByteTrack)
 torch>=2.0.0
 ultralytics>=8.0.0
-pyserial>=3.5
-stable-baselines3>=2.2.0
-gymnasium>=0.29.0
-matplotlib>=3.7.0
-scipy>=1.11.0
-pygrabber>=0.1
+lapx>=0.5.5; sys_platform == 'win32'
+lap>=0.5.0; sys_platform != 'win32'
+
+# Pekistirmeli Ogrenme (PPO Sim-to-Real)
+stable-baselines3>=2.2.0,<3.0.0
+gymnasium>=0.29.0,<1.1.0
 tensorboard>=2.14.0
-lap>=0.5.0
-types-pyserial>=3.5.0
+
+# Donanim ve Seri Port Iletisimi (STM32 & DirectShow C270)
+pyserial>=3.5
+pygrabber>=0.1; sys_platform == 'win32'
+
+# Yapilandirma ve Optimizasyon
 pyyaml>=6.0
 optuna>=3.5.0

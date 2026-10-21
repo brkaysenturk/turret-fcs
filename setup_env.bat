@@ -27,6 +27,8 @@ python -m pip install --upgrade pip
 
 echo [3/3] Bagimliliklar yukleniyor (requirements.txt)...
 python -m pip install -r requirements.txt
+python -m pip install pytest
+python -m pip install --no-deps -e .
 
 echo.
 echo ==============================================================
