@@ -2,28 +2,32 @@
 ================================================================================
 MODUL: PPO PEKISDIRMELI OGRENME EGITIM MOTORU (TRAIN RL / SB3 PPO)
 ================================================================================
-Bu modul, TurretEnv benzetim ortami uzerinde Stable-Baselines3 PPO algoritmasiyla
-otonom taret ajanini egitir, odul egrilerini kaydeder ve 'turret_ppo_final.zip'
-modelini uretir.
+Bu modul, TurretEnv benzetim ortami uzerinde LQR / Bryson odul fonksiyonu ve
+Domain Randomization altinda Stable-Baselines3 PPO algoritmasiyla otonom taret
+ajanini egitir, odul egrilerini kaydeder ve 'turret_ppo_final.zip' modelini uretir.
 
 EGITIM VE SISTEM GUVENLIGI PARAMETRELERI:
-1. Donanim Termal Korumasi: torch.set_num_threads(2) kisitlamasi ile dizustu
-   bilgisayarin asiri isinmasi ve termal kapanmasi engellenir.
+1. Donanim Termal Korumasi: torch.set_num_threads(2) kisitlamasi ile asiri
+   isinma ve termal kisinti (throttling) engellenir.
 2. Politika Hiperparametreleri:
-   - learning_rate = 3e-4, n_steps = 1024, batch_size = 64, n_epochs = 10
+   - learning_rate = 3e-4 (veya best_params'tan dinamik), n_steps = 2048, batch_size = 64
    - gamma = 0.99, gae_lambda = 0.95, clip_range = 0.2
-3. Gecikme Telafili Egitim: Ajan 80 ms tasiyici gecikmesi altinda hedefin yonunu
-   tahmin etmeyi ogrenir ve hedefi vizor merkezinde tutarak +2000 uzeri odul toplar.
+3. LQR / Bryson Odul Yapisi:
+   r = -(e_norm^2 + lambda_u * u_norm^2 + mu_du * du_norm^2) + kilit_bonusu
 ================================================================================
 """
 
 import json
-import os
+import sys
 import time
 from pathlib import Path
+
+current_dir = Path(__file__).resolve().parent
+if str(current_dir) not in sys.path:
+    sys.path.insert(0, str(current_dir))
+
 import torch
 from stable_baselines3 import PPO
-from stable_baselines3.common.callbacks import CheckpointCallback
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
 
@@ -43,20 +47,14 @@ def load_best_params(params_path):
 
 def make_env(best_params=None):
     best_params = best_params or {}
-    w_dist = best_params.get("w_dist", 3.5)
-    w_dist_sq = best_params.get("w_dist_sq", 5.0)
-    w_bullseye = best_params.get("w_bullseye", 6.0)
-    w_lock = best_params.get("w_lock", 4.0)
-    w_smooth = best_params.get("w_smooth", 1.0)
+    lambda_u = float(best_params.get("lambda_u", 0.04))
+    mu_du = float(best_params.get("mu_du", 0.03))
 
     env = TurretEnv(
         render_mode=None,
         latency_steps=2,
-        w_dist=w_dist,
-        w_dist_sq=w_dist_sq,
-        w_bullseye=w_bullseye,
-        w_lock=w_lock,
-        w_smooth=w_smooth,
+        lambda_u=lambda_u,
+        mu_du=mu_du,
         enable_randomization=True,
     )
     return Monitor(env)
@@ -76,24 +74,23 @@ def train():
     best_params = load_best_params(params_file)
 
     print("==================================================")
-    print(" TURRET FCS // BAYESIAN OPTIMIZE EDILMIS PPO EGITIMI")
+    print(" TURRET FCS // LQR TEMELLI DERIN PPO EGITIMI     ")
     print("==================================================")
     if best_params:
-        print("[Optuna] En Iyi Parametreler Dosyadan Yuklendi:")
+        print("[Optuna] En Iyi LQR Parametreleri Dosyadan Yuklendi:")
         for k, v in best_params.items():
             print(f"  - {k}: {v}")
     else:
-        print("[Bilgi] Standart Bryson parametreleri kullaniliyor.")
+        print("[Bilgi] Standart LQR / Bryson parametreleri (lambda=0.04, mu=0.03) kullaniliyor.")
 
-    # MlpPolicy ve vektor ortamlari icin CPU GPU'dan cok daha hizlidir (CUDA gecikmesi olmadan)
     device = "cpu"
     print(f"[Device] Donanim: {device.upper()} (Guvenli 2-Thread Modu)")
 
     env = DummyVecEnv([lambda: make_env(best_params)])
 
-    base_lr = float(best_params.get("learning_rate", 3.97e-4))
+    base_lr = float(best_params.get("learning_rate", 3.0e-4))
 
-    # Lineer ogrenme orani sonumleme (fine-tuning asamasinda motor titresimini sifirlar)
+    # Lineer ogrenme orani sonumleme
     def lr_schedule(progress_remaining):
         return max(5e-5, base_lr * progress_remaining)
 

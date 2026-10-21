@@ -1,0 +1,37 @@
+{
+    "model_name": "turret_ppo_final.zip",
+    "version": "1.3",
+    "training_timesteps": 250000,
+    "algorithm": "PPO (Stable-Baselines3)",
+    "policy": "MlpPolicy [64, 64]",
+    "observation_dimension": 11,
+    "action_dimension": 2,
+    "hyperparameters": {
+        "lambda_u": 0.095286,
+        "mu_du": 0.009446,
+        "learning_rate": 0.000187,
+        "gamma": 0.99,
+        "gae_lambda": 0.95,
+        "clip_range": 0.20,
+        "batch_size": 64,
+        "n_steps": 1024
+    },
+    "benchmarks": {
+        "closed_loop_eval_20_seeds": {
+            "median_pixel_error_px": 33.2,
+            "iqr_pixel_error_px": 59.4,
+            "p90_pixel_error_px": 92.1,
+            "overall_lock_ratio": 0.312,
+            "episode_completion_ratio": 1.00
+        },
+        "target_speed_stress_test": {
+            "0_deg_s": {"p_err_deg": 0.71, "p_lock": 1.00, "rl_err_deg": 0.67, "rl_lock": 1.00},
+            "2_deg_s": {"p_err_deg": 1.47, "p_lock": 1.00, "rl_err_deg": 1.19, "rl_lock": 1.00},
+            "5_deg_s": {"p_err_deg": 2.37, "p_lock": 1.00, "rl_err_deg": 1.19, "rl_lock": 1.00},
+            "8_deg_s": {"p_err_deg": 3.27, "p_lock": 0.00, "rl_err_deg": 1.41, "rl_lock": 1.00},
+            "10_deg_s": {"p_err_deg": 3.87, "p_lock": 0.00, "rl_err_deg": 1.85, "rl_lock": 1.00},
+            "12_deg_s": {"p_err_deg": 4.47, "p_lock": 0.00, "rl_err_deg": 2.74, "rl_lock": 0.00}
+        }
+    },
+    "academic_conclusion": "Type-1 P Controller incurs ramp error beyond 3.0 deg threshold at target speeds >= 8 deg/s. PPO RL maintains 100% lock persistence up to 10 deg/s with 11-D action delay memory."
+}

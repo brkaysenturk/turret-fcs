@@ -55,7 +55,7 @@ def run_comparison():
         # 1. P Kontrolcu Testi
         env_p = TurretEnv()
         obs_p, _ = env_p.reset(seed=seed)
-        p_ctrl = PController(kp_pan=0.35, kp_tilt=0.35)
+        p_ctrl = PController()  # Uretim SSOT parametreleri (kp_pan=0.10, kp_tilt=0.05, soft deadband)
 
         p_errors = []
         for _ in range(env_p.max_steps):
@@ -65,11 +65,15 @@ def run_comparison():
             dist_px = math.hypot(err_x, err_y)
             p_errors.append(dist_px)
 
-            # Oransal kontrol eylemi (Normalize acisal hiz komutu)
+            # Uretim Tip-1 P Kontrolcusu: fcs_manager.py ile birebir ayni compute_angles ve compute_p cagrilari
+            pan_deg, tilt_deg = p_ctrl.compute_angles(px, py, env_p.center_x, env_p.center_y, env_p.fx, env_p.fy)
+            u_pan_deg, u_tilt_deg = p_ctrl.compute_p(pan_deg, tilt_deg, dt=env_p.dt)
+
+            # Eyleyici limitlerine gore normalize eylem
             action_p = np.array(
                 [
-                    np.clip(err_x / (env_p.screen_w / 4.0), -1.0, 1.0),
-                    np.clip(-err_y / (env_p.screen_h / 4.0), -1.0, 1.0),
+                    np.clip(u_pan_deg / max(1e-4, env_p.max_step_pan_deg), -1.0, 1.0),
+                    np.clip(u_tilt_deg / max(1e-4, env_p.max_step_tilt_deg), -1.0, 1.0),
                 ],
                 dtype=np.float32,
             )
@@ -131,9 +135,7 @@ def run_comparison():
     plt.tight_layout(rect=[0, 0.02, 1, 0.94])
 
     p_plot_path = current_dir / "p_vs_rl_comparison.png"
-    pid_plot_path = current_dir / "pid_vs_rl_comparison.png"
     plt.savefig(str(p_plot_path), dpi=300)
-    plt.savefig(str(pid_plot_path), dpi=300)
     plt.close()
 
     p_avg = float(np.mean(p_total_errors))
@@ -148,7 +150,6 @@ def run_comparison():
     print(f"RL Performans Iyilestirmesi       : %{improvement:+.1f}")
     print("------------------------------------------------------------------")
     print(f"[OK] 300 DPI Tez Grafigi Kaydedildi: {p_plot_path.name}")
-    print(f"[OK] Karsilastirma Grafigi Kaydedildi: {pid_plot_path.name}")
     print("==================================================================")
 
 

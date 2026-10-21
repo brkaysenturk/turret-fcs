@@ -24,7 +24,7 @@ if "%choice%"=="1" (
 ) else if "%choice%"=="3" (
     echo.
     echo [INFO] P vs RL Karşılaştırma Testi Çalıştırılıyor...
-    python compare_pid_vs_rl.py
+    python compare_p_vs_rl.py
     pause
 ) else (
     exit /b

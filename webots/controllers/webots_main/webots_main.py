@@ -4,6 +4,20 @@ import cv2
 import numpy as np
 from ultralytics import YOLO
 
+import sys
+
+# Turret FCS SSOT konfigurasyonunu ekle
+project_root = Path(__file__).resolve().parents[3]
+turret_fcs_dir = project_root / "turret_fcs"
+for p in [str(project_root), str(turret_fcs_dir)]:
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
+try:
+    from turret_fcs.config import CONFIG
+except (ImportError, ValueError):
+    from config import CONFIG
+
 from webots_hardware_interface import WebotsHardwareInterface
 from webots_flywheel_launcher import WebotsFlywheelLauncher
 from webots_fcs_manager import WebotsFCSManager
@@ -28,10 +42,10 @@ def main():
     WINDOW_NAME = "Turret FCS - Webots Predictive"
     cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
 
-    # 3. Optik Kamera Parametreleri (Logitech C270 dFOV 55° -> 16:9)
-    H_FOV, V_FOV = 48.8, 28.6
-    fx = (hw.w_cam / 2.0) / np.tan(np.radians(H_FOV / 2.0))
-    fy = (hw.h_cam / 2.0) / np.tan(np.radians(V_FOV / 2.0))
+    # 3. Optik Kamera Parametreleri (Logitech C270 SSOT - CONFIG)
+    H_FOV, V_FOV = CONFIG.optics.h_fov_deg, CONFIG.optics.v_fov_deg
+    fx = CONFIG.optics.compute_fx(hw.w_cam)
+    fy = CONFIG.optics.compute_fy(hw.h_cam)
     center_x, center_y = hw.w_cam // 2, hw.h_cam // 2
 
     # 4. Atis ve Zamanlama Yonetimi
@@ -110,8 +124,11 @@ def main():
 
                 angle_err_text = f"ANGULAR ERR:   [{fcs.actual_pan:+.1f} , {fcs.actual_tilt:+.1f}] deg"
 
-                target_label = "" if is_hud_firing else hud.get_box_label(dist_cm, target_centered, fcs.is_locked)
-                hud.draw_corner_box(frame, x1, y1, x2, y2, color=status_color, length=30, thickness=2, label=target_label)
+                # Nisangah ve Hedef Kutusu: Takipte sari (0, 191, 255); Kilit ve Atis evresinde sabit kirmizi (0, 0, 255)
+                # Bilgilendirme paneli evrelere gore renk degistirirken hedef kutusu ve nisangah kirmizi kalir
+                box_color = (0, 0, 255) if (fcs.is_locked or is_hud_firing) else status_color
+                target_label = "TARGET (LOCKED)" if is_hud_firing else hud.get_box_label(dist_cm, target_centered, fcs.is_locked)
+                hud.draw_corner_box(frame, x1, y1, x2, y2, color=box_color, length=30, thickness=2, label=target_label)
 
                 if not is_hud_firing:
                     if not fcs.is_locked:
@@ -122,7 +139,7 @@ def main():
                 status_color = (0, 255, 0) if fcs.patrol_enabled else (180, 180, 180)
                 angle_err_text = "ANGULAR ERR:   [--, --] deg"
 
-            reticle_color = status_color
+            reticle_color = (0, 0, 255) if (fcs.is_locked or is_hud_firing) else status_color
             hud.draw_grid_and_reticle(frame, center_x, center_y, reticle_color=reticle_color)
 
             ballistic_hud_data = None
@@ -150,41 +167,10 @@ def main():
             # Telemetri ve metrik kaydi
             logger.log(sim_t, fcs, hw, best_box, is_firing=is_gun_firing, ballistics=ballistics)
 
-            # Kontrol Modu ve Devriye Durum Banneri (HUD)
-            if fcs.control_mode == "HYBRID":
-                rl_pct = int(getattr(fcs, "current_rl_weight", 0.0) * 100)
-                mode_label = f"HYBRID CONTROLLER (RL:{rl_pct}%)" if rl_pct > 0 else "HYBRID CONTROLLER"
-                mode_color = (0, 255, 128)
-            elif fcs.control_mode in ["PID", "P"]:
-                mode_label = "P CONTROLLER" if fcs.control_mode == "P" else "PID CONTROLLER"
-                mode_color = (0, 255, 255)
-            else:
-                mode_label = "RL CONTROLLER"
-                mode_color = (255, 200, 0)
-
-            patrol_tag = "PATROL: AUTO" if fcs.patrol_enabled else "PATROL: OFF"
-            banner_text = f"[{mode_label}]  |  [{patrol_tag}]"
-            (b_w, _), _ = cv2.getTextSize(banner_text, cv2.FONT_HERSHEY_SIMPLEX, 0.56, 2)
-            banner_x = max(10, center_x - (b_w // 2))
-
-            # Yari saydam ust baslik paneli
-            pad_x, pad_y = 12, 5
-            bx1, by1 = max(0, banner_x - pad_x), max(0, 26 - 16 - pad_y)
-            bx2, by2 = min(frame.shape[1], banner_x + b_w + pad_x), min(frame.shape[0], 26 + pad_y)
-            roi_b = frame[by1:by2, bx1:bx2]
-            black_b = np.zeros_like(roi_b)
-            frame[by1:by2, bx1:bx2] = cv2.addWeighted(roi_b, 0.30, black_b, 0.70, 0)
-            cv2.rectangle(frame, (bx1, by1), (bx2, by2), (90, 100, 110), 1)
-
-            cv2.putText(frame, banner_text, (banner_x, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.56, mode_color, 2, cv2.LINE_AA)
-
-            # Alt operator kontrol lejandi
-            footer_text = "[M] Mode  |  [P] Patrol  |  [SPACE] E-Stop  |  [Y] Fire  |  [ESC] Quit"
-            (f_w, _), _ = cv2.getTextSize(footer_text, cv2.FONT_HERSHEY_SIMPLEX, 0.42, 1)
-            cv2.putText(frame, footer_text, (center_x - f_w // 2, frame.shape[0] - 14), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (160, 170, 180), 1, cv2.LINE_AA)
-
-            # Sol alt terminal olay gunlugu (Console Event Log)
-            hud.draw_event_log(frame)
+            # HUD Bilesenleri (Panel gorunurluk kurallari ve declutter TurretHUD icinde yonetilir)
+            hud.draw_mode_banner(frame, fcs.control_mode, fcs.patrol_enabled, is_locked=fcs.is_locked, firing=is_hud_firing)
+            hud.draw_footer(frame, is_locked=fcs.is_locked, firing=is_hud_firing)
+            hud.draw_event_log(frame, is_locked=fcs.is_locked, firing=is_hud_firing)
 
             cv2.imshow(WINDOW_NAME, frame)
             key = cv2.waitKey(1) & 0xFF

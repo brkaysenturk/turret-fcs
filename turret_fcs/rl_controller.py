@@ -3,7 +3,7 @@
 MODUL: PEKISDIRMELI OGRENME DENETLEYICISI (RL CONTROLLER / PPO AGENT)
 ================================================================================
 Bu modul, gercek donanim kisitlari (Domain Randomization, eylem gecmisi hafizasi,
-0.90 deg olu bolge, 2.75 deg/kare adim doyumu ve Logitech C270 optigi) altinda
+0.90 deg olu bolge, 0.55 / 0.22 deg/kare adim doyumu ve Logitech C270 optigi) altinda
 egitilmis Proximal Policy Optimization (PPO) yapay zeka modelinin gercek zamanli
 cikarim motorudur.
 
@@ -20,6 +20,11 @@ from pathlib import Path
 import numpy as np
 from stable_baselines3 import PPO
 
+try:
+    from .config import CONFIG
+except (ImportError, ValueError):
+    from config import CONFIG
+
 
 class RLController:
     """
@@ -27,7 +32,7 @@ class RLController:
     ve gercek servo fizigiyle uyumlu hedef takip denetleyicisi.
     """
 
-    def __init__(self, model_path=None):
+    def __init__(self, model_path=None, auto_load=True):
         if model_path is None:
             base_dir = Path(__file__).resolve().parent
             model_path = base_dir / "rl_sim" / "models" / "turret_ppo_final.zip"
@@ -35,11 +40,12 @@ class RLController:
         self.model_path = Path(model_path)
         self.model = None
         self.is_loaded = False
-        self.load_model()
+        if auto_load:
+            self.load_model()
 
-        # Gercek Donanim Mekanik ve Bryson Olcekleri
-        self.max_step_pan_deg = 0.55     # Yatay servo cevik takip limiti (+-0.55 deg/kare = 16.5 deg/s)
-        self.max_step_tilt_deg = 0.22    # Dikey agir volan namlu takip limiti (+-0.22 deg/kare = 6.6 deg/s)
+        # Gercek Donanim Mekanik ve Bryson Olcekleri (SSOT)
+        self.max_step_pan_deg = CONFIG.actuator.max_step_pan_deg
+        self.max_step_tilt_deg = CONFIG.actuator.max_step_tilt_deg
         self.max_step_deg = self.max_step_pan_deg
         self.v_max_px_s = 300.0          # Maksimum hedef piksel hizi (px/s)
         self.dist_min_m = 0.5
@@ -138,8 +144,7 @@ class RLController:
         d_tilt_deg = float(np.clip(action[1] * self.max_step_tilt_deg, -self.max_step_tilt_deg, self.max_step_tilt_deg))
 
         # 6. Kilit Alani Yumusak Olu Bolge ve Asimetrik Eylemsizlik Sonumu
-        # Pan Ekseni: 0.85 derece (Yatay simetrik, dusuk eylemsizlik)
-        deadband_pan = 0.85
+        deadband_pan = CONFIG.control.deadband_pan_deg
         abs_err_p = abs(float(curr_pan_deg))
         if abs_err_p <= deadband_pan:
             d_pan_deg = 0.0
@@ -147,8 +152,8 @@ class RLController:
             scale_p = (abs_err_p - deadband_pan) / max(0.5, abs_err_p)
             d_pan_deg *= float(np.clip(scale_p, 0.0, 1.0))
 
-        # Tilt Ekseni: 0.95 derece (300g pirinc volan namlu, yercekimi ve mekanik bosluk sonumu)
-        deadband_tilt = 0.95
+        # Tilt Ekseni (300g pirinc volan namlu, yercekimi ve mekanik bosluk sonumu)
+        deadband_tilt = CONFIG.control.deadband_tilt_deg
         abs_err_t = abs(float(curr_tilt_deg))
         if abs_err_t <= deadband_tilt:
             d_tilt_deg = 0.0

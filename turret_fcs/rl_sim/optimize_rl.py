@@ -1,22 +1,25 @@
 """
 ================================================================================
-MODUL: BAYESIAN OPTIMIZATION ILE HIPERPARAMETRE OPTIMIZASYONU (OPTUNA TPE)
+MODUL: BAYESIAN OPTIMIZATION ILE LQR REWARD HIPERPARAMETRE AYARI (OPTUNA TPE)
 ================================================================================
-Bu modul, Domain Randomization, eylem gecmisi ve sakinlik sartli TurretEnv ortaminda
-odul agirliklarini (w_dist, w_dist_sq, w_bullseye, w_lock, w_smooth) ve PPO ogrenme
-oranini (learning_rate) Tree-structured Parzen Estimator (TPE) Bayesian optimizasyon
-algoritmasiyla gercek dunya kosullarina gore optimize eder.
-
-Hedef Fonksiyonu (Objektif):
-- Hedef takip piksel hatasini MINIMIZE et.
-- Motor sarsintisini / jerk (eylem turevi / titresim) SERTCE MINIMIZE et.
-- Vizor kilitlenme oranini (Lock Ratio) MAKSIMIZE et.
+Bu modul, TurretEnv ortaminda LQR / Bryson tabanli 3 temel parametreyi:
+1. lambda_u: Kontrol cabasi (effort / u^2) agirligi
+2. mu_du: Eylem sarsintisi / jerk (du^2) agirligi
+3. learning_rate: PPO ogrenme orani
+20 sabit test tohumu uzerinde medyan + IQR (Interquartile Range) metrigiyle
+ve SQLite veritabani kaliciligi ile optimize eder.
 ================================================================================
 """
 
 import json
+import sys
 import time
 from pathlib import Path
+
+current_dir = Path(__file__).resolve().parent
+if str(current_dir) not in sys.path:
+    sys.path.insert(0, str(current_dir))
+
 import numpy as np
 import optuna
 import torch
@@ -25,14 +28,17 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 
 from turret_env import TurretEnv
 
-# CPU asiri isinmasini onlemek icin 2-thread kisiti
+# CPU termal korumasi icin 2-thread kisiti
 torch.set_num_threads(2)
 
+# Deterministik degerlendirme tohumlari (20 adet sabit seed)
+EVAL_SEEDS = list(range(100, 120))
 
-def evaluate_agent(model, test_seeds=[101, 202, 303, 404, 505], max_steps=300):
+
+def evaluate_agent(model, test_seeds=EVAL_SEEDS, max_steps=300):
     """
-    Egitilmis ajani 5 farkli zorlu yorunge tohumunda ve Domain Randomization altinda test eder.
-    Metrikler: Ortalama piksel hatasi, vizor kilidi orani, servo jerk/sarsinti.
+    Egitilmis modeli 20 sabit tohumda test eder.
+    Metrikler: Medyan piksel hatasi, Hata IQR (yayilim), Kilit orani, Medyan Jerk.
     """
     total_errors = []
     lock_steps = 0
@@ -53,7 +59,6 @@ def evaluate_agent(model, test_seeds=[101, 202, 303, 404, 505], max_steps=300):
             err_px = err_norm * (eval_env.screen_w / 2.0)
             total_errors.append(err_px)
 
-            # Eger hedef %5 vizor ici alandaysa kilitli sayilir
             if err_norm < 0.05:
                 lock_steps += 1
             total_steps += 1
@@ -66,81 +71,93 @@ def evaluate_agent(model, test_seeds=[101, 202, 303, 404, 505], max_steps=300):
             if terminated or truncated:
                 break
 
-    mean_err_px = float(np.mean(total_errors)) if total_errors else 500.0
-    lock_ratio = float(lock_steps / max(1, total_steps))
-    mean_jerk = float(np.mean(total_jerk)) if total_jerk else 1.0
+    if total_errors:
+        median_err_px = float(np.median(total_errors))
+        q75, q25 = np.percentile(total_errors, [75, 25])
+        iqr_err_px = float(q75 - q25)
+    else:
+        median_err_px = 500.0
+        iqr_err_px = 200.0
 
-    return mean_err_px, lock_ratio, mean_jerk
+    lock_ratio = float(lock_steps / max(1, total_steps))
+    median_jerk = float(np.median(total_jerk)) if total_jerk else 1.0
+
+    return median_err_px, iqr_err_px, lock_ratio, median_jerk
 
 
 def objective(trial):
-    # 1. Bayesian Optimizasyon tarafindan orneklenen aday parametreler
-    w_dist = trial.suggest_float("w_dist", 2.0, 6.0, step=0.5)
-    w_dist_sq = trial.suggest_float("w_dist_sq", 2.0, 8.0, step=0.5)
-    w_bullseye = trial.suggest_float("w_bullseye", 4.0, 12.0, step=0.5)
-    w_lock = trial.suggest_float("w_lock", 4.0, 12.0, step=0.5)
-    w_smooth = trial.suggest_float("w_smooth", 0.50, 3.00, step=0.25)
+    # 3 Temel LQR & PPO Skaleri
+    lambda_u = trial.suggest_float("lambda_u", 0.01, 0.15, log=True)
+    mu_du = trial.suggest_float("mu_du", 0.005, 0.10, log=True)
     lr = trial.suggest_float("learning_rate", 1.5e-4, 5.0e-4, log=True)
 
     def env_fn():
         return TurretEnv(
             render_mode=None,
             latency_steps=2,
-            w_dist=w_dist,
-            w_dist_sq=w_dist_sq,
-            w_bullseye=w_bullseye,
-            w_lock=w_lock,
-            w_smooth=w_smooth,
+            lambda_u=lambda_u,
+            mu_du=mu_du,
             enable_randomization=True,
         )
 
     vec_env = DummyVecEnv([env_fn])
 
-    device = "cpu"
     model = PPO(
         policy="MlpPolicy",
         env=vec_env,
         learning_rate=lr,
         n_steps=1024,
         batch_size=64,
-        n_epochs=6,
+        n_epochs=5,
         gamma=0.99,
         gae_lambda=0.95,
         clip_range=0.2,
         ent_coef=0.003,
         verbose=0,
-        device=device,
+        device="cpu",
     )
 
-    # Hizli ve etkin Bayesian degerlendirme adimi (16.000 adim / deneme)
-    TRAIN_STEPS = 16_000
-    model.learn(total_timesteps=TRAIN_STEPS)
+    # Hizli ve etkin tarama adimi (10.000 adim / deneme)
+    SCREEN_STEPS = 10_000
+    model.learn(total_timesteps=SCREEN_STEPS)
 
-    # 5 referans tohumda degerlendir
-    mean_err_px, lock_ratio, mean_jerk = evaluate_agent(model)
+    # 20 referans tohumda degerlendir
+    median_err_px, iqr_err_px, lock_ratio, median_jerk = evaluate_agent(model)
 
-    # Birlesik Maliyet Fonksiyonu (Cost = Minimization Goal)
-    # Dusuk piksel hatasi (+), Dusuk motor sarsintisi / jerk (+), Yuksek kilitlenme orani (-)
-    cost = (mean_err_px) + (40.0 * mean_jerk) - (50.0 * lock_ratio)
+    # Dayanıklı Maliyet Fonksiyonu (Robust Cost Function):
+    # Düşük medyan hata + düşük yayılım (IQR) + düşük jerk - yüksek kilit oranı
+    cost = median_err_px + 1.0 * iqr_err_px + 25.0 * median_jerk - 50.0 * lock_ratio
 
-    trial.set_user_attr("mean_err_px", mean_err_px)
+    trial.set_user_attr("median_err_px", median_err_px)
+    trial.set_user_attr("iqr_err_px", iqr_err_px)
     trial.set_user_attr("lock_ratio", lock_ratio)
-    trial.set_user_attr("mean_jerk", mean_jerk)
+    trial.set_user_attr("median_jerk", median_jerk)
 
     return cost
 
 
-def run_optimization(n_trials=10):
+def run_optimization(n_trials=12):
+    current_dir = Path(__file__).resolve().parent
+    db_path = current_dir / "optuna_rl.db"
+    storage_url = f"sqlite:///{db_path.as_posix()}"
+
     print("==================================================================")
-    print(" TURRET FCS // BAYESIAN OPTIMIZATION (OPTUNA TPE) MOTORU         ")
-    print(" Gurbuz Sim-to-Real: Domain Randomization + Eylem Gecmisi        ")
+    print(" TURRET FCS // LQR BAYESIAN OPTIMIZATION (OPTUNA TPE) MOTORU     ")
+    print(" SQLite Kaliciligi + 20 Sabit Tohum + Medyan & IQR Metrikleri   ")
     print("==================================================================")
-    print(f"[Optuna] Planlanan Deneme Sayisi: {n_trials}")
-    print("[Hedef] Minimasyon: Ortalama Piksel Hatasi + 40*Jerk - 50*Kilitlenme")
+    print(f"[Optuna DB] {db_path.name}")
+    print(f"[Deneme] Planlanan Ek Deneme Sayisi: {n_trials}")
+    print(f"[Referans Tohumlar] 20 Tohum: {EVAL_SEEDS[0]}..{EVAL_SEEDS[-1]}")
     print("------------------------------------------------------------------")
 
     sampler = optuna.samplers.TPESampler(seed=42)
-    study = optuna.create_study(direction="minimize", sampler=sampler)
+    study = optuna.create_study(
+        study_name="turret_lqr_study",
+        storage=storage_url,
+        direction="minimize",
+        sampler=sampler,
+        load_if_exists=True,
+    )
 
     start_t = time.time()
     study.optimize(objective, n_trials=n_trials, show_progress_bar=False)
@@ -148,34 +165,36 @@ def run_optimization(n_trials=10):
 
     best = study.best_trial
     print("\n==================================================================")
-    print(" [OK] BAYESIAN OPTIMIZASYON TAMAMLANDI!")
+    print(" [OK] LQR BAYESIAN OPTIMIZASYON TAMAMLANDI!")
     print(f" Toplam Sure: {elapsed:.1f} saniye")
     print(f" En Iyi Deneme Numarasi: #{best.number}")
     print(f" En Iyi Maliyet (Score): {best.value:.2f}")
     print("------------------------------------------------------------------")
-    print(" EN IYI HIPERPARAMETRELER:")
+    print(" EN IYI LQR & POLITIKA PARAMETRELERI:")
     for k, v in best.params.items():
         if isinstance(v, float):
-            print(f"   - {k:15s}: {v:.5f}")
+            print(f"   - {k:15s}: {v:.6f}")
         else:
             print(f"   - {k:15s}: {v}")
     print("------------------------------------------------------------------")
-    print(" PERFORMANS METRIKLERI:")
-    print(f"   - Ortalama Piksel Hatasi : {best.user_attrs['mean_err_px']:.1f} px")
+    print(" PERFORMANS METRIKLERI (20 SEED MEDYAN & IQR):")
+    print(f"   - Medyan Piksel Hatasi   : {best.user_attrs['median_err_px']:.1f} px")
+    print(f"   - Piksel Hata IQR        : {best.user_attrs['iqr_err_px']:.1f} px")
     print(f"   - Vizor Kilitlenme Orani : %{best.user_attrs['lock_ratio'] * 100:.1f}")
-    print(f"   - Motor Jerk / Sarsinti  : {best.user_attrs['mean_jerk']:.4f}")
+    print(f"   - Medyan Jerk / Titresim : {best.user_attrs['median_jerk']:.5f}")
     print("==================================================================")
 
     # Sonuclari JSON dosyasina kaydet
-    out_path = Path(__file__).resolve().parent / "best_params.json"
+    out_path = current_dir / "best_params.json"
     result_data = {
         "best_trial_number": best.number,
         "best_score": float(best.value),
         "params": best.params,
         "metrics": {
-            "mean_err_px": float(best.user_attrs["mean_err_px"]),
+            "median_err_px": float(best.user_attrs["median_err_px"]),
+            "iqr_err_px": float(best.user_attrs["iqr_err_px"]),
             "lock_ratio": float(best.user_attrs["lock_ratio"]),
-            "mean_jerk": float(best.user_attrs["mean_jerk"]),
+            "median_jerk": float(best.user_attrs["median_jerk"]),
         },
         "elapsed_seconds": elapsed,
     }
@@ -187,4 +206,4 @@ def run_optimization(n_trials=10):
 
 
 if __name__ == "__main__":
-    run_optimization(n_trials=10)
+    run_optimization(n_trials=12)

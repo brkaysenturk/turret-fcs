@@ -10,7 +10,7 @@ Bu modul, gercek taret donaniminin olculmus fiziksel kisitlarini:
 5. Logitech C270 gercek optik modeli (dFOV 55 deg -> H_FOV = 48.8 deg, V_FOV = 28.6 deg)
 6. Domain Randomization (YOLO gurultusu, degisken gecikme, oransal FPS dalgalanmasi)
 7. Eylem Gecmisi (Action History - 2 adimlik boru hatti farkindaligi)
-8. Sakinlik Sartli Odul Fonksiyonu (Merkezde titresim ve savrulmayi onleyen ceza)
+8. LQR / Bryson Tabanli Kuadratik Odul: r = -(e_norm^2 + lambda_u * u_norm^2 + mu_du * du_norm^2)
 birebir iceren ve Bryson Kurali ile normalize edilmis 11 boyutlu Gymnasium ortamidir.
 ================================================================================
 """
@@ -20,6 +20,21 @@ import math
 import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
+
+import sys
+from pathlib import Path
+
+_current_dir = Path(__file__).resolve().parent
+_turret_fcs_dir = _current_dir.parent
+_project_root = _turret_fcs_dir.parent
+for _p in [str(_turret_fcs_dir), str(_project_root)]:
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
+try:
+    from turret_fcs.config import CONFIG
+except (ImportError, ValueError):
+    from config import CONFIG
 
 
 class TurretEnv(gym.Env):
@@ -35,12 +50,10 @@ class TurretEnv(gym.Env):
         render_mode=None,
         dt=0.033,
         latency_steps=2,
-        w_dist=3.5,
-        w_dist_sq=5.0,
-        w_bullseye=6.0,
-        w_lock=4.0,
-        w_smooth=0.75,
+        lambda_u=0.04,
+        mu_du=0.03,
         enable_randomization=True,
+        **kwargs,
     ):
         super().__init__()
         self.render_mode = render_mode
@@ -50,31 +63,29 @@ class TurretEnv(gym.Env):
         self.obs_queue = deque(maxlen=self.latency_steps + 1)
         self.enable_randomization = enable_randomization
 
-        # Odul Fonksiyonu Agirliklari
-        self.w_dist = float(w_dist)
-        self.w_dist_sq = float(w_dist_sq)
-        self.w_bullseye = float(w_bullseye)
-        self.w_lock = float(w_lock)
-        self.w_smooth = float(w_smooth)
+        # LQR / Bryson Tabanli Odul Katsayilari:
+        # r = -(e_norm^2 + lambda_u * u_norm^2 + mu_du * du_norm^2)
+        self.lambda_u = float(kwargs.get("lambda_u", lambda_u))
+        self.mu_du = float(kwargs.get("mu_du", mu_du))
 
-        # 1. Logitech C270 Gercek Donanim Optik Parametreleri (1280x720)
-        self.screen_w = 1280.0
-        self.screen_h = 720.0
+        # 1. Logitech C270 Gercek Donanim Optik Parametreleri (SSOT)
+        self.screen_w = float(CONFIG.optics.default_width)
+        self.screen_h = float(CONFIG.optics.default_height)
         self.center_x = self.screen_w / 2.0
         self.center_y = self.screen_h / 2.0
-        self.h_fov = 48.8
-        self.v_fov = 28.6
-        self.fx = (self.screen_w / 2.0) / math.tan(math.radians(self.h_fov / 2.0))
-        self.fy = (self.screen_h / 2.0) / math.tan(math.radians(self.v_fov / 2.0))
+        self.h_fov = CONFIG.optics.h_fov_deg
+        self.v_fov = CONFIG.optics.v_fov_deg
+        self.fx = CONFIG.optics.compute_fx(int(self.screen_w))
+        self.fy = CONFIG.optics.compute_fy(int(self.screen_h))
 
-        # 2. Gercek Donanim Mekanik ve Servo Sinirlari
-        self.max_pan_deg = 45.0          # Guvenli mekanik Pan siniri (+-45 deg)
-        self.max_tilt_deg = 18.0         # Guvenli mekanik Tilt siniri (+-18 deg)
-        self.max_step_pan_deg = 0.55     # Kare basi maksimum Pan adimi (+-0.55 deg/kare = 16.5 deg/s)
-        self.max_step_tilt_deg = 0.22    # Dikey agir volan namlu adimi (+-0.22 deg/kare = 6.6 deg/s)
+        # 2. Gercek Donanim Mekanik ve Servo Sinirlari (SSOT)
+        self.max_pan_deg = CONFIG.mount.pan_limit_max
+        self.max_tilt_deg = CONFIG.mount.tilt_limit_max
+        self.max_step_pan_deg = CONFIG.actuator.max_step_pan_deg
+        self.max_step_tilt_deg = CONFIG.actuator.max_step_tilt_deg
         self.max_step_deg = self.max_step_pan_deg
-        self.servo_deadband = 0.10       # STM32 0.1 deg UART kuantalama ve servo mekanik olu bolgesi
-        self.servo_tau = 0.045           # 1. derece motor zaman sabiti (45 ms)
+        self.servo_deadband = CONFIG.actuator.servo_deadband_deg
+        self.servo_tau = CONFIG.mount.servo_tau
         self.yolo_noise_std = 3.5        # YOLO merkez gurultusu (piksel)
 
         # 3. Bryson Kurali ile Normalizasyon Olcekleri
@@ -303,58 +314,36 @@ class TurretEnv(gym.Env):
             self.target_vel_3d[1] *= -1.0
 
         # =====================================================================
-        # 3. GECİKMELİ GÖZLEM VE SAKİNLİK ŞARTLI BRYSON ÖDÜL FONKSİYONU
+        # 3. GECİKMELİ GÖZLEM VE LQR / BRYSON ÖDÜL FONKSİYONU
         # =====================================================================
         sensor_obs = self._get_sensor_obs()
         self.obs_queue.append(sensor_obs.copy())
         obs = self._get_obs()
 
-        err_x_norm, err_y_norm = sensor_obs[0], sensor_obs[1]
-        dist_sq = err_x_norm**2 + err_y_norm**2
-        current_dist = math.sqrt(dist_sq)
+        err_x_norm, err_y_norm = float(sensor_obs[0]), float(sensor_obs[1])
+        e_norm_sq = err_x_norm**2 + err_y_norm**2
+        current_dist = math.sqrt(e_norm_sq)
 
-        # Bryson Kurali Tabanli Odul:
-        # A) Mesafe Cezasi (Kuadratik ve dogrusal)
-        r_dist = - self.w_dist * current_dist - self.w_dist_sq * dist_sq
-
-        # B) Sakinlik / Hız Faktoru: Merkezde savrulmadan durabilme yetenegi
-        action_mag = float(np.hypot(action[0], action[1]))
-        calm_factor = math.exp(- 4.0 * (action_mag**2))
-
-        # C) Hedef Vizor Merkezindeyken Gauss Kilit Bonusu (Sakinlikle carpanli)
-        r_bullseye = self.w_bullseye * math.exp(- 20.0 * dist_sq) * (0.30 + 0.70 * calm_factor)
-
-        # D) Kilit Kararlilik Odulu: Hedef vizor merkezinde (%4 alan) VE motor sakinse buyuk odul
-        is_calm_lock = (current_dist < 0.04) and (action_mag < 0.20)
-        r_lock = self.w_lock if is_calm_lock else (self.w_lock * 0.25 if current_dist < 0.04 else 0.0)
-
-        # E) Yaklasma Ilerleme Odulu (Asiri hiz tesvikini onlemek icin olculu)
-        r_progress = 3.5 * (self.last_dist_val - current_dist)
-        self.last_dist_val = current_dist
-
-        # F) Eylem Sarsinti / Jerk Cezasi (Motor titresimini sifirlar)
-        action_diff = np.sum((action - self.last_action) ** 2)
-        r_smooth = - self.w_smooth * action_diff
+        # LQR Kuadratik Maliyet: r = -(e_norm^2 + lambda_u * u_norm^2 + mu_du * du_norm^2)
+        u_norm_sq = float(action[0]**2 + action[1]**2)
+        du_norm_sq = float((action[0] - self.last_action[0])**2 + (action[1] - self.last_action[1])**2)
         self.last_action = action.copy()
 
-        # G) Surekli Eylem Buyuklugu Cezasi (L2 Action Regularization - Asiri komut basmayi onler)
-        r_act_reg = - 0.70 * (action[0]**2 + action[1]**2)
+        r_tracking = - e_norm_sq
+        r_effort = - self.lambda_u * u_norm_sq
+        r_jerk = - self.mu_du * du_norm_sq
 
-        # H) Merkezde gereksiz aksiyon alma cezasi (Hareketsiz sakin kilit tesviki)
-        r_center_still = - 2.5 * action_mag if current_dist < 0.06 else 0.0
+        # Hedef vizor merkezindeyse (%5 alan) pozitif kilit tesviki
+        r_bullseye = 0.50 if current_dist < 0.05 else 0.0
 
-        # I) Kamera Hareket Bulanikligi (Motion Blur) Cezasi (Hizli savrulmada goruntu bozulur)
-        step_mag = math.hypot(cmd_pan_step, cmd_tilt_step)
-        r_blur = - 2.0 * (step_mag - 0.35) if step_mag > 0.35 else 0.0
-
-        reward = r_dist + r_bullseye + r_lock + r_progress + r_smooth + r_act_reg + r_center_still + r_blur
+        reward = float(r_tracking + r_effort + r_jerk + r_bullseye)
 
         terminated = False
         truncated = self.step_count >= self.max_steps
 
-        # Hedef ekrandan tamamen kacarsa bolum sonlanir
+        # Hedef kadrajdan tamamen kacarsa bolum sonlanir
         if current_dist > 1.4:
             terminated = True
-            reward -= 6.0
+            reward -= 2.0
 
         return obs, reward, terminated, truncated, {"pixel_dist": current_dist}
