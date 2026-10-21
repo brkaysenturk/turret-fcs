@@ -141,16 +141,20 @@ def generate_plots():
     kpis = ["Kilit Oranı (%)", "Ort. Vuruş Ol. (%)", "Max Kilit Süresi (s)"]
     
     # Calculate longest streak
-    def max_streak_sec(locked_arr, dt=0.033):
-        curr, m = 0, 0
-        for l in locked_arr:
+    def max_streak_sec(locked_arr, time_arr):
+        max_dur = 0.0
+        start_t = None
+        for l, t in zip(locked_arr, time_arr):
             if l == 1:
-                curr += 1
-                if curr > m:
-                    m = curr
+                if start_t is None:
+                    start_t = t
+                else:
+                    dur = t - start_t
+                    if dur > max_dur:
+                        max_dur = dur
             else:
-                curr = 0
-        return m * dt
+                start_t = None
+        return max_dur
 
     p_lock_pct = (np.sum(data_p["locked"]) / len(data_p["locked"])) * 100.0
     rl_lock_pct = (np.sum(data_rl["locked"]) / len(data_rl["locked"])) * 100.0
@@ -158,8 +162,8 @@ def generate_plots():
     p_hit_avg = np.mean(data_p["hit_prob"])
     rl_hit_avg = np.mean(data_rl["hit_prob"])
 
-    p_streak_s = max_streak_sec(data_p["locked"], 0.033)
-    rl_streak_s = max_streak_sec(data_rl["locked"], 0.033)
+    p_streak_s = max_streak_sec(data_p["locked"], data_p["time"])
+    rl_streak_s = max_streak_sec(data_rl["locked"], data_rl["time"])
 
     x = np.arange(len(kpis))
     width = 0.35
@@ -190,11 +194,11 @@ def generate_plots():
         ["Metrik / Başarım", "P Kontrolcü", "PPO RL Kontrolcü", "Üstünlük"],
         ["Mimari Tip", "Tip-1 P (Soft Deadband)", "11-D Bryson PPO RL", "Tam A/B Ayrık"],
         ["Kilitlenme Oranı", f"%{p_lock_pct:.1f}", f"%{rl_lock_pct:.1f}", "RL (+%11.2)"],
-        ["Azami Kesintisiz Kilit", f"{p_streak_s:.1f} saniye", f"{rl_streak_s:.1f} saniye", "RL (Rekor: 13.2s)"],
+        ["Azami Kesintisiz Kilit", f"{p_streak_s:.1f} saniye", f"{rl_streak_s:.1f} saniye", f"RL (+{rl_streak_s - p_streak_s:.1f}s)"],
         ["Ortalama Pan Hatası", f"{np.mean(data_p['err_p']):+.2f} deg", f"{np.mean(data_rl['err_p']):+.2f} deg", "Her ikisi dengeli"],
         ["Ortalama Tilt Hatası", f"{np.mean(data_p['err_t']):+.2f} deg", f"{np.mean(data_rl['err_t']):+.2f} deg", "Her ikisi dengeli"],
         ["Dikey Yön Değişimi", "%0.1 Terslenme", "%0.0 Terslenme", "Sıfır Salınım"],
-        ["İşlem Süresi (CPU)", "0.02 ms", "0.17 ms", "Gerçek Zamanlı (100Hz)"],
+        ["İşlem Süresi (CPU)", "0.02 ms", "0.17 ms", "Gerçek Zamanlı (30 FPS)"],
     ]
 
     tbl = ax5.table(cellText=table_data, loc='center', cellLoc='center')

@@ -1,0 +1,48 @@
+{
+  "system_version": "v1.3",
+  "timestamp": "2026-10-22",
+  "control": {
+    "kp_pan_frame": 0.1,
+    "kp_tilt_frame": 0.05,
+    "kv_pan_continuous_1_s": 3.0,
+    "kv_tilt_continuous_1_s": 1.5,
+    "deadband_pan_deg": 0.85,
+    "deadband_tilt_deg": 0.95,
+    "max_output_frame_deg": 1.35,
+    "max_slew_velocity_deg_s": 40.5,
+    "crossover_freq_w_gc_rad_s": 2.99,
+    "phase_margin_pm_deg": 68.7,
+    "phase_crossover_w_pc_rad_s": 13.07,
+    "gain_margin_gm_db": 14.1,
+    "bode_theoretical_exact_model": {
+      "model_description": "Exact pure delay (80 ms) + 1st order servo lag (tau = 45 ms)",
+      "crossover_freq_w_gc_rad_s": 2.99,
+      "phase_margin_pm_deg": 68.7,
+      "phase_crossover_w_pc_rad_s": 13.07,
+      "gain_margin_gm_db": 14.1
+    },
+    "bode_identified_sopdt_model": {
+      "model_description": "Identified 2nd-order SOPDT actuator (wn = 17.4 rad/s, zeta = 0.72) + 80 ms delay",
+      "crossover_freq_w_gc_rad_s": 2.98,
+      "phase_margin_pm_deg": 62.2,
+      "phase_crossover_w_pc_rad_s": 11.2,
+      "gain_margin_gm_db": 10.3
+    },
+    "settling_time_20deg_s": 1.48,
+    "overshoot_pct": 0.0
+  },
+  "ballistics": {
+    "projectile_speed_v0_mps": 10.0,
+    "gravity_mps2": 9.80665,
+    "superelevation_2m_deg": 5.6,
+    "flight_time_2m_ms": 200.0,
+    "superelevation_5m_deg": 13.78,
+    "flight_time_5m_ms": 500.0
+  },
+  "hardware_dynamics": {
+    "servo_tau_s": 0.045,
+    "system_latency_s": 0.08,
+    "sampling_fps": 30.0,
+    "sampling_dt_s": 0.03333
+  }
+}

@@ -11,6 +11,7 @@ Pade gecikme yaklasimini, Bode frekans cevabini, S-duzlemi koklerin yer egrisini
 import csv
 import math
 import os
+import sys
 from pathlib import Path
 import warnings
 
@@ -24,7 +25,13 @@ from scipy.optimize import curve_fit
 # Dizin yapilandirmasi
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = BASE_DIR.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from turret_fcs.config import CONFIG
+
 LOGS_DIR = PROJECT_ROOT / "logs"
+EVIDENCE_DIR = PROJECT_ROOT / "docs" / "evidence"
 FIG_DIR = BASE_DIR / "figures"
 FIG_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -133,7 +140,7 @@ def run_system_identification():
     measured_response = clean_step + sensor_noise
 
     # Gercek telemetri logundan deneysel veri yukle
-    log_file = LOGS_DIR / "telemetry_test_20261010_161823.csv"
+    log_file = EVIDENCE_DIR / "v1.3_benchmark.csv" if (EVIDENCE_DIR / "v1.3_benchmark.csv").exists() else LOGS_DIR / "telemetry_test_20261010_161823.csv"
     t_telemetry, y_telemetry = load_real_telemetry_step(log_file)
 
     # -------------------------------------------------------------------------
@@ -225,9 +232,9 @@ def run_system_identification():
     crit_kp = crit_kv * 0.03333
 
     # Calisma Noktalari:
-    # 1. v1.2 Tuned Mod: Kp = 0.055 -> Kv = 0.055 / 0.03333 = 1.65 s^-1
-    # 2. Okul Statik Mod: Kp = 0.10 -> Kv = 0.10 / 0.03333 = 3.0 s^-1
-    # 3. Dinamik Takip Modu: Kp = 0.16 -> Kv = 0.16 / 0.03333 = 4.8 s^-1
+    # 1. v1.3 Uretim (SSOT): Kp = 0.10 -> Kv = 0.10 / 0.03333 = 3.0 s^-1
+    # 2. v1.2 Baseline: Kp = 0.055 -> Kv = 0.055 / 0.03333 = 1.65 s^-1
+    # 3. Dinamik Takip Siniri: Kp = 0.16 -> Kv = 0.16 / 0.03333 = 4.8 s^-1
     def get_roots_for_kp(kp_val):
         kv = kp_val / 0.03333
         c4 = 1.0
@@ -237,15 +244,15 @@ def run_system_identification():
         c0 = kv * wn_sopdt**2 * z_pade
         return np.roots([c4, c3, c2, c1, c0])
 
-    roots_tuned = get_roots_for_kp(0.055)
-    roots_stat = get_roots_for_kp(0.10)
+    roots_v13 = get_roots_for_kp(CONFIG.control.kp_pan)
+    roots_v12 = get_roots_for_kp(0.055)
     roots_dyn = get_roots_for_kp(0.16)
 
     print(f"\n[OK] S-Duzlemi Kararlilik Siniri (Kritik Kazanc):")
     print(f"     Kritik Hiz Kazanci Kv_crit = {crit_kv:.2f} s^-1 (Kp_crit = {crit_kp:.3f})")
-    print(f"     v1.2 Tuned Noktasi   (Kp=0.055, Kv=1.65): Baskin Kutup: s = {roots_tuned[2].real:.2f} +- j{abs(roots_tuned[2].imag):.2f}")
-    print(f"     Okul Statik Noktasi  (Kp=0.100, Kv=3.00): Baskin Kutup: s = {roots_stat[2].real:.2f} +- j{abs(roots_stat[2].imag):.2f}")
-    print(f"     Dinamik Mod Noktasi  (Kp=0.160, Kv=4.80): Baskin Kutup: s = {roots_dyn[2].real:.2f} +- j{abs(roots_dyn[2].imag):.2f}")
+    print(f"     v1.3 Uretim Noktasi  (Kp={CONFIG.control.kp_pan:.2f}, Kv=3.00): Baskin Kutup: s = {roots_v13[2].real:.2f} +- j{abs(roots_v13[2].imag):.2f}")
+    print(f"     v1.2 Baseline        (Kp=0.055, Kv=1.65): Baskin Kutup: s = {roots_v12[2].real:.2f} +- j{abs(roots_v12[2].imag):.2f}")
+    print(f"     Dinamik Sinir Nokta  (Kp=0.160, Kv=4.80): Baskin Kutup: s = {roots_dyn[2].real:.2f} +- j{abs(roots_dyn[2].imag):.2f}")
 
     # -------------------------------------------------------------------------
     # ADIM 5: FREKANS YANITI (BODE) VE KARARLILIK MARJLARI
@@ -275,20 +282,20 @@ def run_system_identification():
 
         return mag, phase, w_gc, pm, w_pc, gm, dm
 
-    mag_stat, phase_stat, w_gc_s, pm_s, w_pc_s, gm_s, dm_s = compute_margins(0.10)
-    mag_dyn, phase_dyn, w_gc_d, pm_d, w_pc_d, gm_d, dm_d = compute_margins(0.16)
+    mag_v13, phase_v13, w_gc_13, pm_13, w_pc_13, gm_13, dm_13 = compute_margins(CONFIG.control.kp_pan)
+    mag_v12, phase_v12, w_gc_12, pm_12, w_pc_12, gm_12, dm_12 = compute_margins(0.055)
 
     print("\n[OK] Frekans Cevabi (Bode Analizi) Sonuclari:")
-    print(f"     1. Statik Mod (Kp = 0.10):")
-    print(f"        - Kazanc Kesim Frekansi (w_gc) : {w_gc_s:.2f} rad/s")
-    print(f"        - Faz Marji (PM)               : {pm_s:.1f} deg  (Guclu Kararli, >45 deg)")
-    print(f"        - Kazanc Marji (GM)            : {gm_s:.1f} dB   (>6 dB Guvenli)")
-    print(f"        - Gecikme Payi (Delay Margin)  : {dm_s:.0f} ms")
-    print(f"     2. Dinamik Uyarlamali Mod (Kp = 0.16):")
-    print(f"        - Kazanc Kesim Frekansi (w_gc) : {w_gc_d:.2f} rad/s")
-    print(f"        - Faz Marji (PM)               : {pm_d:.1f} deg  (Hizli Takip, Kararli)")
-    print(f"        - Kazanc Marji (GM)            : {gm_d:.1f} dB")
-    print(f"        - Gecikme Payi (Delay Margin)  : {dm_d:.0f} ms")
+    print(f"     1. v1.3 Uretim Modu (Kp = {CONFIG.control.kp_pan:.2f}, Kv = 3.0 1/s):")
+    print(f"        - Kazanc Kesim Frekansi (w_gc) : {w_gc_13:.2f} rad/s")
+    print(f"        - Faz Marji (PM)               : {pm_13:.1f} deg  (Guclu Kararli / Kritik Sonumlu)")
+    print(f"        - Kazanc Marji (GM)            : {gm_13:.1f} dB   (>6 dB Guvenli)")
+    print(f"        - Gecikme Payi (Delay Margin)  : {dm_13:.0f} ms")
+    print(f"     2. v1.2 Baseline Modu (Kp = 0.055, Kv = 1.65 1/s):")
+    print(f"        - Kazanc Kesim Frekansi (w_gc) : {w_gc_12:.2f} rad/s")
+    print(f"        - Faz Marji (PM)               : {pm_12:.1f} deg  (Yuksek Sonumlu)")
+    print(f"        - Kazanc Marji (GM)            : {gm_12:.1f} dB")
+    print(f"        - Gecikme Payi (Delay Margin)  : {dm_12:.0f} ms")
 
     # -------------------------------------------------------------------------
     # ADIM 6: KAPALI CEVRIM ZAMAN DOMENI PERFORMANS SIMULASYONU VE DOGRULAMA
@@ -380,35 +387,35 @@ def run_system_identification():
         ax2.plot(locus_roots[:, i].real, locus_roots[:, i].imag, "b-", lw=1.5, alpha=0.85)
 
     # Calisma noktalari
-    ax2.plot(roots_tuned[2].real, roots_tuned[2].imag, "b*", markersize=13, label="v1.2 Tuned (Kp=0.055, zeta=0.85)")
-    ax2.plot(roots_tuned[2].real, -roots_tuned[2].imag, "b*", markersize=13)
-    ax2.plot(roots_stat[2].real, roots_stat[2].imag, "r*", markersize=11, label="Okul Statik (Kp=0.10, zeta=0.72)")
-    ax2.plot(roots_stat[2].real, -roots_stat[2].imag, "r*", markersize=11)
-    ax2.plot(roots_dyn[2].real, roots_dyn[2].imag, "g^", markersize=9, label="Dinamik Calisma (Kp=0.16)")
+    ax2.plot(roots_v13[2].real, roots_v13[2].imag, "b*", markersize=14, label=f"v1.3 Uretim (Kp={CONFIG.control.kp_pan:.2f}, Kv=3.0)")
+    ax2.plot(roots_v13[2].real, -roots_v13[2].imag, "b*", markersize=14)
+    ax2.plot(roots_v12[2].real, roots_v12[2].imag, "r*", markersize=11, label="v1.2 Baseline (Kp=0.055, Kv=1.65)")
+    ax2.plot(roots_v12[2].real, -roots_v12[2].imag, "r*", markersize=11)
+    ax2.plot(roots_dyn[2].real, roots_dyn[2].imag, "g^", markersize=9, label="Dinamik Sinir (Kp=0.16, Kv=4.8)")
     ax2.plot(roots_dyn[2].real, -roots_dyn[2].imag, "g^", markersize=9)
 
     # Kararsizlik siniri (Sag yari duzlem kirmizi alan)
     ax2.axvspan(0, 30, color="red", alpha=0.08, label="Kararsiz Bolge (RHP)")
     ax2.set_xlim(-30, 30)
     ax2.set_ylim(-25, 25)
-    ax2.set_title("2. S-Duzlemi: Root Locus (Pade Gecikme Modelli)", fontweight="bold", fontsize=11)
+    ax2.set_title("2. S-Duzlemi: Root Locus (Pade Gecikme Yaklasimi)", fontweight="bold", fontsize=11)
     ax2.set_xlabel("Reel Eksen Sigma [1/s]")
     ax2.set_ylabel("Imajiner Eksen j*Omega [rad/s]")
     ax2.grid(True, alpha=0.3)
     ax2.legend(loc="lower left", fontsize=7.2, framealpha=0.9)
 
-    # PANEL 3: BODE FREKANS CEVABI VE KARARLILIK MARJLARI
+    # PANEL 3: BODE FREKANS CEVABI VE KARARLILIK MARJLARI (DENEYSEL SOPDT MODELI)
     ax3 = axs[1, 0]
     ax3_twin = ax3.twinx()
 
-    l1 = ax3.semilogx(w_freq, 20 * np.log10(mag_stat), color="#0055A5", lw=2.2, label=f"Statik Genlik (GM={gm_s:.1f}dB)")
-    l2 = ax3.semilogx(w_freq, 20 * np.log10(mag_dyn), color="#27AE60", ls="-.", lw=1.8, label=f"Dinamik Genlik (GM={gm_d:.1f}dB)")
-    l3 = ax3_twin.semilogx(w_freq, phase_stat, color="#D9534F", ls="--", lw=1.8, label=f"Statik Faz (PM={pm_s:.1f}deg)")
-    l4 = ax3_twin.semilogx(w_freq, phase_dyn, color="#8E44AD", ls=":", lw=1.8, label=f"Dinamik Faz (PM={pm_d:.1f}deg)")
+    l1 = ax3.semilogx(w_freq, 20 * np.log10(mag_v13), color="#0055A5", lw=2.4, label=f"v1.3 SOPDT (Kp=0.10, GM={gm_13:.1f}dB)")
+    l2 = ax3.semilogx(w_freq, 20 * np.log10(mag_v12), color="#7F8C8D", ls="-.", lw=1.8, label=f"v1.2 Baseline (Kp=0.055, GM={gm_12:.1f}dB)")
+    l3 = ax3_twin.semilogx(w_freq, phase_v13, color="#D9534F", ls="--", lw=1.8, label=f"v1.3 SOPDT Faz (PM={pm_13:.1f}deg)")
+    l4 = ax3_twin.semilogx(w_freq, phase_v12, color="#8E44AD", ls=":", lw=1.8, label=f"v1.2 Faz (PM={pm_12:.1f}deg)")
 
     ax3.axhline(0, color="black", ls=":", lw=1.0)
     ax3_twin.axhline(-180, color="black", ls=":", lw=1.0)
-    ax3.set_title("3. Frekans Cevabi (Bode) ve Kararlilik Marjlari", fontweight="bold", fontsize=11)
+    ax3.set_title(f"3. Frekans Cevabi (Deneysel SOPDT Modeli, PM = {pm_13:.1f}°, GM = {gm_13:.1f} dB)", fontweight="bold", fontsize=10.5)
     ax3.set_xlabel("Frekans Omega (rad/s)")
     ax3.set_ylabel("Genlik (dB)", color="#0055A5")
     ax3_twin.set_ylabel("Faz (derece)", color="#D9534F")
@@ -418,14 +425,18 @@ def run_system_identification():
 
     lines_bode = l1 + l2 + l3 + l4
     labels_bode = [l.get_label() for l in lines_bode]
-    ax3.legend(lines_bode, labels_bode, loc="lower left", fontsize=7.5)
+    ax3.legend(lines_bode, labels_bode, loc="upper right", fontsize=7.2, framealpha=0.9)
+
+    ax3.text(0.03, 0.08, "Model Karsilastirmasi:\n• Deneysel SOPDT: PM = 62.2°, GM = 10.3 dB\n• Teorik Exact Model (fig3): PM = 68.7°, GM = 14.1 dB",
+             transform=ax3.transAxes, fontsize=7.2, fontweight="bold",
+             bbox=dict(boxstyle="round,pad=0.3", facecolor="#F0F4F8", edgecolor="#0055A5", alpha=0.92))
 
     # PANEL 4: KAPALI CEVRIM KONTROLCU DOGRULAMASI
     ax4 = axs[1, 1]
     ax4.plot(t_sim * 1000, np.ones_like(t_sim), "k--", lw=1.5, label="Referans Hedef (Step = 1.0)")
     ax4.plot(t_sim * 1000, y_cohen, color="#D9534F", ls=":", lw=1.8, label="Klasik PID (Asiri Titresim / Windup)")
     ax4.plot(t_sim * 1000, y_hard_p, color="#E67E22", ls="--", lw=1.8, label="Sert P (Olu Bolgesiz / Titremeli)")
-    ax4.plot(t_sim * 1000, y_soft_p, color="#0055A5", lw=2.4, label="Son Sistem: Yumusak Olu Bolgeli P (v1.2)")
+    ax4.plot(t_sim * 1000, y_soft_p, color="#0055A5", lw=2.4, label="Son Sistem: Yumusak Olu Bolgeli P (v1.3)")
     ax4.fill_between(t_sim * 1000, 1.0 - deadband_norm, 1.0 + deadband_norm, color="#27AE60", alpha=0.20, label="Olu Bolge Kararli Alan (+-0.85 deg)")
 
     ax4.set_title("4. Kapali Cevrim Kontrolcu Performans Dogrulamasi", fontweight="bold", fontsize=11)

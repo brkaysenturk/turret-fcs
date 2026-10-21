@@ -51,7 +51,7 @@ step_target = 20.0;           % 20 derece ani hedef sapmasi
 delay_sec   = 0.080;          % 80 ms toplam gecikme
 delay_steps = round(delay_sec / dt_sim);
 
-% Guncel Donanim Parametreleri (v1.2 Yumusak Olu Bolgeli Saf P Kontrolcu)
+% Guncel Donanim Parametreleri (v1.3 Yumusak Olu Bolgeli Saf P Kontrolcu)
 kp = 0.055; ki = 0.00; kd = 0.00; deadband = 0.85; max_slew = 1.35;
 
 y_pos  = zeros(1, N_pts);

@@ -38,14 +38,14 @@
   - STM32F401RE Nucleo üzerinde 100 Hz ikili (binary) haberleşme paketi ve ters kayan pencereli (sliding window) ayrıştırıcı geliştirildi ([fcs_comm.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/fcs_comm.py)).
   - **300 ms Heartbeat Watchdog:** PC 300 ms boyunca yeni komut göndermezse STM32 acil duruma geçer ve `Launcher_EmergencyStop()` ile volan motorlarını ve solenoidi anında keser.
   - **Mandallı E-Stop (Space Tuşu):** Operatör acil frene bastığında taret donanımsal mekanik merkezine (90°, 90°) kilitlenir.
-  - **120 ms Kenar Tetiklemeli Solenoid Mandalı:** Çift dart atılmasını ve solenoid bobininin aşırı ısınıp yanmasını önleyen donanımsal darbe sınırlaması yapıldı.
+  - **80 ms Kenar Tetiklemeli Solenoid Darbe Protokolü:** Çift dart atılmasını ve solenoid bobininin aşırı ısınıp yanmasını önleyen donanımsal darbe sınırlaması protokolü tasarlandı (firmware ve config ile uyumlu; masaüstü ve güvenlik testlerinde fiziksel ateşleme yolu yazılımsal/donanımsal olarak izole edilmektedir).
 
 ### FAZ 4: Klasik Kontrol Teorisinin Evrimi ve "Tip-1 P" Kararı
 - **Problem:** İlk başta sisteme klasik PID uygulanmaya çalışıldı, ancak servolar şiddetle titredi (limit cycle) ve kararsızlığa girdi.
 - **Alınan Kararlar:**
   - **Neden Ki ve Kd (D-termi) Kullanılmadı?:**
-    1. **Ki = 0:** STM32 üzerindeki açısal pozisyon denklemi `theta(k) = theta(k-1) + delta_theta` şeklindedir. Yani motorun kendisi ayrık zamanda saf bir integratördür (Tip-1 Servomekanizma). Yazılıma harici bir Ki integrali koymak açık çevrime ikinci bir kutup (`1/(z-1)^2`) ekleyerek rezonans faz çökmesine yol açıyordu. Bu yüzden `Ki = 0` yapıldı ve kalıcı durum hatası doğal olarak sıfırlandı.
-    2. **Kd = 0 (D-termi İptali):** Kamera tabanlı hedef hız/konum kestirimleri, donanımın ayrık kuantalaması ve YOLO görüntü gürültüsü içerir. MG996R gibi dahili potansiyometreli ve yüksek mekanik boşluklu (backlash) servolara harici türev veya hız ileri beslemesi eklemek motorlarda limit cycle titreşimine ve dişli yıpranmasına yol açtığı için D-termi tamamen kaldırılmış; yerine kritik sönümlü saf P omurgası tercih edilmiştir. Çevik manevra ihtiyacı ise doğrudan PPO RL moduna bırakılmıştır.
+    1. **Ki = 0:** STM32 üzerindeki açısal pozisyon denklemi `theta(k) = theta(k-1) + delta_theta` şeklindedir. Yani motorun kendisi ayrık zamanda saf bir integratördür (Tip-1 Servomekanizma). Klasik kontrol teorisine göre Tip-1 sistemler statik hedef (basamak) girdilerinde hatayı ölü bölge kararlı bandı içine (Pan: ±0.85°, Tilt: ±0.95°) asimptotik olarak çeker; ölü bölgeye girildiğinde motor eforu sıfırlandığı için bu bant dahilinde sınırlı kalıcı durum hatası kalır ve mekanik dişli titreşimi (hunting) tamamen sıfırlanır. Hareketli hedeflerdeki sonlu rampa gecikmesi ise (`e_ss = omega / Kv`) Kalman filtreli hız kestirimi ve balistik hız ileri beslemesi (velocity feedforward) ile karşılanır. Yazılıma harici bir Ki integrali koymak açık çevrime ikinci bir kutup (`1/(z-1)^2`) ekleyerek rezonans faz çökmesine ve kontrolsüz limit döngüsü (limit cycle) titreşimine yol açıyordu. Bu yüzden `Ki = 0` yapıldı.
+    2. **Kd = 0 (D-termi İptali):** Kamera tabanlı hedef hız/konum kestirimleri, donanımın ayrık kuantalaması ve YOLO görüntü gürültüsü içerir. MG996R gibi dahili potansiyometreli ve yüksek mekanik boşluklu (backlash) servolara harici türev eklemek motorlarda limit cycle titreşimine ve dişli yıpranmasına yol açtığı için D-termi tamamen kaldırılmış; yerine kritik sönümlü saf P omurgası tercih edilmiştir. Çevik manevra ihtiyacı ise doğrudan PPO RL moduna bırakılmıştır.
   - **Neden Sert Ölü Bölge Değil de Yumuşak Ölü Bölge (Soft Deadband)?:** Sert eşikte (`if abs(err) < db: step = 0 else: step = Kp * err`), eşikten çıkıldığı an motora ani basamak darbesi biniyor ve dişlileri yıpratan bir avlanma (hunting/chattering) oluşuyordu. Yumuşak ölü bölge formülüyle (`eff_err = sign(err) * (|err| - db)`) hata eşiği aşıldığı an motor harekete sıfırdan pürüzsüz başlar hale getirildi.
 
 ### FAZ 5: Webots Dijital İkizi (R2025a) ve Kinematik Doğrulama
@@ -83,20 +83,22 @@
 
 | Soru / Konu | Verilecek Bilimsel ve Mühendislik Cevabı |
 |---|---|
-| **Neden türev (D-termi) kullanmadınız?** | Kamera ve YOLO tespit gürültüsünün türevi servolarda yüksek frekanslı mekanik titreşime (chattering) ve dişli aşınmasına yol açar. STM32 pozisyon biriktiricisi zaten ayrık zamanda saf integratör olduğu için yumuşak ölü bölgeli saf Tip-1 P kontrolcü sıfır jerk ile kalkış ve sıfır kalıcı durum hatası sağlar. Hızlı manevra gerektiren durumlarda ise yapay zeka (RL) devreye girerek çevik takibi üstlenir. |
+| **Neden türev (D-termi) kullanmadınız?** | Kamera ve YOLO tespit gürültüsünün türevi servolarda yüksek frekanslı mekanik titreşime (chattering) ve dişli aşınmasına yol açar. STM32 pozisyon biriktiricisi ayrık zamanda saf integratör olduğu için yumuşak ölü bölgeli saf Tip-1 P kontrolcü statik hedeflerde hatayı ölü bölge sınırları içerisine (Pan ±0.85°, Tilt ±0.95°) asimptotik olarak çekip sıfır motor titreşimi sunar. Hareketli hedeflerdeki sonlu rampa hatası ise Kalman filtreli hız ileri beslemesi ve önleme terimiyle bertaraf edilir; hızlı manevra gerektiren durumlarda ise yapay zeka (RL) devreye girerek çevik takibi üstlenir. |
 | **Neden integral (Ki) kullanmadınız?** | STM32 gömülü yazılımındaki pozisyon biriktiricisi (`theta_k = theta_{k-1} + delta`) ayrık zamanda saf integratördür (z/(z-1)). Harici Ki integrali sistemi Tip-2 yaparak çift kutuplu rezonans faz çökmesine ve kontrolsüz salınıma (limit cycle) sürükler. |
 | **Neden ölü bölgeye yumuşak geçiş (Soft Deadband) koydunuz?** | Sert eşikli ölü bölge, eşik sınırında anlık basamak darbesi üreterek dişli boşluğuyla (backlash) birleştiğinde yüksek frekanslı mekanik titreşime yol açar. Yumuşak ölü bölge hatayı sıfırdan başlatarak sıfır jerk ile kalkış sağlar. |
 | **Neden MPC veya LQR değil de PPO RL?** | Sistemde analitik olarak modellenmesi zor olan süreksiz doğrusal olmayanlıklar vardır (ölü bölge, 0.1° UART kuantalaması, dişli boşluğu, değişken 80 ms USB taşıma gecikmesi). PPO, bu rastgeleleştirilmiş POMDP ailesi üzerinde çevrimdışı eğitilmiş amortize bir optimal politika sunar; çalışma zamanında tek ileri geçiş maliyeti 0.17 ms'dir. |
 | **Eylem geçmişi (Action History) neden gözlem uzayında?** | Smith Predictor ilkesine göre, 80 ms (yaklaşık 2-3 kare) gecikmeli bir sistemde ajan doğru karar verebilmek için motora gönderilmiş ama henüz kameraya yansımamış olan "yoldaki komutları" (in-flight commands) bilmek zorundadır. |
-| **Atış anında neden basamak sıçraması olmuyor?** | Taret önleme ve süper-elevasyon düzeltmesini atış anında aniden eklemez; hedefi doğrudan hesaplanan balistik nişan noktasında (reticle) takip edip kilitlenir. Kilit oturduktan sonra solenoid tetiklenir. |
+| **Atış anında neden basamak sıçraması olmuyor?** | 2 Aşamalı Atış Senkronizasyonu ve Zero-Lag Feedforward devrededir: Taret hedefi optik merkezde boresight takip eder. Y tuşuna basıldığında STM32 volan motorlarının nominal devrine (23.500 RPM) ulaşması için gereken 1.0 saniye (1000 ms, `spinup_time_s = 1.00`) içinde doğrudan önleme ileri beslemesi (`u = delta_slew + u_P`) ile taret balistik önleme ve süper-elevasyon açısına gecikmesiz ulaşır. 1.0 s sonra solenoid tetik darbesi (80 ms) uygulanır ve taret 350 ms içinde optik merkeze pürüzsüzce geri döner. EVAL ekranı 1.5 s gösterilirken ilk 0.75 s (22 kare) boyunca kilit muafiyeti (grace period) uygulanır; ani basamak sıçraması ve sahte kilit kaybı tamamen önlenir (fiziksel fırlatıcı yolu güvenlik gereği laboratuvar/HUD testlerinde simüle edilebilir). |
 
 ---
 
 ## 4. Temel Kod Dosyaları ve İşlev Haritası
 
+- [config.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/config.py): SSOT (Single Source of Truth) merkezi konfigürasyon; optik, aktüatör, kontrolcü ve yol parametreleri.
 - [main.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/main.py): Ana atış kontrol döngüsü, OpenCV video işleme, klavye kontrolleri.
+- [telemetry.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/telemetry.py): v2 Telemetri kaydedicisi (40 kolon), oturum özeti (`.meta.json`) ve taktiksel olay günlüğü (`_events.csv`).
 - [fcs_manager.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/fcs_manager.py): Durum makinesi (Arama, Tespit, Takip, Kilit, Ateşleme), balistik motoru, A/B mod yönetimi (`P` vs `RL`), menzil kapılama, 1. derece aktüatör gözlemcili ego-hareket telafisi (`tau = 45 ms`).
-- [p_controller.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/p_controller.py): Yumuşak Ölü Bölgeli Tip-1 P motor kontrolcüsü (`Kp_pan=0.055-0.10, Kp_tilt=0.030-0.06`).
+- [p_controller.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/p_controller.py): Yumuşak Ölü Bölgeli Tip-1 P motor kontrolcüsü (`Kp_pan=0.10, Kp_tilt=0.05`).
 - [kalman_filter.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/kalman_filter.py): Ego-hareket telafili 2B durum gözlemcisi, hedef konum, hız kestirimi ve atış önleme (Lead Reticle).
 - [rl_controller.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/rl_controller.py): 11 boyutlu PPO çıkarım motoru; Smith Predictor eylem hafızası, asimetrik dikey sönümleme ve sıfır jerk filtresi.
 - [turret_hud.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/turret_hud.py): Askeri standartta dinamik taktiksel HUD arayüzü ve renk disiplini (Yeşil, Mavi, Kırmızı).
@@ -112,8 +114,8 @@
 ## 5. Yeni Bir Sohbet Açıldığında Hatırlanacaklar
 
 Yeni bir sohbet açıldığında asistan bu dosyayı okur okumaz:
-1. Sistemin şu anki durumunun **v1.2 Production Release** olduğunu,
-2. Modelin yeni eğitilmiş `turret_ppo_final.zip` (3.260 puan) olduğunu,
+1. Sistemin şu anki durumunun **v1.3 Production Release** olduğunu,
+2. Modelin yeni eğitilmiş LQR temelli `turret_ppo_final.zip` (+%59.0 takip iyileşmesi) olduğunu,
 3. Kontrolcünün adının **Yumuşak Ölü Bölgeli Tip-1 P Kontrolcü** olduğunu,
 4. Asla LaTeX / dolar işareti (`$`) kullanmaması gerektiğini,
 5. Kodda veya tezde yapılacak her yeni geliştirmenin yukarıdaki mimari ve güvenlik disiplinine bağlı kalması gerektiğini anında bilir.
