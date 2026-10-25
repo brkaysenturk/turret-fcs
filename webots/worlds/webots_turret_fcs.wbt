@@ -55,7 +55,7 @@ Robot {
           name "pan_motor"
           acceleration 25
           controlPID 30 0 0.3
-          maxVelocity 0.707
+          maxVelocity 1.5
           minPosition -1.309
           maxPosition 1.309
           maxTorque 1
@@ -77,7 +77,7 @@ Robot {
                 name "tilt_motor"
                 acceleration 25
                 controlPID 30 0 0.3
-                maxVelocity 0.707
+                maxVelocity 1.5
                 minPosition -0.4363
                 maxPosition 0.4363
                 maxTorque 1

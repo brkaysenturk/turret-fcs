@@ -33,6 +33,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 from turret_env import TurretEnv
 from optimize_rl import evaluate_agent
 from analysis.export_rl_policy import export
+from turret_fcs.config import CONFIG
 
 
 def load_hyperparams():
@@ -71,7 +72,7 @@ def train(timesteps=250_000):
     print("==================================================", flush=True)
     print(" TURRET FCS // SAF PPO + PROGRESS REWARD (v2.0)  ", flush=True)
     print("==================================================", flush=True)
-    print("[Plant] backlash=1.20 deg, 2nd-order inertia, 0.10 deg quant, harmonic YOLO jitter", flush=True)
+    print("[Plant] backlash=1.61 deg (measured), 2nd-order inertia, 0.10 deg quant, harmonic YOLO jitter", flush=True)
     print(
         f"[Reward & HP] progress=2.0, error=0.05, lambda_u={lambda_u:.6f}, "
         f"mu_du={mu_du:.6f}, lr={base_lr:.6f}",
@@ -87,7 +88,7 @@ def train(timesteps=250_000):
                 mu_du=mu_du,
                 progress_gain=2.0,
                 error_gain=0.05,
-                backlash_deg=1.20,
+                backlash_deg=CONFIG.actuator.backlash_deg,
                 use_velocity_obs=True,
                 enable_randomization=True,
             )

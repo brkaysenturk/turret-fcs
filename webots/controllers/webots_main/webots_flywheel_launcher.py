@@ -198,7 +198,12 @@ class WebotsFlywheelLauncher:
           boundingObject USE DART_SHAPE
           physics Physics {{
             density -1
-            mass 0.012
+            mass 0.015
+            centerOfMass [0 0 0]
+            inertiaMatrix [
+              0.000008 0.000002 0.000008
+              0 0 0
+            ]
             damping Damping {{
               linear 0.05
               angular 0.1

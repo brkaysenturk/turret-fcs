@@ -55,7 +55,7 @@ class TurretEnv(gym.Env):
         mu_du=0.08,
         progress_gain=2.0,
         error_gain=0.05,
-        backlash_deg=1.20,
+        backlash_deg=CONFIG.actuator.backlash_deg,
         use_velocity_obs=True,
         enable_randomization=True,
     ):

@@ -1,6 +1,6 @@
 {
-  "label": "pmax_022",
-  "kp_pan": 0.22,
-  "kp_tilt": 0.11,
+  "label": "p_optuna_tpe",
+  "kp_pan": 0.1953,
+  "kp_tilt": 0.1544,
   "max_output_deg": 1.50
 }

@@ -47,19 +47,19 @@ class OpticsConfig:
 @dataclass(frozen=True)
 class ControlConfig:
     """P kontrolcu ve filtre parametreleri."""
-    kp_pan: float = 0.22        # P: 30 FPS bazinda kare basi kazanc
-    kp_tilt: float = 0.11       # P: 30 FPS bazinda kare basi kazanc
+    kp_pan: float = 0.1953      # P: 30 FPS bazinda Optuna TPE optimal kare basi kazanc
+    kp_tilt: float = 0.1544     # P: 30 FPS bazinda Optuna TPE optimal kare basi kazanc
     deadband_pan_deg: float = 0.85
     deadband_tilt_deg: float = 0.95
     max_output_deg: float = 1.50
     max_command_step_deg: float = 1.50  # Firmware Servo_ApplyCorrection ust siniri
-    cmd_accel_pan_deg_s2: float = 400.0  # P/RL pan komut ivme siniri (113 ms kalkis)
-    cmd_accel_tilt_deg_s2: float = 267.0  # P/RL tilt komut ivme siniri (84 ms kalkis)
+    cmd_accel_pan_deg_s2: float = 353.1  # P/RL pan komut ivme siniri (Optuna TPE optimal)
+    cmd_accel_tilt_deg_s2: float = 213.6  # P/RL tilt komut ivme siniri (Optuna TPE optimal)
     lead_time_offset_s: float = 0.015    # Balistik lead'e eklenen sabit pay
     lead_time_min_s: float = 0.03        # Lead sure alt siniri
     lead_time_max_s: float = 0.40        # Lead sure ust siniri (dart ucus suresi olcegi)
-    alpha_filter: float = 0.85           # P giris EMA'sinda yeni deger agirligi
-    ego_tau_s: float = 0.045             # Ego icin komut adimi servo zaman sabiti (mount.servo_tau ile eslendi)
+    alpha_filter: float = 0.9306         # P giris EMA'sinda yeni deger agirligi (Optuna TPE optimal)
+    ego_tau_s: float = 0.0682            # Ego icin komut adimi servo zaman sabiti (Optuna TPE optimal)
 
 
 @dataclass(frozen=True)
@@ -68,14 +68,14 @@ class ActuatorConfig:
     max_step_pan_deg: float = 1.50     # RL kare basi maksimum Pan adimi (30 FPS'te 45 deg/s)
     max_step_tilt_deg: float = 0.75    # RL kare basi maksimum Tilt adimi (30 FPS'te 22.5 deg/s - donanim eylemsizlik uyumu)
     servo_deadband_deg: float = 0.10   # STM32 0.1 deg UART kuantalama ve servo mekanik olu bolgesi
-    backlash_deg: float = 1.20         # MG996R disli boslugu (histerezis olu bolgesi, derece)
+    backlash_deg: float = 1.61         # MG996R disli boslugu (canli telemetri Sistem Tanilama ile olculen 1.61 deg)
 
 
 @dataclass(frozen=True)
 class KalmanConfig:
     """Sabit hizli (CV) Kalman filtresi: tek Q/R cifti ve 150 px tekil-sicrama kapisi."""
-    r_var: float = 64.0                  # Olcum gurultusu varyansi (px^2), ~8 px standart sapma
-    sigma_a: float = 300.0               # Surec ivme gurultusu (px/s^2), ~12 deg/s^2
+    r_var: float = 63.21                 # Olcum gurultusu varyansi (px^2), Bayesyen Optuna TPE optimal
+    sigma_a: float = 478.19              # Surec ivme gurultusu (px/s^2), Bayesyen Optuna TPE optimal
     initial_velocity_var: float = 90000.0  # Ilk hiz kovaryansi (px/s)^2, hizli yakinsama icin
     velocity_deadband_low_px_s: float = 30.0   # Bu hizin altinda cikis hizi sifir
     velocity_deadband_high_px_s: float = 60.0  # Bu hizdan itibaren cikis hizi tam gecerli
@@ -90,23 +90,23 @@ class BallisticsConfig:
     gravity_accel: float = 9.80665
     default_distance_m: float = 2.0
     # Atis sekansi zamanlamalari (saniye; spin-up sureleri FlywheelConfig icindedir)
-    settle_time_s: float = 0.15     # Slew sonrasi servo oturma (sabit hold; lead/gravity canli)
+    settle_time_s: float = 0.12     # Slew sonrasi servo oturma (Monte Carlo optimal: 66.7ms tasiyici + 1.61 deg backlash)
     firing_pulse_s: float = 0.08    # Solenoid itici darbe suresi (80 ms - STM32 firmware ile uyumlu)
     recovery_time_s: float = 0.35   # Mekanik geri toplama suresi
     eval_display_time_s: float = 1.50  # Atis sonrasi EVAL gosterim suresi
-    system_latency_s: float = 0.080 # 80 ms kamera-yolo-uart-solenoid toplam tasiyici gecikmesi
+    system_latency_s: float = 0.0667 # 66.7 ms (2.0 kare) kamera-yolo-uart-servo olculen tasiyici gecikmesi
 
 
 @dataclass(frozen=True)
 class RLConfig:
     """RL cikarim ve egitim ortaminin ortak sabitleri (tek kaynak)."""
     soft_deadband_enabled: bool = True   # Acisal yumusak olu bolge + taper anahtari
-    reversal_damping: float = 0.5        # Yon degistiren aksiyonun sonum orani
-    taper_pan_deg: float = 2.0           # Soft deadband gecis genisligi (pan)
-    taper_tilt_deg: float = 3.0          # Soft deadband gecis genisligi (tilt)
+    reversal_damping: float = 0.2889        # Yon degistiren aksiyonun sonum orani (Optuna TPE optimal)
+    taper_pan_deg: float = 1.60           # Soft deadband gecis genisligi (pan - 1.61 deg backlash uyumlu)
+    taper_tilt_deg: float = 1.60          # Soft deadband gecis genisligi (tilt)
     nominal_dt_s: float = 0.03333        # Egitim kare periyodu (adim limiti olcekleme referansi)
     d_err_scale: float = 0.05            # Hata turevi gozlem olcegi (egitimle ayni)
-    d_err_ema_alpha: float = 0.40        # Hata turevi EMA katsayisi (yeni olcum agirligi)
+    d_err_ema_alpha: float = 0.4386        # Hata turevi EMA katsayisi (Optuna TPE optimal)
     v_max_px_s: float = 300.0            # Hiz gozlemi Bryson olcegi
     dist_min_m: float = 0.5              # Mesafe gozlemi alt siniri
     dist_max_m: float = 5.0              # Mesafe gozlemi ust siniri
@@ -154,7 +154,7 @@ class MountConfig:
     tilt_limit_max: float = 25.0
     pan_invert: bool = True
     tilt_invert: bool = False
-    servo_tau: float = 0.045        # 1. derece motor zaman sabiti (45 ms)
+    servo_tau: float = 0.0682       # 1. derece motor zaman sabiti (Optuna TPE optimal)
 
 
 @dataclass(frozen=True)
@@ -166,23 +166,23 @@ class LockConfig:
     sigma_weapon_deg: float = 1.25   # DIY cift volan ve sunger dart gercekci ic balistik sacilmasi (derece)
     min_hit_probability_pct: float = 25.0  # Atis izni icin gereken minimum analitik isabet olasiligi (%)
     post_fire_grace_duration_frames: int = 22  # 0.75 saniye @ 30 FPS kilit muafiyeti (grace period)
-    threshold_low_speed_px_s: float = 15.0
-    threshold_high_speed_px_s: float = 45.0
-    gate_slow_deg: float = 1.60
-    gate_medium_deg: float = 2.20
-    gate_fast_deg: float = 3.00
+    threshold_low_speed_px_s: float = 150.0
+    threshold_high_speed_px_s: float = 350.0
+    gate_slow_deg: float = 1.70
+    gate_medium_deg: float = 2.25
+    gate_fast_deg: float = 2.95
 
 
 @dataclass(frozen=True)
 class SelectorConfig:
     """Hedef secici ve filtreleme esikleri."""
-    min_conf: float = 0.28
+    min_conf: float = 0.30
     track_min_conf: float = 0.16
     min_area: int = 400
     max_area: int = 400000
     min_dim: int = 18
     max_lost_frames: int = 5
-    spatial_gate_px: float = 250.0
+    spatial_gate_px: float = 173.0
     min_aspect_ratio: float = 0.35
     max_aspect_ratio: float = 2.50
     yolo_imgsz: int = 640

@@ -189,7 +189,7 @@ def run_optimization(n_trials=8):
     print(f"[Referans Tohumlar] 20 Tohum: {EVAL_SEEDS[0]}..{EVAL_SEEDS[-1]}", flush=True)
     print("------------------------------------------------------------------", flush=True)
 
-    sampler = optuna.samplers.TPESampler(seed=42)
+    sampler = optuna.samplers.TPESampler(seed=42, n_startup_trials=5, multivariate=True)
     study = optuna.create_study(
         study_name="turret_v21_resonance_guarded_150k",
         storage=storage_url,

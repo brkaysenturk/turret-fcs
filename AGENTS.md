@@ -238,7 +238,10 @@
   4. **P Kontrolcü FPS-Bağımsız EMA:** `compute_angles` içindeki açısal EMA filtresi anlık `dt` süresine göre sürekli-zaman eşdeğeriyle (`alpha_eff = 1.0 - (1.0 - alpha) ** (dt / nominal_dt_s)`) ölçeklenir.
   5. **Güven Ağırlıklı Hedef Seçimi:** `TargetSelector` içinde mekânsal kapı ve merkez önceliklendirmesi güven skoruyla ağırlıklandırıldı (`dist_sq / max(conf, 0.1)`).
   6. **STM32 UART Kayan Pencere (Sliding Window) Senkronizasyonu:** `fcs_comm.c` içinde checksum hatası durumunda tampon tamamen sıfırlanmak yerine bir sonraki `0xAA` başlığına kaydırılarak paket kaybı önlendi.
-  7. **RL Simülasyon ve Eğitim Altyapısı Güncellemesi:** `turret_env.py`, `train_rl.py` ve `optimize_rl.py` yüksek sadakatli aktüatör/kuantalama dinamikleri ve müfredat (curriculum) yapısıyla güncellendi; tüm SSOT sabitleri `CONFIG` üzerinden bağlandı ve sürüm `v2.1` olarak etiketlendi.
+  7. **RL ve P Kontrolcü Çok-Değişkenli Bayesyen (Optuna TPE) Optimizasyonu ve Canlı Doğrulama:** `turret_env.py` yüksek sadakatli aktüatör/kuantalama (`0.10 derece`), 2. derece gövde eylemsizliği ve zaman korelasyonlu YOLO titreşimi ile güncellendi. Rezonans korumalı (kareselli `flip_rate` ve `jerk` cezalı) Optuna TPE aramasıyla:
+     - **PPO RL Kontrolcüsü (`turret_ppo_v14.zip` / `.npz`):** 14x150k TPE denemesi (Deneme #11: `lambda_u = 0.019262`, `mu_du = 0.005215`, `learning_rate = 0.000155`) sonrası 250.000 adım eğitilerek jerk %23.3 düşürüldü ve canlı donanımda doğrulandı.
+     - **Tip-1 P Kontrolcüsü (`PController`):** 100 TPE denemesi x 30 tohum (Deneme #60: `kp_pan = 0.1953`, `kp_tilt = 0.1544`, `alpha_filter = 0.9306`, `cmd_accel_pan_deg_s2 = 353.1`, `cmd_accel_tilt_deg_s2 = 213.6`) ile kilitlenme oranı 2.6 kat artırıldı, yön değiştirme (`flip_rate`) düşürüldü ve canlı donanımda doğrulandı.
+     - Tüm SSOT sabitleri `CONFIG` üzerinden bağlandı ve sürüm `v2.1` olarak etiketlendi.
 
 ---
 

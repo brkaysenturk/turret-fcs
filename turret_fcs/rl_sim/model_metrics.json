@@ -7,11 +7,11 @@
     "observation_dimension": 11,
     "action_dimension": 2,
     "hyperparameters": {
-        "lambda_u": 0.02,
-        "mu_du": 0.08,
+        "lambda_u": 0.019262,
+        "mu_du": 0.005215,
         "progress_gain": 2.0,
         "error_gain": 0.05,
-        "learning_rate": "linear schedule, 3e-4 to 5e-5 floor",
+        "learning_rate": "linear schedule, 0.000155 to 5e-5 floor",
         "gamma": 0.99,
         "gae_lambda": 0.95,
         "clip_range": 0.2,
@@ -23,25 +23,32 @@
     "plant": {
         "backlash_deg": 1.2,
         "servo_deadband_deg": 0.1,
-        "max_step_deg_per_frame": 1.5,
+        "max_step_pan_deg_per_frame": 1.5,
+        "max_step_tilt_deg_per_frame": 0.75,
         "latency_steps": 2,
         "domain_randomization": true
     },
     "benchmarks": {
         "closed_loop_eval_20_seeds": {
             "seeds": "100..119",
-            "median_pixel_error_px": 35.97,
-            "iqr_pixel_error_px": 40.99,
-            "overall_lock_ratio": 0.4463,
-            "median_action_jerk": 0.01265
+            "median_pixel_error_px": 45.88,
+            "iqr_pixel_error_px": 36.78,
+            "overall_lock_ratio": 0.2595,
+            "mean_flip_pct": 1.59,
+            "median_action_jerk": 0.02224
         },
         "p_vs_rl_3_scenarios": {
-            "seeds": [42, 100, 2026],
+            "seeds": [
+                42,
+                100,
+                2026
+            ],
             "p_mean_pixel_error_px": 61.39,
             "rl_mean_pixel_error_px": 44.6,
             "rl_improvement_pct": 27.3
         }
     },
-    "benchmark_note": "Regenerated for the v2.0 model on TurretEnv (simulation only, deterministic policy, full velocity observation). Lock ratio counts steps with normalized pixel error below 0.05. Not a field result.",
-    "regenerated_date": "2026-10-24"
+    "benchmark_note": "Regenerated for the v2.0 model on high-fidelity TurretEnv (deterministic policy, zero runtime velocity observation).",
+    "regenerated_date": "2026-10-25",
+    "policy_artifact": "turret_ppo_v14_policy.npz"
 }
