@@ -228,6 +228,20 @@
 
 ---
 
+### FAZ 15: v2.1 Sürümü — Kalman Aday Yörünge Geri Oynatma, Kısa Kayıp Tahmin Köprüsü ve UART Kayan Pencere
+
+- **Kapsam:** Kalman Filtresi, FCS Durum Makinesi, P Kontrolcü, Hedef Seçici, STM32 UART Alıcısı, RL Simülasyon Altyapısı ve SSOT/CI.
+- **Yapılan İyileştirmeler:**
+  1. **Kalman Aday Yörünge Geri Oynatma (`_outlier_history`):** 150 px üstü tek karelik sahte YOLO sıçramalarında durum ölçümle bozulmadan salt tahminle (`x_pred`, `P_pred`) korunur; sapma kendi içinde tutarlı şekilde 3 kare (`reacquire_frames`) sürerse yeni hedef sıçraması kabul edilerek ilk kareden itibaren biriktirilen aday ölçümler ileri sarılarak (`_predict_state` + `_correct_state`) hız vektörü sıfırlanmadan anında öğrenilir.
+  2. **Kısa Hedef Kaybında Ego-Telafili Kalman Tahmin Köprüsü:** Hedef 1-5 kare (`max_lost_frames`) boyunca anlık olarak YOLO tespitinden kaçtığında, `FCSManager` ego-hareket piksel kaymasını hesaplamaya ve `tracker.predict_only(dt, ego_dx, ego_dy)` ile hedef konumunu ilerletmeye devam eder; kontrolcü bu kısa boşlukta tahmin edilen yörüngeyi sürdürür.
+  3. **LiDAR İlk Ölçüm Sıçrama Muafiyeti:** İlk geçerli LiDAR ölçümü geldiğinde varsayılan 2.0 m başlangıç değerinden farkın sahte sıçrama (`range_jump`) sayılması engellendi (`bool(self._range_history)` kontrolü).
+  4. **P Kontrolcü FPS-Bağımsız EMA:** `compute_angles` içindeki açısal EMA filtresi anlık `dt` süresine göre sürekli-zaman eşdeğeriyle (`alpha_eff = 1.0 - (1.0 - alpha) ** (dt / nominal_dt_s)`) ölçeklenir.
+  5. **Güven Ağırlıklı Hedef Seçimi:** `TargetSelector` içinde mekânsal kapı ve merkez önceliklendirmesi güven skoruyla ağırlıklandırıldı (`dist_sq / max(conf, 0.1)`).
+  6. **STM32 UART Kayan Pencere (Sliding Window) Senkronizasyonu:** `fcs_comm.c` içinde checksum hatası durumunda tampon tamamen sıfırlanmak yerine bir sonraki `0xAA` başlığına kaydırılarak paket kaybı önlendi.
+  7. **RL Simülasyon ve Eğitim Altyapısı Güncellemesi:** `turret_env.py`, `train_rl.py` ve `optimize_rl.py` yüksek sadakatli aktüatör/kuantalama dinamikleri ve müfredat (curriculum) yapısıyla güncellendi; tüm SSOT sabitleri `CONFIG` üzerinden bağlandı ve sürüm `v2.1` olarak etiketlendi.
+
+---
+
 ## 3. "Neden Böyle Yaptık?" Arşivi (Jürinin Sorabileceği Kritik Savunmalar)
 
 | Soru / Konu | Verilecek Bilimsel ve Mühendislik Cevabı |
@@ -254,7 +268,6 @@
 - [rl_controller.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/rl_controller.py): Üretim RL; saf PPO, 11-64-64-2 NumPy MLP çıkarımı (SB3/torch bağımsız), ölçülen bbox gözlemi, çalışma zamanında kapalı çevrim osilasyonunu önlemek için sıfırlanmış hız gözlemi (hata türevi ve eylem geçmişi ile stabil takip), pan 0.85° / tilt 0.95° açısal yumuşak ölü bölge (`soft_deadband_enabled` anahtarlı), 400.0/267.0 derece/s^2 komut ivme sınırı ve yön değişim sönümlemesi; P harmanı yok. Tüm eşikler `CONFIG.rl` / `CONFIG.control` içinden gelir.
 - [export_rl_policy.py](file:///c:/YTU/bitirme_projesi/turret_fcs/analysis/export_rl_policy.py): PPO zip modelini SB3'ten bağımsız `turret_ppo_v14_policy.npz` artifact'ine aktarır ve ileri geçişi doğrular.
 - [rl_diagnose.py](file:///c:/YTU/bitirme_projesi/turret_fcs/analysis/rl_diagnose.py): Aynı tohumlarda üretim RL yolu (sıfır hız gözlemi) ile ham politikayı karşılaştıran teşhis aracı.
-- [rl_webots_eval.py](file:///c:/YTU/bitirme_projesi/turret_fcs/analysis/rl_webots_eval.py): Webots RL loglarında gerçek pan hatası, piksel hatası, kilit ve komut yön değişimi analizi.
 - [p_profile_sweep.py](file:///c:/YTU/bitirme_projesi/turret_fcs/analysis/p_profile_sweep.py): 6 profil x 8 kazanç Webots taraması ve limit-cycle sınıflandırması.
 - [turret_hud.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/turret_hud.py): Askeri standartta dinamik taktiksel HUD arayüzü ve renk disiplini (Yeşil, Mavi, Kırmızı).
 - [lock_manager.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/lock_manager.py): Dinamik kilit toleransı ve kademeli Gauss vuruş olasılığı (`hit_probability`).
@@ -279,7 +292,7 @@
 
 Yeni bir sohbet açıldığında asistan bu dosyayı okur okumaz:
 
-1. Sistemin **v2.0 Production Release** etiketli olduğunu; v1.3 sonrası tüm değişiklikleri (üretim P ve saf PPO, Kalman yeniden tasarımı, protokol SSOT, firmware B1 mandallı E-stop ve modül başlıkları, figür etiket düzeltmesi) topladığını; ağırlık varlıklarının `v2.0` release'inden indirildiğini (`DEFAULT_RELEASE_TAG = "v2.0"`, eski etiket fallback'i yoktur),
+1. Sistemin **v2.1 Production Release** etiketli olduğunu; v2.0 sonrası tüm algoritmik iyileştirmeleri (Kalman aday yörünge geri oynatmalı 150 px kapısı, kısa hedef kaybında ego-telafili `predict_only` takip köprüsü, P kontrolcü FPS-bağımsız EMA ve kazanç planlamasının kaldırılması, 400/267 derece/s^2 ivme sınırı, `on_target_lost` bellek temizliği, güven ağırlıklı `TargetSelector`, STM32 UART kayan pencere senkronizasyonu ve SSOT/CI sertleştirmeleri) topladığını; ağırlık varlıklarının `v2.0` release'inden indirildiğini (`DEFAULT_RELEASE_TAG = "v2.0"`),
 2. RL politikasının `turret_ppo_v14.zip` / `turret_ppo_v14_policy.npz` olduğunu; eski `turret_ppo_final` modelinin silindiğini, üretim çıkarımının SB3/torch bağımsız yapıldığını,
 3. Varsayılan ve tek kontrolcünün **P** (tek EMA, saf oransal, Kp_pan=0.22/Kp_tilt=0.11, kazanç planlaması kaldırılmış) olduğunu; eski kontrolcü ve seçicilerin silindiğini, v1.3 davranışı için `v1.3` etiketinin kullanıldığını,
 4. Asla LaTeX / dolar işareti (`$`) kullanmaması gerektiğini,

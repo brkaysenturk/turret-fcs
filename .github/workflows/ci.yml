@@ -36,8 +36,7 @@ jobs:
 
     - name: Lint (ruff)
       run: |
-        pip install ruff
-        ruff check turret_fcs tests analysis webots
+        python -m ruff check turret_fcs tests analysis webots
 
     - name: Run Test Suite
       env:
@@ -69,6 +68,10 @@ jobs:
         python -m venv venv
         venv\Scripts\python.exe -m pip install --upgrade pip
         venv\Scripts\python.exe -m pip install -e ".[test]" --extra-index-url https://download.pytorch.org/whl/cpu
+
+    - name: Lint (ruff)
+      shell: cmd
+      run: venv\Scripts\python.exe -m ruff check turret_fcs tests analysis webots
 
     - name: Verify package imports
       shell: cmd

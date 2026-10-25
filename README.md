@@ -65,14 +65,14 @@ Sistem, tek bir operatörün hava sahasını izlemesine ve yalnızca güvenli ki
 
 Sistem dört katmandan oluşur. Üst katmanlar karar üretir, alt katmanlar bu kararı fiziksel eyleme dönüştürür.
 
-![Turret FCS Sistem Mimarisi](docs/assets/turret-fcs_architecture.svg?v=2)
+![Turret FCS Sistem Mimarisi](docs/assets/turret_fcs_architecture.svg?v=2)
 
-*Şema, katmanların ve veri akışının görsel özetidir; sayısal parametrelerde tek kaynak `turret-fcs/config.py` içindeki `CONFIG`'dir.*
+*Şema, katmanların ve veri akışının görsel özetidir; sayısal parametrelerde tek kaynak `turret_fcs/config.py` içindeki `CONFIG`'dir.*
 
 ### Katmanların görevleri
 
 1. **Algılama ve sensör füzyonu:** Kamera kareleri, YOLOv8n/ByteTrack tespitleri ve TF-Luna menzil ölçümleri toplanır. Kamera thread'i her zaman en güncel kareyi verir; LiDAR verisi STM32 üzerinden 100 Hz akar.
-2. **FCS çekirdeği:** Hedef seçici, Kalman filtresi, balistik/lead hesabı, kilit yöneticisi ve devriye üreteci bu katmanda çalışır. Kararın tek kaynağı `turret-fcs/config.py` içindeki `CONFIG` nesnesidir.
+2. **FCS çekirdeği:** Hedef seçici, Kalman filtresi, balistik/lead hesabı, kilit yöneticisi ve devriye üreteci bu katmanda çalışır. Kararın tek kaynağı `turret_fcs/config.py` içindeki `CONFIG` nesnesidir.
 3. **Kontrol katmanı:** Operatörün seçtiği P veya RL kontrolcüsü, hedef hatasından pan/tilt adımı üretir. İki mod aynı anda çalışmaz; `[M]` tuşuyla geçiş yapılır.
 4. **Gömülü denetleyici, eyleme ve arayüz:** STM32 komutu servo PWM'ine, volan enable hattına ve solenoid darbesine çevirir; HUD ve telemetri aynı anda operatöre ve kayda sunulur.
 
@@ -80,7 +80,7 @@ Sistem dört katmandan oluşur. Üst katmanlar karar üretir, alt katmanlar bu k
 
 ## 4. Çalışma Akışı ve Durum Makinesi
 
-![Turret FCS Algoritmik Akış Şeması](docs/assets/turret-fcs_flowchart.svg)
+![Turret FCS Algoritmik Akış Şeması](docs/assets/turret_fcs_flowchart.svg)
 
 ### Durumlar ve geçişler
 

@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1.0] - 2026-10-25
+
+v2.1 refines closed-loop tracking robustness, Kalman outlier recovery, short-dropout ego-motion bridging, STM32 UART frame resynchronization, and RL plant fidelity.
+
+### Added
+
+- **Candidate-replay Kalman outlier gate (`turret_fcs/kalman_filter.py`):** 150 px outlier measurements are buffered in `_outlier_history`. Single-frame YOLO spikes advance the filter via pure state prediction without corrupting velocity; when a new jump persists consistently for `reacquire_frames` (3 frames), the filter initializes at the first jump frame and replays subsequent candidate frames (`_predict_state` + `_correct_state`) to recover target velocity immediately.
+- **Ego-compensated dropout prediction bridge (`turret_fcs/fcs_manager.py`):** During momentary target dropouts (`lost_counter <= max_lost_frames`), `FCSManager` continues updating 1st-order servo ego-motion shift (`_compute_ego_pixel_shift`) and advances `tracker.predict_only(dt, ego_dx, ego_dy)`, allowing the active controller (P or RL) to track the predicted trajectory seamlessly across short detection gaps.
+- **Confidence-weighted target selection (`turret_fcs/target_selector.py`):** Spatial gate fallback and reticle-center target acquisition now weight squared pixel distance by detection confidence (`dist_sq / max(conf, 0.1)`).
+- **Continuous-time dt-scaled EMA (`turret_fcs/p_controller.py`):** Angular error EMA filtering in `PController.compute_angles` now scales dynamically with frame `dt` (`alpha_eff = 1.0 - (1.0 - alpha) ** (dt / nominal_dt_s)`).
+- **High-fidelity RL plant & curriculum pipeline (`turret_fcs/rl_sim/`):** Added 2nd-order actuator inertia, 0.10 deg UART quantization residue accumulation, harmonic YOLO bbox jitter, multi-stage curriculum training (`train_rl.py`), and resonance-gated (`flip_rate + jerk`) Optuna TPE evaluation (`optimize_rl.py`).
+
+### Changed
+
+- **Complete SSOT constant centralization (`turret_fcs/config.py`):** Added `default_fps`, `backlash_deg`, `yolo_imgsz`, `tracker_config`, and RL reward weights (`lambda_u`, `mu_du`, `progress_gain`, `error_gain`, `bullseye_reward`, `bullseye_threshold_norm`) to `CONFIG`; removed duplicate `BallisticsConfig.spinup_time_s` and bound all runtime, Webots, and dataset capture modules to `CONFIG`.
+- **CI ruff integration (`.github/workflows/ci.yml`, `pyproject.toml`):** Added `ruff==0.8.4` to `[project.optional-dependencies].test` and enabled `python -m ruff check` on both Linux and Windows CI runners.
+
+### Fixed
+
+- **STM32 UART sliding-window resynchronization (`stm32/turret_main/Core/Src/fcs_comm.c`):** On checksum mismatch, `FCS_Comm_RxCallback` now shifts `rx_buffer` to the next `0xAA` header byte instead of discarding the entire 6-byte window, preventing valid command loss after a single corrupted byte.
+- **Initial LiDAR range-jump false positive (`turret_fcs/fcs_manager.py`):** Guarded `range_jump` detection with `bool(self._range_history)` so the first valid LiDAR reading is not rejected when it differs from the 2.0 m startup default by more than `jump_threshold_m`.
+
+---
+
 ## [2.0.0] - 2026-10-24
 
 v2.0 is the major consolidation of every post-v1.3 change. It bundles the previous audit work (repo-wide audit, production P and pure RL, Kalman redesign, firmware hardening) together with the protocol single-source refactor, the firmware E-stop and module headers, and the corrected figure labelling.
