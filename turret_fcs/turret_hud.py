@@ -6,8 +6,8 @@ Bu modul, askeri standartlarda taktik atis kontrol arayuzunu (MIL-STD HUD)
 kamera goruntusunun uzerine dinamik katman olarak bindiren gorsel render motorudur.
 
 GOSTERGE VE TELEMETRI BILESENLERI:
-1. Taktik Nisangah (Combat Reticle): Duruma gore renk degistiren (Arama: Sari,
-   Kilit: Yesil, Atesleme: Kirmizi) merkez hedefleme vizoru.
+1. Taktik Nisangah (Combat Reticle): Duruma gore renk degistiren (Arama/Takip: Sari,
+   Kilit ve Atesleme: Kirmizi) merkez hedefleme vizoru.
 2. Dinamik Kilit Bari (Lock Stability Progress Bar): Hedef kilit penceresinde
    kaldikca 0 - 100% dolan gorsel atis hazirlik cubugu.
 3. Analitik Isabet Olasiligi Gostergesi (Hit Probability %): Hedef acisal hatasina
@@ -22,10 +22,29 @@ GOSTERGE VE TELEMETRI BILESENLERI:
 import cv2
 import numpy as np
 
-try:
-    from turret_fcs.config import CONFIG
-except (ImportError, ValueError):
-    from config import CONFIG
+from .config import CONFIG
+
+# Isabet olasiligi renk esikleri (yuzde) ve LiDAR sinyal gucu etiket esikleri (SSOT: CONFIG.hud)
+HIT_HIGH_PCT = CONFIG.hud.hit_high_pct
+HIT_MID_PCT = CONFIG.hud.hit_mid_pct
+SIGNAL_STRONG = CONFIG.hud.signal_strong
+SIGNAL_MODERATE = CONFIG.hud.signal_moderate
+
+# Merkez muharebe paneli statik asama tablosu: fire_stage -> (panel_color, lines)
+_COMBAT_STAGE_SPEC = {
+    "SETTLE": (
+        (0, 215, 255),
+        [("FIRE AUTHORIZED", 0.65, (0, 191, 255), 2), ("SETTLING AIM", 0.62, (0, 215, 255), 2)],
+    ),
+    "FIRING": (
+        (0, 0, 255),
+        [("FIRE AUTHORIZED", 0.65, (0, 0, 255), 2), ("SOLENOID RELEASE [SHOT AWAY]", 0.62, (0, 0, 255), 2)],
+    ),
+    "RECOVER": (
+        (0, 255, 128),
+        [("FIRE COMPLETE", 0.65, (0, 255, 128), 2), ("RECOVERING BORESIGHT", 0.62, (0, 255, 128), 2)],
+    ),
+}
 
 
 class TurretHUD:
@@ -42,7 +61,7 @@ class TurretHUD:
         """Taktiksel HUD olay gunlugune yeni bir olay ekler (saat damgasi olmadan)."""
         clean_msg = msg.strip().replace("\n", " ")
         self.event_logs.append((clean_msg, color))
-        if len(self.event_logs) > 6:
+        if len(self.event_logs) > CONFIG.hud.max_event_logs:
             self.event_logs.pop(0)
 
     @staticmethod
@@ -50,22 +69,14 @@ class TurretHUD:
         """Optik merkez / vizor hedef kutusunun icinde mi kontrolu."""
         return (x1 <= center_x <= x2) and (y1 <= center_y <= y2)
 
-    def get_box_label(self, dist_cm=None, target_centered=False, is_locked=False, conf=None):
-        """Hedef cercevesinin taktiksel etiket metnini dondurur."""
-        label_parts = ["TARGET"]
-        if conf is not None and conf > 0.0:
-            pct = int(conf * 100) if conf <= 1.0 else int(conf)
-            label_parts.append(f"%{pct}")
-        if is_locked:
-            label_parts.append("[LOCKED]")
-        elif target_centered:
-            label_parts.append("[CENTERED]")
-        if dist_cm is not None and dist_cm > 20 and dist_cm <= 400:
-            label_parts.append(f"{int(dist_cm)}cm")
-        return " ".join(label_parts)
+    @staticmethod
+    def get_box_label():
+        """Hedef etiketi sadece TARGET."""
+        return "TARGET"
 
     def draw_corner_box(self, img, x1, y1, x2, y2, color, length=18, thickness=2, label=None):
         """Hedef cercevesi."""
+        x1, y1, x2, y2 = int(round(x1)), int(round(y1)), int(round(x2)), int(round(y2))
         cv2.line(img, (x1, y1), (x1 + length, y1), color, thickness)
         cv2.line(img, (x1, y1), (x1, y1 + length), color, thickness)
         cv2.line(img, (x2, y1), (x2 - length, y1), color, thickness)
@@ -116,12 +127,14 @@ class TurretHUD:
 
     def draw_tracking_line(self, frame, center_x, center_y, bx, by, color):
         """Merkez nisangah ile hedef merkezi arasindaki yon cizgisi."""
+        center_x, center_y, bx, by = int(round(center_x)), int(round(center_y)), int(round(bx)), int(round(by))
         cv2.line(frame, (center_x, center_y), (bx, by), color, 1, cv2.LINE_AA)
         cv2.circle(frame, (bx, by), 3, color, -1)
 
     def draw_lead_indicator(self, frame, bx, by, pred_px, pred_py):
-        """Hedef merkezinden onleme (lead) noktasina dogru olan vektor ve cizelge."""
-        cv2.line(frame, (bx, by), (pred_px, pred_py), (255, 100, 0), 1, cv2.LINE_AA)
+        """Hedef merkezinden onleme (lead) noktasina dogru olan vektor."""
+        bx, by, pred_px, pred_py = int(round(bx)), int(round(by)), int(round(pred_px)), int(round(pred_py))
+        cv2.line(frame, (bx, by), (pred_px, pred_py), (255, 0, 0), 1, cv2.LINE_AA)
         cv2.circle(frame, (pred_px, pred_py), 5, (255, 0, 0), -1)
         cv2.putText(frame, "LEAD", (pred_px + 8, pred_py - 4), self.font, 0.40, (255, 0, 0), 1, cv2.LINE_AA)
 
@@ -130,9 +143,9 @@ class TurretHUD:
         if quality_val <= 0.0:
             return
         p_hit_pct = int(quality_val * 100) if quality_val <= 1.0 else int(quality_val)
-        if p_hit_pct >= 70:
+        if p_hit_pct >= HIT_HIGH_PCT:
             q_color = (0, 0, 255)      # Kirmizi (Yuksek isabet / Kilit)
-        elif p_hit_pct >= 40:
+        elif p_hit_pct >= HIT_MID_PCT:
             q_color = (0, 191, 255)    # Amber (Orta isabet / Takip)
         else:
             q_color = (180, 180, 180)  # Gri (Dusuk isabet)
@@ -154,69 +167,42 @@ class TurretHUD:
             cv2.LINE_AA
         )
 
-    def draw_combat_panel(self, frame, center_x, center_y, dist_cm, firing=False, ballistic_result=None, fire_stage=None, spinup_progress=None):
+    def draw_combat_panel(self, frame, center_x, center_y, dist_cm, firing=False, ballistic_result=None,
+                          fire_stage=None, spinup_progress=None, spinup_duration_s=None):
         """Kilit aninda acilan merkez atis paneli."""
         h, w, _ = frame.shape
-
-        green_color = (0, 255, 0)
         amber_color = (0, 191, 255)
         red_color = (0, 0, 255)
-        white_color = (255, 255, 255)
 
-        # Duruma gore gosterilecek metinler
         if firing:
+            line_y_offsets = [30, 58]
+            panel_h = 72
             if fire_stage == "SPINUP" and spinup_progress is not None:
                 panel_color = (0, 215, 255)
-                spinup_total_ms = int(CONFIG.ballistics.spinup_time_s * 1000)
+                spinup_total_ms = int((spinup_duration_s or CONFIG.flywheel.idle_spinup_time_s) * 1000)
                 ms_rem = max(0, int((1.0 - spinup_progress) * spinup_total_ms))
                 lines = [
                     ("FIRE AUTHORIZED", 0.65, amber_color, 2),
-                    (f"SPINUP & SLEW: {ms_rem:3d} ms", 0.65, (0, 215, 255), 2)
+                    (f"SPINUP & SLEW: {ms_rem:3d} ms", 0.65, (0, 215, 255), 2),
                 ]
                 line_y_offsets = [28, 54]
                 panel_h = 78
-            elif fire_stage == "FIRING":
-                panel_color = red_color
-                lines = [
-                    ("FIRE AUTHORIZED", 0.65, red_color, 2),
-                    ("SOLENOID RELEASE [SHOT AWAY]", 0.62, red_color, 2)
-                ]
-                line_y_offsets = [30, 58]
-                panel_h = 72
-            elif fire_stage == "RECOVER":
-                panel_color = (0, 255, 128)
-                lines = [
-                    ("FIRE COMPLETE", 0.65, (0, 255, 128), 2),
-                    ("RECOVERING BORESIGHT", 0.62, (0, 255, 128), 2)
-                ]
-                line_y_offsets = [30, 58]
-                panel_h = 72
+            elif fire_stage in _COMBAT_STAGE_SPEC:
+                panel_color, lines = _COMBAT_STAGE_SPEC[fire_stage]
             elif ballistic_result and ballistic_result[0]:
                 res_text, res_color = ballistic_result
                 panel_color = res_color
-                lines = [
-                    ("ENGAGEMENT COMPLETE", 0.65, green_color, 2),
-                    (res_text, 0.65, res_color, 2)
-                ]
-                line_y_offsets = [30, 58]
-                panel_h = 72
+                lines = [("ENGAGEMENT COMPLETE", 0.65, (0, 255, 0), 2), (res_text, 0.65, res_color, 2)]
             else:
                 panel_color = red_color
-                lines = [
-                    ("FIRE AUTHORIZED", 0.65, red_color, 2),
-                    ("ENGAGING TARGET", 0.65, red_color, 2)
-                ]
-                line_y_offsets = [30, 58]
-                panel_h = 72
+                lines = [("FIRE AUTHORIZED", 0.65, red_color, 2), ("ENGAGING TARGET", 0.65, red_color, 2)]
         else:
             panel_color = amber_color
             range_str = f"{dist_cm} cm" if dist_cm > 0 else "CALCULATING"
-            telemetry_str = f"RANGE: {range_str}"
-
             lines = [
                 ("TARGET LOCKED", 0.65, amber_color, 2),
-                (telemetry_str, 0.55, white_color, 2),
-                ("AUTHORIZE FIRE? [Y/N]", 0.55, amber_color, 2)
+                (f"RANGE: {range_str}", 0.55, (255, 255, 255), 2),
+                ("AUTHORIZE FIRE? [Y/N]", 0.55, amber_color, 2),
             ]
             line_y_offsets = [28, 56, 82]
             panel_h = 94
@@ -242,8 +228,9 @@ class TurretHUD:
 
         # Yari saydam arka plan
         roi = frame[py1:py2, px1:px2]
-        black_layer = np.zeros_like(roi)
-        frame[py1:py2, px1:px2] = cv2.addWeighted(roi, 0.40, black_layer, 0.60, 0)
+        if roi.size > 0:
+            black_layer = np.zeros_like(roi)
+            frame[py1:py2, px1:px2] = cv2.addWeighted(roi, 0.40, black_layer, 0.60, 0)
 
         cv2.rectangle(frame, (px1, py1), (px2, py2), panel_color, 2)
 
@@ -262,7 +249,8 @@ class TurretHUD:
                        angle_err_text, angle_err_color, dist_cm, strength,
                        target_detected=False, target_centered=False,
                        is_locked=False, firing=False, center_x=None, center_y=None,
-                       ballistic_result=None, fire_stage=None, spinup_progress=None):
+                       ballistic_result=None, fire_stage=None, spinup_progress=None,
+                       spinup_duration_s=None):
         """Sol ust telemetri paneli."""
         h, w, _ = frame.shape
         if center_x is None or center_y is None:
@@ -273,7 +261,8 @@ class TurretHUD:
             self.draw_combat_panel(
                 frame, center_x, center_y, dist_cm, 
                 firing=firing, ballistic_result=ballistic_result,
-                fire_stage=fire_stage, spinup_progress=spinup_progress
+                fire_stage=fire_stage, spinup_progress=spinup_progress,
+                spinup_duration_s=spinup_duration_s,
             )
         else:
             # Menzil yazisi
@@ -283,14 +272,18 @@ class TurretHUD:
                 dist_str = "RANGE: ACQUIRING"
             else:
                 if dist_cm > 0:
-                    dist_str = f"RANGE: {dist_cm:3d} cm" if dist_cm <= 300 else "OUT OF RANGE"
+                    dist_str = (
+                        f"RANGE: {dist_cm:3d} cm"
+                        if dist_cm <= CONFIG.hud.max_display_range_cm
+                        else "OUT OF RANGE"
+                    )
                 else:
                     dist_str = "RANGE: ERROR"
 
             # Sinyal yazisi
-            if strength > 1000:
+            if strength > SIGNAL_STRONG:
                 sig_str = "SIGNAL: STRONG"
-            elif strength > 100:
+            elif strength > SIGNAL_MODERATE:
                 sig_str = "SIGNAL: MODERATE"
             elif dist_cm > 0 or strength > 0:
                 sig_str = "SIGNAL: WEAK"
@@ -321,8 +314,9 @@ class TurretHUD:
 
             # Yari saydam arka plan
             roi = frame[py1:py2, px1:px2]
-            black_layer = np.zeros_like(roi)
-            frame[py1:py2, px1:px2] = cv2.addWeighted(roi, 0.35, black_layer, 0.65, 0)
+            if roi.size > 0:
+                black_layer = np.zeros_like(roi)
+                frame[py1:py2, px1:px2] = cv2.addWeighted(roi, 0.35, black_layer, 0.65, 0)
 
             # Hedef varken sari, devriyede ayni devriye yesili (0, 255, 0), bostayken gri cerceve
             is_patrol = status_line.startswith("PATROL")
@@ -348,7 +342,7 @@ class TurretHUD:
         if not (is_locked or firing):
             fps_text = f"FPS: {fps}"
             (fps_w, _), _ = cv2.getTextSize(fps_text, self.font, 0.50, 2)
-            fps_color = (0, 255, 0) if fps >= 25 else (0, 165, 255)
+            fps_color = (0, 255, 0) if fps >= CONFIG.hud.min_healthy_fps else (0, 165, 255)
             cv2.putText(frame, fps_text, (w - fps_w - 18, 26), self.font, 0.50, fps_color, 2, cv2.LINE_AA)
 
     def draw_mode_banner(self, frame, control_mode, patrol_enabled=False, is_locked=False, firing=False):
@@ -363,10 +357,10 @@ class TurretHUD:
         center_x = w // 2
 
         if control_mode == "RL":
-            mode_label = "RL CONTROLLER (AGILE PURSUIT)"
+            mode_label = "RL CONTROLLER"
             mode_color = (0, 255, 128)
         else:
-            mode_label = "P CONTROLLER (PRECISION LOCK)"
+            mode_label = "P CONTROLLER"
             mode_color = (0, 255, 255)
 
         if patrol_enabled:
@@ -386,8 +380,9 @@ class TurretHUD:
         bx1, by1 = max(0, banner_x - pad_x), max(0, 26 - 16 - pad_y)
         bx2, by2 = min(w, banner_x + b_w + pad_x), min(h, 26 + pad_y)
         roi_b = frame[by1:by2, bx1:bx2]
-        black_b = np.zeros_like(roi_b)
-        frame[by1:by2, bx1:bx2] = cv2.addWeighted(roi_b, 0.30, black_b, 0.70, 0)
+        if roi_b.size > 0:
+            black_b = np.zeros_like(roi_b)
+            frame[by1:by2, bx1:bx2] = cv2.addWeighted(roi_b, 0.30, black_b, 0.70, 0)
         cv2.rectangle(frame, (bx1, by1), (bx2, by2), banner_border, 1)
 
         cv2.putText(frame, banner_text, (banner_x, 26), self.font, 0.56, banner_color, 2, cv2.LINE_AA)
@@ -420,7 +415,7 @@ class TurretHUD:
             cv2.LINE_AA,
         )
 
-    def draw_event_log(self, frame, event_logs=None, max_lines=4, is_locked=False, firing=False):
+    def draw_event_log(self, frame, event_logs=None, max_lines=CONFIG.hud.default_event_lines, is_locked=False, firing=False):
         """
         Sol alt kosede terminaldeki sistem ve operator mesajlarini gosteren
         yari saydam taktiksel askeri olay gunlugu (Console Event Log).
@@ -454,9 +449,12 @@ class TurretHUD:
         px2 = min(w - 20, px1 + max_txt_w + 24)
 
         # Yari saydam arka plan
+        px1, py1 = max(0, px1), max(0, py1)
+        px2, py2 = min(w, px2), min(h, py2)
         roi = frame[py1:py2, px1:px2]
-        black_layer = np.zeros_like(roi)
-        frame[py1:py2, px1:px2] = cv2.addWeighted(roi, 0.25, black_layer, 0.75, 0)
+        if roi.size > 0:
+            black_layer = np.zeros_like(roi)
+            frame[py1:py2, px1:px2] = cv2.addWeighted(roi, 0.25, black_layer, 0.75, 0)
 
         # Askeri cerceve
         cv2.rectangle(frame, (px1, py1), (px2, py2), (75, 85, 95), 1)

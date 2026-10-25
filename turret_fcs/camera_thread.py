@@ -29,7 +29,7 @@ class CameraThread:
     """
 
     @staticmethod
-    def detect_camera(preferred_name="Logi C270"):
+    def detect_camera(preferred_name="C270"):
         """Sistemdeki kameralari listeler ve tercihen Logitech C270'i otomatik secer."""
         try:
             from pygrabber.dshow_graph import FilterGraph
@@ -50,7 +50,15 @@ class CameraThread:
             self.src = src
             self.cam_name = f"Index {src}"
 
-        self.cap = cv2.VideoCapture(self.src, cv2.CAP_DSHOW)
+        # Windows'ta MSMF, C270'in 720p MJPG akisini 30 FPS'te acar.
+        # DSHOW bazi sistemlerde ayni kamerada 7 FPS'e dusuyor; guvenli fallback birak.
+        self.cap = cv2.VideoCapture(self.src, cv2.CAP_MSMF)
+        if not self.cap.isOpened():
+            try:
+                self.cap.release()
+            except Exception:
+                pass
+            self.cap = cv2.VideoCapture(self.src, cv2.CAP_DSHOW)
         self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter.fourcc(*"MJPG"))
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
@@ -130,6 +138,3 @@ class CameraThread:
             self.thread.join(timeout=0.5)
         if self.cap.isOpened():
             self.cap.release()
-
-    def __getattr__(self, name):
-        return getattr(self.cap, name)

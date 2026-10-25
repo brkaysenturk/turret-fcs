@@ -1,37 +1,47 @@
 {
-    "model_name": "turret_ppo_final.zip",
-    "version": "1.3",
+    "model_name": "turret_ppo_v14.zip",
+    "version": "2.0",
     "training_timesteps": 250000,
     "algorithm": "PPO (Stable-Baselines3)",
     "policy": "MlpPolicy [64, 64]",
     "observation_dimension": 11,
     "action_dimension": 2,
     "hyperparameters": {
-        "lambda_u": 0.095286,
-        "mu_du": 0.009446,
-        "learning_rate": 0.000187,
+        "lambda_u": 0.02,
+        "mu_du": 0.08,
+        "progress_gain": 2.0,
+        "error_gain": 0.05,
+        "learning_rate": "linear schedule, 3e-4 to 5e-5 floor",
         "gamma": 0.99,
         "gae_lambda": 0.95,
-        "clip_range": 0.20,
+        "clip_range": 0.2,
+        "ent_coef": 0.003,
         "batch_size": 64,
-        "n_steps": 1024
+        "n_steps": 2048,
+        "n_epochs": 10
+    },
+    "plant": {
+        "backlash_deg": 1.2,
+        "servo_deadband_deg": 0.1,
+        "max_step_deg_per_frame": 1.5,
+        "latency_steps": 2,
+        "domain_randomization": true
     },
     "benchmarks": {
         "closed_loop_eval_20_seeds": {
-            "median_pixel_error_px": 33.2,
-            "iqr_pixel_error_px": 59.4,
-            "p90_pixel_error_px": 92.1,
-            "overall_lock_ratio": 0.312,
-            "episode_completion_ratio": 1.00
+            "seeds": "100..119",
+            "median_pixel_error_px": 35.97,
+            "iqr_pixel_error_px": 40.99,
+            "overall_lock_ratio": 0.4463,
+            "median_action_jerk": 0.01265
         },
-        "target_speed_stress_test": {
-            "0_deg_s": {"p_err_deg": 0.71, "p_lock": 1.00, "rl_err_deg": 0.67, "rl_lock": 1.00},
-            "2_deg_s": {"p_err_deg": 1.47, "p_lock": 1.00, "rl_err_deg": 1.19, "rl_lock": 1.00},
-            "5_deg_s": {"p_err_deg": 2.37, "p_lock": 1.00, "rl_err_deg": 1.19, "rl_lock": 1.00},
-            "8_deg_s": {"p_err_deg": 3.27, "p_lock": 0.00, "rl_err_deg": 1.41, "rl_lock": 1.00},
-            "10_deg_s": {"p_err_deg": 3.87, "p_lock": 0.00, "rl_err_deg": 1.85, "rl_lock": 1.00},
-            "12_deg_s": {"p_err_deg": 4.47, "p_lock": 0.00, "rl_err_deg": 2.74, "rl_lock": 0.00}
+        "p_vs_rl_3_scenarios": {
+            "seeds": [42, 100, 2026],
+            "p_mean_pixel_error_px": 61.39,
+            "rl_mean_pixel_error_px": 44.6,
+            "rl_improvement_pct": 27.3
         }
     },
-    "academic_conclusion": "Type-1 P Controller incurs ramp error beyond 3.0 deg threshold at target speeds >= 8 deg/s. PPO RL maintains 100% lock persistence up to 10 deg/s with 11-D action delay memory."
+    "benchmark_note": "Regenerated for the v2.0 model on TurretEnv (simulation only, deterministic policy, full velocity observation). Lock ratio counts steps with normalized pixel error below 0.05. Not a field result.",
+    "regenerated_date": "2026-10-24"
 }
