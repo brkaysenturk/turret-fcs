@@ -1,161 +1,180 @@
 """
-=============================================================================
-TURRET FCS - WEBOTS SANAL BALISTIK VE CANLI 3D ISABET DEGERLENDIRICI
-=============================================================================
-Bu modul mevcut takip ve motor kodlarini KESINLIKLE degistirmez veya karistirmaz.
-Webots icerisinde 'Y' ile ates edildiginde 10 m/s hizindaki sanal merminin
-balonla carpisma anini 3 boyutlu olarak (X ve Z) hesaplayan hakem sinifidir.
-=============================================================================
+================================================================================
+MODUL: WEBOTS SANAL BALISTIK VE 3D ISABET HAKEMI (VIRTUAL BALLISTICS - v2.0)
+================================================================================
+Bu modul; Webots icerisinde atis gerceklestiginde namlu rotasyon matrisinden
+(KAFA_BLOGU orientation) dogrudan 3B namlu dogrultu vektorunu alarak yercekimi
+dususu ve mermi ucus suresiyle hedef balon uzerindeki 3B carpisma noktasini (X, Y, Z)
+analitik ve fiziksel olarak hesaplayan hakem sinifidir.
+
+v2.0 UYUMLULUKLARI:
+- Koordinat Dogrulugu: KAFA_BLOGU 3B oryantasyon vektoru [fx, fy, fz] uzerinden
+  hesaplanan dunya carpisma koordinati; eksen isareti veya tanjant sapmasi icermez.
+- Zaman Tabani: Saf simulasyon zamani (sim_t), sifir wall-clock kaymasi.
+- Gosterim Suresi: 1.50 saniye (BALLISTIC_DISPLAY_DURATION ile tam senkron).
+- Hedef Geometrisi: 3D balon merkezi ve 0.15 m yaricap toleransi.
+================================================================================
 """
 
-import time
 import math
-from pathlib import Path
+
+from turret_fcs.config import CONFIG
 
 
 class VirtualBallisticsEvaluator:
     """
     Sanal Mermi Ucus ve Canli 3D Carpisma Hakemi.
-    'Y' ile ateslendiginde merminin balistik ucusunu takip eder,
-    hedefe vardigi anda gercek balon koordinatiyla kiyaslayip HUD'a 3D isabet basar.
+    Atis tetiklendiginde balistik ucusu takip eder, hedefe vardigi anda
+    gercek balon 3D koordinatiyla kiyaslayip isabeti tesciller.
     """
 
-    def __init__(self, bullet_speed=10.0, target_radius_m=0.15, supervisor=None):
-        self.bullet_speed = float(bullet_speed)
-        self.target_radius_m = float(target_radius_m)
+    def __init__(self, bullet_speed=None, target_radius_m=None, supervisor=None):
+        self.bullet_speed = float(bullet_speed) if bullet_speed else CONFIG.ballistics.projectile_speed_mps
+        self.target_radius_m = float(target_radius_m) if target_radius_m else CONFIG.lock.target_radius_m
         self.supervisor = supervisor
 
-        # Balon dugumu baglantisi (Hakem olarak balonu yonetebilmek icin)
+        # Balon ve Kafa blogu dugum baglantilari
         self.balloon_node = None
+        self.kafa_node = None
         if self.supervisor is not None:
             try:
                 self.balloon_node = self.supervisor.getFromDef("BALLOON")
+                self.kafa_node = self.supervisor.getFromDef("KAFA_BLOGU")
             except Exception:
-                self.balloon_node = None
+                pass
 
-        # Aktif sanal mermiler listesi
         self.active_shots = []
 
-        # Son atis sonucu (HUD gosterimi icin)
+        # Son atis sonucu
         self.last_result_text = ""
         self.last_result_color = (0, 255, 0)
-        self.last_result_time = 0.0
-        self.DISPLAY_DURATION = 3.0  # HUD'da sonucun kalma suresi (saniye)
+        self.last_result_sim_time = -999.0
+        self.DISPLAY_DURATION = CONFIG.ballistics.eval_display_time_s
 
-        # Istatistikler
         self.total_shots = 0
         self.total_hits = 0
 
-    def get_hud_result(self):
-        """HUD gosterimi icin son isabet sonucunu doner."""
-        if (time.time() - self.last_result_time) < self.DISPLAY_DURATION and self.last_result_text:
+        # Son atis telemetrisi (A/D): merkez mesafesi ve isabet/iska metrikleri
+        self.last_hit = None          # None: beklemede, True: isabet, False: iska
+        self.last_miss_cm = None
+        self.last_shot = None
+
+    def get_hud_result(self, sim_time):
+        """HUD gosterimi icin son isabet sonucunu doner (sim_t zaman tabanli)."""
+        if (sim_time - self.last_result_sim_time) < self.DISPLAY_DURATION and self.last_result_text:
             return self.last_result_text, self.last_result_color
         return None, None
 
-    def fire_shot(self, pan_rad, tilt_rad, dist_m=2.0, sim_time=0.0):
-        """Atis tetiklendiginde sanal mermiyi firlatir."""
-        dist = max(0.5, float(dist_m)) if dist_m else 2.0
-        t_flight = dist / self.bullet_speed  # 2.0m / 10m/s = 0.20s
-        t_delay = 0.08  # Donanim ve motor kirma gecikmesi
+    def fire_shot(self, dist_m=2.0, sim_time=0.0):
+        """
+        Atis aninda KAFA_BLOGU 3B oryantasyonundan namlu ileri vektorunu alir.
+        LiDAR on yuzey mesafesini olcer; hedef merkezine gitmek icin yaricap eklenir.
+        """
+        dist_front = max(0.5, float(dist_m)) if dist_m else CONFIG.ballistics.default_distance_m
+        # LiDAR ön yüzeyi ölçer; balistik merkez için +hedef yarıçapı
+        dist = dist_front + self.target_radius_m
+        t_flight = dist / self.bullet_speed
+        t_delay = CONFIG.ballistics.system_latency_s  # 80 ms donanim gecikmesi
 
-        # Fiziksel Yercekimi Dusumu (g = 9.81 m/s^2): delta_z = 0.5 * g * t^2
-        gravity_drop_m = 0.5 * 9.81 * (t_flight ** 2)
+        g = CONFIG.ballistics.gravity_accel
+        gravity_drop_m = 0.5 * g * (t_flight ** 2)
 
-        # Namlunun baktigi aci ve yercekimi dusumuyle nihai 3D varis noktasi
-        # Taret pivot yuksekligi Z = 0.828 m
-        impact_x = -math.tan(pan_rad) * dist
-        impact_z = 0.828 + math.tan(tilt_rad) * dist - gravity_drop_m
+        # Namlu merkez konumu ve 3B donus matrisi
+        head_pos = self.kafa_node.getPosition() if self.kafa_node else [0.0, 0.0, 0.828]
+        head_rot = self.kafa_node.getOrientation() if self.kafa_node else [1, 0, 0, 0, 1, 0, 0, 0, 1]
+
+        # Webots kafa blogunda yerel Y ekseni namlunun ileri dogrultusudur
+        fx_dir = head_rot[1]
+        fy_dir = head_rot[4]
+        fz_dir = head_rot[7]
+
+        # 3B dunya carpisma koordinati (merkez mesafesiyle)
+        impact_x = head_pos[0] + fx_dir * dist
+        impact_y = head_pos[1] + fy_dir * dist
+        impact_z = head_pos[2] + fz_dir * dist - gravity_drop_m
 
         shot = {
             "fire_sim_time": sim_time,
             "impact_sim_time": sim_time + t_flight + t_delay,
             "flight_time_s": t_flight + t_delay,
             "impact_x": impact_x,
+            "impact_y": impact_y,
             "impact_z": impact_z,
-            "dist_m": dist,
+            "dist_front_m": dist_front,
+            "dist_center_m": dist,
             "gravity_drop_cm": gravity_drop_m * 100.0,
         }
         self.active_shots.append(shot)
         self.total_shots += 1
-
-        superelev_deg = math.degrees(math.atan(gravity_drop_m / dist))
-        print(f"[BALISTIK] SANAL MERMI ATILDI // V=10 m/s, Ucus: {t_flight * 1000:.0f} ms, Yercekimi: -{gravity_drop_m * 100.0:.1f} cm, Kompanzasyon: +{superelev_deg:.1f} deg (Menzil: {dist:.2f} m)")
-
-    def _get_balloon_true_position(self, t_target):
-        """
-        balloon_mover.py dosyasindaki guncel hareket parametrelerini dinamik okur.
-        Hedef sabitse (AMPLITUDE=0) veya hareketliyse gercek 3D koordinati doner.
-        """
-        amp_x, speed_x = 0.70, 1.3
-        amp_z, speed_z = 0.20, 1.8
-        bm_path = Path(__file__).resolve().parents[1] / "balloon_mover" / "balloon_mover.py"
-        if bm_path.exists():
-            content = bm_path.read_text(encoding="utf-8")
-            for line in content.splitlines():
-                line = line.strip()
-                if line.startswith("AMPLITUDE_X"):
-                    amp_x = float(line.split("=")[1].split("#")[0].strip())
-                elif line.startswith("SPEED_X"):
-                    speed_x = float(line.split("=")[1].split("#")[0].strip())
-                elif line.startswith("AMPLITUDE_Z"):
-                    amp_z = float(line.split("=")[1].split("#")[0].strip())
-                elif line.startswith("SPEED_Z"):
-                    speed_z = float(line.split("=")[1].split("#")[0].strip())
-
-        true_x = amp_x * math.sin(speed_x * t_target)
-        true_z = 1.055 + amp_z * math.sin(speed_z * t_target)
-        return true_x, true_z
+        self.last_shot = shot
+        self.last_hit = None
+        self.last_miss_cm = None
 
     def update(self, sim_time):
-        """
-        Her simulasyon adiminda ucus suresini kontrol eder.
-        Mermi hedefe vardiginda balonun o anki 3D konumuyla carpismayi hesaplar.
-        """
+        """Ucus suresi dolan mermileri balon konumuyla karsilastirir ve hakem kararini uretir."""
         remaining_shots = []
+
         for shot in self.active_shots:
             if sim_time >= shot["impact_sim_time"]:
-                # Mermi balonun mesafesine ulasti!
-                balloon_pos = None
-                if self.balloon_node is not None:
-                    try:
-                        balloon_pos = self.balloon_node.getPosition()
-                    except Exception:
-                        balloon_pos = None
+                # Carpisma aninda gercek balon konumunu al
+                b_pos = self._get_balloon_position()
+                if b_pos:
+                    # 3D mesafe farki
+                    dx = shot["impact_x"] - b_pos[0]
+                    dy = shot["impact_y"] - b_pos[1]
+                    dz = shot["impact_z"] - b_pos[2]
+                    err_3d = math.sqrt(dx*dx + dy*dy + dz*dz)
 
-                if balloon_pos and balloon_pos[2] > -5.0:
-                    balloon_true_x = float(balloon_pos[0]) - 0.02
-                    balloon_true_z = float(balloon_pos[2]) + 0.155
+                    is_hit = err_3d <= self.target_radius_m
+                    self.last_hit = bool(is_hit)
+                    self.last_miss_cm = float(err_3d * 100.0)
+                    if is_hit:
+                        self.total_hits += 1
+                        self.last_result_text = f"HIT! (ERR: {err_3d*100.0:.1f}cm)"
+                        self.last_result_color = (0, 255, 0)
+                        self.last_result_sim_time = sim_time
+                        self._pop_balloon()
+                    else:
+                        self.last_result_text = f"MISSED (ERR: {err_3d*100.0:.1f}cm)"
+                        self.last_result_color = (0, 0, 255)
+                        self.last_result_sim_time = sim_time
                 else:
-                    t_target = shot["impact_sim_time"]
-                    balloon_true_x, balloon_true_z = self._get_balloon_true_position(t_target)
-
-                # Tam 3 Boyutlu Carpisma Mesafesi (3D Euclidean Distance)
-                dx = shot["impact_x"] - balloon_true_x
-                dz = shot["impact_z"] - balloon_true_z
-                miss_distance_m = math.hypot(dx, dz)
-                miss_distance_cm = miss_distance_m * 100.0
-
-                is_hit = miss_distance_m <= self.target_radius_m
-                if is_hit:
-                    self.total_hits += 1
-                    self.last_result_text = f"BALLISTIC HIT! ({miss_distance_cm:.1f} cm)"
-                    self.last_result_color = (0, 255, 0)  # Parlak Yesil
-                    print(f"[BALISTIK] >>> ISABET (HIT)! <<< 3D Sapma: {miss_distance_cm:.1f} cm [dx: {abs(dx)*100:.1f} cm, dz: {abs(dz)*100:.1f} cm] (Hedef VURULDU!)")
-                    # Sadece ve sadece gercek isabette balona patlama emri gonder
-                    if self.balloon_node is not None:
-                        try:
-                            custom_field = self.balloon_node.getField("customData")
-                            if custom_field:
-                                custom_field.setSFString("POP")
-                        except Exception:
-                            pass
-                else:
-                    self.last_result_text = f"BALLISTIC MISS! ({miss_distance_cm:.1f} cm)"
-                    self.last_result_color = (0, 0, 255)  # Kirmizi
-                    print(f"[BALISTIK] >>> ISKA (MISS)! <<< 3D Sapma: {miss_distance_cm:.1f} cm [dx: {abs(dx)*100:.1f} cm, dz: {abs(dz)*100:.1f} cm] (Hedef Iskalandi - Balon Patlamadi)")
-
-                self.last_result_time = time.time()
+                    self.last_result_text = "ENGAGEMENT COMPLETE"
+                    self.last_result_color = (0, 215, 255)
+                    self.last_result_sim_time = sim_time
             else:
                 remaining_shots.append(shot)
 
         self.active_shots = remaining_shots
+
+    def _get_balloon_position(self):
+        """Balonun dunya koordinatlarindaki anlik 3D merkez noktasini dondurur."""
+        if self.balloon_node:
+            try:
+                pos = self.balloon_node.getPosition()
+                if pos:
+                    # Balon geometrik ofsetleri (boundingObject translation)
+                    return [pos[0] - 0.02, pos[1] - 0.255, pos[2] + 0.155]
+            except Exception:
+                pass
+        return None
+
+    def _pop_balloon(self):
+        """Balon dugumune POP sinyali gonderir; balloon_mover bunu patlamaya cevirir."""
+        if not self.balloon_node:
+            print("[BALISTIK] UYARI: BALLOON dugumu bulunamadi; patlama sinyali gonderilemedi.")
+            return
+        sent = False
+        try:
+            self.balloon_node.setCustomData("POP")
+            sent = True
+        except Exception:
+            # Bazi Webots surumlerinde Node.setCustomData yoktur; alan uzerinden yaz.
+            try:
+                field = self.balloon_node.getField("customData")
+                if field:
+                    field.setSFString("POP")
+                    sent = True
+            except Exception:
+                pass
+        print("[BALISTIK] POP sinyali:", "GONDERILDI" if sent else "BASARISIZ")

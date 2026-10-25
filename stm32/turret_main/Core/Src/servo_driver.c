@@ -1,3 +1,18 @@
+/*
+ * ==============================================================================
+ * MODUL: PAN/TILT SERVO SURUCUSU (MG996R, TIM3 + TIM1)
+ * ==============================================================================
+ * PB4/PB5 (TIM3_CH1/CH2) uzerinden 50 Hz PWM uretir; PA8 (TIM1_CH1) pan
+ * darbesinin D7 aynasidir (Servo_SetPan her zaman iki kanali ayni darbeyle surer).
+ * 0..180 derece, 570..2470 us darbe araligina eslenir.
+ *
+ * GUVENLIK:
+ * - Pan 15..165 derece, tilt 65..115 derece araligina kilitlidir.
+ * - Her pakette adim siniri (MAX_STEP_DEG) ve zaman tabanli 45 derece/s
+ *   hiz siniri birlikte uygulanir; PC FPS'i artarsa taret hizlanmaz.
+ * - E-stop ve link kaybinda Servo_HomeStep() ile basamaksiz merkeze donulur.
+ * ==============================================================================
+ */
 #include "servo_driver.h"
 
 static TIM_HandleTypeDef htim3;
@@ -5,6 +20,10 @@ static TIM_HandleTypeDef htim1;
 
 static float current_pan = 90.0f;
 static float current_tilt = 90.0f;
+
+// Zaman tabanli hiz siniri icin son komut ani
+static uint32_t last_cmd_ms = 0;
+static bool have_last_cmd = false;
 
 static uint32_t AngleToPulse(float angle)
 {
@@ -45,7 +64,7 @@ void Servo_Init(void)
     HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
     HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
 
-    // 2. TIM1: PA8 (D7) - PAN opsiyonel yedek
+    // 2. TIM1: PA8 (D7) - PAN darbesinin aynasi (Servo_SetPan ikisini birlikte surer)
     __HAL_RCC_TIM1_CLK_ENABLE();
     __HAL_RCC_GPIOA_CLK_ENABLE();
     gpio.Pin = GPIO_PIN_8;
@@ -97,21 +116,52 @@ void Servo_SetTilt(float angle_deg)
 
 void Servo_ApplyCorrection(float d_pan, float d_tilt)
 {
-    // Maksimum adim sinirlamasi (Mekanik asiri tork ve disli korumasi)
-    if (d_pan > MAX_STEP_PAN_DEG) d_pan = MAX_STEP_PAN_DEG;
-    if (d_pan < -MAX_STEP_PAN_DEG) d_pan = -MAX_STEP_PAN_DEG;
-    if (d_tilt > MAX_STEP_TILT_DEG) d_tilt = MAX_STEP_TILT_DEG;
-    if (d_tilt < -MAX_STEP_TILT_DEG) d_tilt = -MAX_STEP_TILT_DEG;
+    // 1. Zaman tabanli hiz siniri: PC kare basina delta gonderir. FPS artarsa
+    // ayni delta daha sik gelir; burada gercek dt olculerek hiz sabitlenir.
+    uint32_t now = HAL_GetTick();
+    float dt_s = 0.010f; // ilk komutta dongu periyodu varsayimi
+    if (have_last_cmd)
+    {
+        uint32_t dt_ms = now - last_cmd_ms;
+        dt_s = (float)dt_ms / 1000.0f;
+        if (dt_s < 0.005f) dt_s = 0.005f;  // 200 Hz ust sinir
+        if (dt_s > 0.100f) dt_s = 0.100f;  // 10 Hz alt sinir
+    }
+    last_cmd_ms = now;
+    have_last_cmd = true;
 
-#if PAN_DIR_INVERT
-    d_pan = -d_pan;
-#endif
-#if TILT_DIR_INVERT
-    d_tilt = -d_tilt;
-#endif
-    // Kamera taretle birlikte dondugunden hata acisini mevcut aciya ekler
+    // 2. Tek pakette mutlak adim siniri + zaman tabanli hiz siniri (kucuk olani)
+    float limit_pan = MAX_RATE_PAN_DPS * dt_s;
+    if (limit_pan > MAX_STEP_PAN_DEG) limit_pan = MAX_STEP_PAN_DEG;
+    float limit_tilt = MAX_RATE_TILT_DPS * dt_s;
+    if (limit_tilt > MAX_STEP_TILT_DEG) limit_tilt = MAX_STEP_TILT_DEG;
+
+    if (d_pan > limit_pan) d_pan = limit_pan;
+    if (d_pan < -limit_pan) d_pan = -limit_pan;
+    if (d_tilt > limit_tilt) d_tilt = limit_tilt;
+    if (d_tilt < -limit_tilt) d_tilt = -limit_tilt;
+
+    // Kamera taretle birlikte dondugunden hata acisini mevcut aciya ekler.
+    // Yon tersleme PC katmaninda yapilir; burada tekrar terslenmez.
     Servo_SetPan(current_pan + d_pan);
     Servo_SetTilt(current_tilt + d_tilt);
+}
+
+bool Servo_HomeStep(void)
+{
+    float d_pan = SERVO_CENTER_DEG - current_pan;
+    float d_tilt = SERVO_CENTER_DEG - current_tilt;
+
+    if (d_pan < SERVO_HOME_TOL_DEG && d_pan > -SERVO_HOME_TOL_DEG &&
+        d_tilt < SERVO_HOME_TOL_DEG && d_tilt > -SERVO_HOME_TOL_DEG)
+    {
+        return true;
+    }
+
+    // Ayni hiz sinirlayicisindan gecer: E-stop artik servo uzerinde basamak
+    // olusturmaz, merkeze ~45 derece/s ile yumusak iner.
+    Servo_ApplyCorrection(d_pan, d_tilt);
+    return false;
 }
 
 float Servo_GetPan(void)

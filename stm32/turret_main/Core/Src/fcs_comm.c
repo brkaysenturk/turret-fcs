@@ -1,21 +1,48 @@
+/*
+ * ==============================================================================
+ * MODUL: PC <-> STM32 IKILI HABERLESME (USART2, 115200 8N1)
+ * ==============================================================================
+ * TX (PC'ye) 10 bayt:
+ *   [0x55][mesafe u16][sinyal u16][pan i16/10][tilt i16/10][checksum u8]
+ * RX (PC'den) 7 bayt:
+ *   [0xAA][pan i16/10][tilt i16/10][state u8][checksum u8]
+ *
+ * checksum her iki yonde de 8 bit toplamdir. state: 0=TRACKING, 1=LOCKED,
+ * 2=FIRING, 3=ESTOP. E-stop yalnizca ust uste iki tutarli pakette kabul edilir;
+ * tek bozuk paket tareti merkeze firlatamaz. Gecerli paketlerde aci degerleri
+ * ISR icinde atomik olarak saklanir, ana dongu IRQ kapaliyken okur.
+ * ==============================================================================
+ */
 #include "fcs_comm.h"
 #include <stddef.h>
 
 static UART_HandleTypeDef *fcs_huart = NULL;
 static uint8_t fcs_rx_byte = 0;
-static uint8_t rx_buffer[7];
+static uint8_t rx_buffer[PROTO_CMD_FRAME_LEN];
 static uint8_t rx_index = 0;
 
 static volatile float cmd_pan = 0.0f;
 static volatile float cmd_tilt = 0.0f;
-static volatile uint8_t cmd_state = 0;
+static volatile uint8_t cmd_state = PROTO_STATE_TRACKING;
 static volatile bool new_cmd_flag = false;
+
+// E-stop tek bozuk paketle tetiklenmesin: ust uste iki tutarli paket sart.
+static uint8_t estop_streak = 0;
+
+static void accept_command(int16_t p, int16_t t, uint8_t state)
+{
+    cmd_pan = (float)p / PROTO_ANGLE_SCALE;
+    cmd_tilt = (float)t / PROTO_ANGLE_SCALE;
+    cmd_state = state;
+    new_cmd_flag = true;
+}
 
 void FCS_Comm_Init(UART_HandleTypeDef *huart)
 {
     fcs_huart = huart;
     rx_index = 0;
     new_cmd_flag = false;
+    estop_streak = 0;
     if (fcs_huart != NULL)
     {
         HAL_UART_Receive_IT(fcs_huart, &fcs_rx_byte, 1);
@@ -29,32 +56,46 @@ void FCS_Comm_RxCallback(UART_HandleTypeDef *huart)
     uint8_t byte = fcs_rx_byte;
     if (rx_index == 0)
     {
-        if (byte == FCS_HEADER_RX)
+        if (byte == PROTO_PC_TO_STM_HEADER)
             rx_buffer[rx_index++] = byte;
     }
     else
     {
         rx_buffer[rx_index++] = byte;
 
-        if (rx_index >= 7)
+        if (rx_index >= PROTO_CMD_FRAME_LEN)
         {
             rx_index = 0;
 
-            uint8_t checksum = 0;
-            for (int i = 0; i < 6; i++)
-            {
-                checksum += rx_buffer[i];
-            }
-
-            if (checksum == rx_buffer[6])
+            if (Proto_VerifyChecksum(rx_buffer, PROTO_CMD_FRAME_LEN))
             {
                 int16_t p = (int16_t)(rx_buffer[1] | (rx_buffer[2] << 8));
                 int16_t t = (int16_t)(rx_buffer[3] | (rx_buffer[4] << 8));
+                uint8_t st = rx_buffer[5];
 
-                cmd_pan = (float)p / 10.0f;
-                cmd_tilt = (float)t / 10.0f;
-                cmd_state = rx_buffer[5];
-                new_cmd_flag = true;
+                // Gecersiz durum kodu: paketi reddet, alim devam eder.
+                if (st > PROTO_STATE_ESTOP)
+                {
+                    estop_streak = 0;
+                }
+                else if (st == PROTO_STATE_ESTOP)
+                {
+                    // E-stop yalnizca ust uste dogrulanirsa kabul edilir; boylece
+                    // tek bir bozulmus paket tareti merkeze firlatmaz.
+                    if (estop_streak < PROTO_ESTOP_CONFIRM_FRAMES)
+                    {
+                        estop_streak++;
+                    }
+                    else
+                    {
+                        accept_command(p, t, st);
+                    }
+                }
+                else
+                {
+                    estop_streak = 0;
+                    accept_command(p, t, st);
+                }
             }
         }
     }
@@ -68,6 +109,7 @@ void FCS_Comm_RxCallback(UART_HandleTypeDef *huart)
 void FCS_Comm_HandleError(void)
 {
     rx_index = 0;
+    estop_streak = 0;
     if (fcs_huart != NULL)
     {
         __HAL_UART_CLEAR_OREFLAG(fcs_huart);
@@ -82,38 +124,28 @@ void FCS_Comm_SendTelemetry(uint16_t distance_cm, uint16_t signal_strength, floa
 {
     if (fcs_huart == NULL) return;
 
-    uint8_t tx_pkt[10];
-    tx_pkt[0] = FCS_HEADER_TX; // 0x55
+    uint8_t tx_pkt[PROTO_TLM_FRAME_LEN];
+    tx_pkt[0] = PROTO_STM_TO_PC_HEADER;
     tx_pkt[1] = (uint8_t)(distance_cm & 0xFF);
     tx_pkt[2] = (uint8_t)(distance_cm >> 8);
     tx_pkt[3] = (uint8_t)(signal_strength & 0xFF);
     tx_pkt[4] = (uint8_t)(signal_strength >> 8);
 
-    int16_t p = (int16_t)(pan_deg * 10.0f);
-    int16_t t = (int16_t)(tilt_deg * 10.0f);
+    int16_t p = (int16_t)(pan_deg * PROTO_ANGLE_SCALE);
+    int16_t t = (int16_t)(tilt_deg * PROTO_ANGLE_SCALE);
     tx_pkt[5] = (uint8_t)(p & 0xFF);
     tx_pkt[6] = (uint8_t)(p >> 8);
     tx_pkt[7] = (uint8_t)(t & 0xFF);
     tx_pkt[8] = (uint8_t)(t >> 8);
 
     uint8_t csum = 0;
-    for (int i = 0; i < 9; i++)
+    for (int i = 0; i < (int)(PROTO_TLM_FRAME_LEN - 1u); i++)
     {
         csum += tx_pkt[i];
     }
-    tx_pkt[9] = csum;
+    tx_pkt[PROTO_TLM_FRAME_LEN - 1u] = csum;
 
-    HAL_UART_Transmit(fcs_huart, tx_pkt, 10, 10);
-}
-
-bool FCS_Comm_IsNewCommand(void)
-{
-    if (new_cmd_flag)
-    {
-        new_cmd_flag = false;
-        return true;
-    }
-    return false;
+    HAL_UART_Transmit(fcs_huart, tx_pkt, PROTO_TLM_FRAME_LEN, 10);
 }
 
 bool FCS_Comm_GetCommand(float *pan, float *tilt, uint8_t *state)
@@ -131,20 +163,5 @@ bool FCS_Comm_GetCommand(float *pan, float *tilt, uint8_t *state)
     __enable_irq();
 
     return true;
-}
-
-float FCS_Comm_GetPan(void)
-{
-    return cmd_pan;
-}
-
-float FCS_Comm_GetTilt(void)
-{
-    return cmd_tilt;
-}
-
-uint8_t FCS_Comm_GetState(void)
-{
-    return cmd_state;
 }
 

@@ -16,14 +16,24 @@ Controls:
 """
 
 import math
+import sys
+from pathlib import Path
+
 from controller import Supervisor
+
+# Proje kokunu sys.path'e ekle (Webots dahili Python korumasi)
+_project_root = Path(__file__).resolve().parents[3]
+if str(_project_root) not in sys.path:
+    sys.path.insert(0, str(_project_root))
+
+from turret_fcs.config import CONFIG
 
 
 # --- CONSTANTS ---
-TARGET_RPM = 23500.0
-TARGET_RAD_S = 2460.9     # 23,500 RPM = 2460.9 rad/s
+TARGET_RPM = CONFIG.flywheel.target_speed_rad_s * 60.0 / (2.0 * math.pi)
+TARGET_RAD_S = CONFIG.flywheel.target_speed_rad_s  # 23,500 RPM (CONFIG.flywheel)
 DART_MASS_KG = 0.012      # 12.0 gram for stable ODE physics impact
-FIRE_COOLDOWN = 0.35      # seconds between consecutive shots
+FIRE_COOLDOWN = CONFIG.ballistics.recovery_time_s + CONFIG.ballistics.firing_pulse_s  # atis dongusu araligi
 KEY_DEBOUNCE_SEC = 0.30   # seconds debounce for toggle keys (R, C, S)
 YAW_STEP_RAD = 0.025      # radians per step when rotating left/right (~1.4 deg)
 MAX_YAW_RAD = 0.55        # max horizontal rotation (~31 deg left/right)

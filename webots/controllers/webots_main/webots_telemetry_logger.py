@@ -1,15 +1,45 @@
+"""
+================================================================================
+MODUL: WEBOTS TELEMETRI V2 KAYDEDICISI (WEBOTS TELEMETRY V2 - SSOT)
+================================================================================
+Bu modul, Webots FCS simulasyonu esnasinda uretilen durum, hata, eyleyici ve
+Kalman kestirimlerini uretim Schema v2 formatinda tamponlu CSV olarak kaydeder.
+Ayni zamanda zemin gercegi (Ground Truth) balon koordinatlarini da yan kolonlara
+ekleyerek tam dogrulama (full verification) verisi saglar.
+================================================================================
+"""
+
 import atexit
 import csv
+from datetime import datetime
 from pathlib import Path
 import numpy as np
+
+from turret_fcs.config import CONFIG
 
 
 class WebotsTelemetryLogger:
     """
-    Webots FCS Simulasyonu Telemetri ve Analiz Kaydedicisi.
-    Simulasyondaki zemin gercegi (ground truth) ve algoritma kestirimlerini
-    RAM'de toplar, cikista CSV ve MATLAB (.mat) formatinda kaydeder.
+    Webots FCS Simulasyonu Telemetri v2 Kaydedicisi.
     """
+
+    SCHEMA_VERSION = "2.0-webots"
+
+    HEADERS = [
+        "schema_version", "frame_id", "sim_time_sec", "dt", "fps",
+        "target_detected", "target_conf", "box_cx", "box_cy",
+        "angular_err_pan", "angular_err_tilt", "cmd_pan_deg", "cmd_tilt_deg",
+        "target_vel_x", "target_vel_y", "target_speed", "sigma_a",
+        "dist_cm", "range_valid", "range_stable", "range_jump", "dist_geom_m", "range_hold_m",
+        "signal_strength",
+        "fcs_state", "control_mode", "fire_stage",
+        "is_locked", "lock_counter", "lock_thr", "hit_prob",
+        "turret_pan_deg", "turret_tilt_deg",
+        "gt_x", "gt_y", "gt_z", "gt_dist_m",
+        "gravity_comp_deg", "tilt_lag_deg", "dist_center_m",
+        "impact_miss_cm", "ballistic_hit",
+        "kp_pan", "kp_tilt", "max_output_deg", "tune_label"
+    ]
 
     def __init__(self, supervisor=None, output_dir=None):
         self.supervisor = supervisor
@@ -17,147 +47,150 @@ class WebotsTelemetryLogger:
         self.is_saved = False
 
         if output_dir is None:
-            self.output_dir = Path(__file__).resolve().parents[2] / "analysis"
+            # Webots loglari ayri klasorde: webots/logs/
+            self.output_dir = Path(__file__).resolve().parents[2] / "logs"
         else:
             self.output_dir = Path(output_dir)
 
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Balon dugumunu bagla (Ground truth pozisyon ve hiz icin)
+        self.session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.csv_path = self.output_dir / f"webots_telemetry_{self.session_id}.csv"
+
+        # Balon dugumunu bagla
         self.balloon_node = None
         if self.supervisor is not None:
             try:
                 self.balloon_node = self.supervisor.getFromDef("BALLOON")
-                if self.balloon_node is None:
-                    # Alternatif: Children icinde ara
-                    root_children = self.supervisor.getRoot().getField("children")
-                    for i in range(root_children.getCount()):
-                        node = root_children.getMFNode(i)
-                        name_field = node.getField("name")
-                        if name_field and name_field.getSFString() == "balloon":
-                            self.balloon_node = node
-                            break
             except Exception:
                 self.balloon_node = None
 
-        # Program aniden kapansa dahi veriyi kurtarmak icin atexit kaydi
         atexit.register(self.save)
 
-    def log(self, sim_t, fcs, hw, best_box, is_firing=False, ballistics=None):
-        """Her adimda tum FCS parametrelerini ve gercek verileri kaydeder."""
-        # 1. Zemin Gercegi (Ground Truth) Okumalari
+    def log(self, frame_id, sim_t, dt, fps, fcs, hw, best_box, fire_stage=None, fcs_state=None, ballistics=None, tuning=None):
+        """Her adimda Schema v2 telemetri satirini tampona ekler."""
+        # 1. Zemin Gercegi (Ground Truth)
         gt_x, gt_y, gt_z = 0.0, 0.0, 0.0
-        gt_vx, gt_vy, gt_vz = 0.0, 0.0, 0.0
-        true_dist_m = 0.0
+        gt_dist_m = 0.0
 
         if self.balloon_node is not None:
             try:
                 pos = self.balloon_node.getPosition()
                 if pos:
                     gt_x, gt_y, gt_z = float(pos[0]), float(pos[1]), float(pos[2])
-                    true_dist_m = float(np.sqrt(gt_x**2 + gt_y**2 + gt_z**2))
-
-                vel = self.balloon_node.getVelocity()
-                if vel:
-                    gt_vx, gt_vy, gt_vz = float(vel[0]), float(vel[1]), float(vel[2])
+                    gt_dist_m = float(np.sqrt(gt_x**2 + gt_y**2 + gt_z**2))
             except Exception:
                 pass
 
-        gt_speed = float(np.sqrt(gt_vx**2 + gt_vz**2))
+        # 2. Algoritma Durumlari
+        has_target = best_box is not None
+        conf = float(getattr(fcs, "target_conf", 0.0)) if has_target else 0.0
+        cx = float((best_box[0] + best_box[2]) / 2.0) if has_target else 0.0
+        cy = float((best_box[1] + best_box[3]) / 2.0) if has_target else 0.0
 
-        # 2. Donanim Okumalari
-        curr_pan_rad, curr_tilt_rad = hw.get_motor_positions()
-        curr_pan_deg = float(np.degrees(curr_pan_rad))
-        curr_tilt_deg = float(np.degrees(curr_tilt_rad))
+        # Kontrolcu ici filtre degil, gercek kamera acisal hatasi.
+        p_err = float(getattr(fcs, "last_pan_err_deg", 0.0))
+        t_err = float(getattr(fcs, "last_tilt_err_deg", 0.0))
+
+        cmd_p = float(hw.cmd_pan_deg)
+        cmd_t = float(hw.cmd_tilt_deg)
+
+        vx = float(fcs.tracker.x[2, 0]) if hasattr(fcs.tracker, "x") else 0.0
+        vy = float(fcs.tracker.x[3, 0]) if hasattr(fcs.tracker, "x") else 0.0
+        v_speed = float(np.hypot(vx, vy))
+        sigma_a = float(getattr(fcs.tracker, "sigma_a", CONFIG.kalman.sigma_a))
+
         dist_cm, strength = hw.get_distance_and_strength()
+        curr_p, curr_t = hw.get_motor_positions_deg()
 
-        # 3. FCS Kontrol ve Takip Metrikleri
-        target_detected = 1 if best_box is not None else 0
-        bbox_cx, bbox_cy = (0.0, 0.0)
-        if best_box is not None:
-            bbox_cx = float((best_box[0] + best_box[2]) / 2.0)
-            bbox_cy = float((best_box[1] + best_box[3]) / 2.0)
+        range_valid = 1 if getattr(fcs, "range_valid", False) else 0
+        range_stable = 1 if getattr(fcs, "range_stable", False) else 0
+        range_jump = 1 if getattr(fcs, "range_jump", False) else 0
+        dist_geom = getattr(fcs, "range_geom_m", None)
+        dist_geom_val = round(float(dist_geom), 3) if dist_geom is not None else -1.0
+        range_hold = float(getattr(fcs, "last_valid_target_dist_m", -1.0))
 
-        # Kalman Tahminleri
-        kvx = float(fcs.target_velocity[0])
-        kvy = float(fcs.target_velocity[1])
-        kalman_speed = float(np.hypot(kvx, kvy))
+        # A/D tesihs alanlari: gravity, servo lag ve balistik sonuc
+        gravity_comp = float(getattr(fcs, "gravity_comp_deg", 0.0))
+        tilt_lag = float(cmd_t - curr_t)
+        last_shot = getattr(ballistics, "last_shot", None) if ballistics is not None else None
+        dist_center = float(last_shot.get("dist_center_m", -1.0)) if last_shot else -1.0
+        miss_cm = getattr(ballistics, "last_miss_cm", None) if ballistics is not None else None
+        hit = getattr(ballistics, "last_hit", None) if ballistics is not None else None
+        miss_val = round(float(miss_cm), 1) if miss_cm is not None else -1.0
+        hit_val = -1 if hit is None else (1 if hit else 0)
+        tune = tuning if isinstance(tuning, dict) else {}
 
-        # Komuta ve Onleme Acilari
-        cmd_pan_deg = float(np.degrees(fcs.pan_target))
-        cmd_tilt_deg = float(np.degrees(fcs.tilt_target))
-        lead_pan_deg = float(fcs.firing_lead_offset[0])
-        lead_tilt_deg = float(fcs.firing_lead_offset[1])
-        gravity_comp_deg = float(fcs.gravity_comp_deg)
+        state_code = int(fcs_state) if fcs_state is not None else (1 if fcs.is_locked else 0)
 
-        # Aci Takip Hatalari
-        err_pan_deg = float(fcs.actual_pan)
-        err_tilt_deg = float(fcs.actual_tilt)
-
-        # Kilit Kalitesi ve Durumu
-        lock_qual = float(fcs.lock_quality)
-        is_locked = 1 if fcs.is_locked else 0
-        firing_flag = 1 if is_firing else 0
-
-        # Balistik Skor
-        hits = 0
-        total_shots = 0
-        if ballistics is not None:
-            hits = getattr(ballistics, "total_hits", 0)
-            total_shots = getattr(ballistics, "total_shots", 0)
-
-        row = {
-            "time_sec": round(sim_t, 4),
-            # Ground Truth (Gercek Fizik)
-            "gt_x": round(gt_x, 4),
-            "gt_y": round(gt_y, 4),
-            "gt_z": round(gt_z, 4),
-            "gt_vx": round(gt_vx, 4),
-            "gt_vy": round(gt_vy, 4),
-            "gt_vz": round(gt_vz, 4),
-            "gt_speed": round(gt_speed, 4),
-            "true_dist_cm": round(true_dist_m * 100.0, 1),
-            # Algilama & Tespit
-            "target_detected": target_detected,
-            "bbox_cx": round(bbox_cx, 1),
-            "bbox_cy": round(bbox_cy, 1),
-            "lidar_dist_cm": dist_cm,
-            # Kalman Durum Gozlemcisi
-            "kalman_vx": round(kvx, 2),
-            "kalman_vy": round(kvy, 2),
-            "kalman_speed": round(kalman_speed, 2),
-            # Balistik & Onleme
-            "lead_pan_deg": round(lead_pan_deg, 3),
-            "lead_tilt_deg": round(lead_tilt_deg, 3),
-            "gravity_comp_deg": round(gravity_comp_deg, 3),
-            # Taret Kontrol ve Motorlar
-            "cmd_pan_deg": round(cmd_pan_deg, 3),
-            "cmd_tilt_deg": round(cmd_tilt_deg, 3),
-            "actual_pan_deg": round(curr_pan_deg, 3),
-            "actual_tilt_deg": round(curr_tilt_deg, 3),
-            "err_pan_deg": round(err_pan_deg, 3),
-            "err_tilt_deg": round(err_tilt_deg, 3),
-            # Kilit ve Atis
-            "lock_quality": round(lock_qual, 1),
-            "is_locked": is_locked,
-            "is_firing": firing_flag,
-            "hits": hits,
-            "total_shots": total_shots,
-        }
+        row = [
+            self.SCHEMA_VERSION,
+            frame_id,
+            round(sim_t, 4),
+            round(dt, 4),
+            fps,
+            1 if has_target else 0,
+            round(conf, 3),
+            round(cx, 1),
+            round(cy, 1),
+            round(p_err, 3),
+            round(t_err, 3),
+            round(cmd_p, 3),
+            round(cmd_t, 3),
+            round(vx, 2),
+            round(vy, 2),
+            round(v_speed, 2),
+            round(sigma_a, 2),
+            dist_cm,
+            range_valid,
+            range_stable,
+            range_jump,
+            dist_geom_val,
+            range_hold,
+            strength,
+            state_code,
+            fcs.control_mode,
+            str(fire_stage or "NONE"),
+            1 if fcs.is_locked else 0,
+            fcs.lock_counter,
+            round(float(fcs.lock_mgr.compute_dynamic_threshold(fcs.target_velocity)), 2),
+            round(float(fcs.hit_probability), 1),
+            round(curr_p, 3),
+            round(curr_t, 3),
+            round(gt_x, 3),
+            round(gt_y, 3),
+            round(gt_z, 3),
+            round(gt_dist_m, 3),
+            round(gravity_comp, 2),
+            round(tilt_lag, 3),
+            round(dist_center, 3),
+            miss_val,
+            hit_val,
+            round(float(tune.get("kp_pan", 0.0)), 4),
+            round(float(tune.get("kp_tilt", 0.0)), 4),
+            round(float(tune.get("max_output_deg", 0.0)), 3),
+            str(tune.get("label", ""))
+        ]
         self.records.append(row)
 
-    def save(self, base_name="fcs_telemetry"):
-        """Tamponlanan verileri CSV ve MATLAB .mat dosyasi olarak kaydeder."""
-        if self.is_saved or len(self.records) == 0:
+        if len(self.records) >= 100:
+            self._flush()
+
+    def _flush(self):
+        if not self.records:
             return
-
-        self.is_saved = True
-        csv_path = self.output_dir / f"{base_name}.csv"
-        mat_path = self.output_dir / f"{base_name}.mat"
-
-        # 1. CSV Kaydi
-        fieldnames = list(self.records[0].keys())
-        with open(csv_path, "w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            writer.writeheader()
+        file_exists = self.csv_path.exists()
+        with open(self.csv_path, "a", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            if not file_exists:
+                writer.writerow(self.HEADERS)
             writer.writerows(self.records)
+        self.records = []
+
+    def save(self):
+        """Kapanista kalan kayitlari diske yazar."""
+        if self.is_saved:
+            return
+        self._flush()
+        self.is_saved = True
+        print(f"[TELEMETRI] Webots telemetri dosyasi kaydedildi: {self.csv_path.name}")

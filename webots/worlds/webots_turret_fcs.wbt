@@ -55,9 +55,9 @@ Robot {
           name "pan_motor"
           acceleration 25
           controlPID 30 0 0.3
-          maxVelocity 3.8
-          minPosition -1.57
-          maxPosition 1.57
+          maxVelocity 0.707
+          minPosition -1.309
+          maxPosition 1.309
           maxTorque 1
         }
       ]
@@ -77,9 +77,9 @@ Robot {
                 name "tilt_motor"
                 acceleration 25
                 controlPID 30 0 0.3
-                maxVelocity 3.8
-                minPosition -0.52
-                maxPosition 0.78
+                maxVelocity 0.707
+                minPosition -0.4363
+                maxPosition 0.4363
                 maxTorque 1
               }
             ]
@@ -311,7 +311,7 @@ Robot {
                     }
                   ]
                   name "c270"
-                  fieldOfView 1.204
+                  fieldOfView 0.8517
                   width 1280
                   height 720
                 }
@@ -409,7 +409,8 @@ DEF BALLOON Robot {
   translation 0 2 0.9
   rotation 1 0 0 1.5714
   children [
-    Pose {
+    Transform {
+      scale 1.5 1.5 1.5
       children [
         Shape {
           appearance PBRAppearance {
@@ -432,7 +433,7 @@ DEF BALLOON Robot {
     translation -0.02 0.155 0.255
     children [
       Sphere {
-        radius 0.1
+        radius 0.15
       }
     ]
   }

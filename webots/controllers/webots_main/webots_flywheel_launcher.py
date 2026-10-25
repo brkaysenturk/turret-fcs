@@ -1,4 +1,16 @@
+"""
+================================================================================
+MODUL: WEBOTS CIFTLI VOLAN VE SOLENOID FIRLATICI (FLYWHEEL LAUNCHER - v2.0)
+================================================================================
+Bu modul, cift fircasiz DC volan motorlarini (23.500 RPM), 80 ms darbe genislikli
+JF-0530B solenoid iticiyi ve Webots fizigiyle 10 m/s sunger dart firlatmasini
+saf simulasyon zamani (sim_t) uzerinden yonetir.
+================================================================================
+"""
+
 import math
+
+from turret_fcs.config import CONFIG
 
 
 def rot_matrix_to_axis_angle(R):
@@ -19,21 +31,23 @@ def rot_matrix_to_axis_angle(R):
 
 
 class WebotsFlywheelLauncher:
-    """Cift FF-180 volan motoru, solenoid itici ve fiziksel Nerf dart uretim yoneticisi."""
+    """Cift volan motoru, solenoid itici ve fiziksel Nerf dart uretim yoneticisi."""
 
     def __init__(self, robot):
         self.robot = robot
-        self.TARGET_RAD_S = 2460.9  # 23,500 RPM
-        self.MUZZLE_VELOCITY = 10.0 # m/s
+        self.TARGET_RAD_S = CONFIG.flywheel.target_speed_rad_s
+        self.IDLE_RAD_S = CONFIG.flywheel.idle_speed_rad_s
+        self.MUZZLE_VELOCITY = CONFIG.ballistics.projectile_speed_mps  # 10.0 m/s
+        self.SOLENOID_PULSE_S = CONFIG.ballistics.firing_pulse_s      # 0.08 s (80 ms)
 
-        # Volan motorlari
+        # Volan motorlari (Baslangicta kapali / standby)
         self.flywheel_left = robot.getDevice('flywheel_left')
         self.flywheel_right = robot.getDevice('flywheel_right')
         if self.flywheel_left and self.flywheel_right:
             self.flywheel_left.setPosition(float('inf'))
             self.flywheel_right.setPosition(float('inf'))
-            self.flywheel_left.setVelocity(self.TARGET_RAD_S)
-            self.flywheel_right.setVelocity(-self.TARGET_RAD_S)
+            self.flywheel_left.setVelocity(0.0)
+            self.flywheel_right.setVelocity(0.0)
 
         # Solenoid itici ve konum sensoru
         self.solenoid = robot.getDevice('solenoid')
@@ -51,10 +65,43 @@ class WebotsFlywheelLauncher:
         self.active_dart_nodes = []
         self.solenoid_state = "idle"
         self.solenoid_hold_start = 0.0
+        self.solenoid_trigger_time = 0.0
         self.pending_dart_spawn = False
+        self.is_spinning = False
+        self.is_idle = False
+
+    def start_idle(self):
+        """Hedef kilitliyken volanlari bosta dondurur; Y aninda boost suresi kisalir."""
+        if self.flywheel_left and self.flywheel_right and not self.is_idle:
+            self.flywheel_left.setVelocity(self.IDLE_RAD_S)
+            self.flywheel_right.setVelocity(-self.IDLE_RAD_S)
+            self.is_spinning = True
+            self.is_idle = True
+
+    def is_idle_ready(self):
+        """Volanlar bosta donuyor mu? Ates icin kisa spin-up kullanilabilir."""
+        return bool(self.is_spinning and self.is_idle)
+
+    def start_spinup(self):
+        """Volan motorlarini nominal 23.500 RPM hizina cikarir (bostan boost)."""
+        if self.flywheel_left and self.flywheel_right:
+            if not self.is_spinning or self.is_idle:
+                self.flywheel_left.setVelocity(self.TARGET_RAD_S)
+                self.flywheel_right.setVelocity(-self.TARGET_RAD_S)
+                self.is_spinning = True
+                self.is_idle = False
+
+    def stop_flywheels(self):
+        """Atis sonrasi veya emniyette volan motorlarini durdurur."""
+        if self.is_spinning and self.flywheel_left and self.flywheel_right:
+            self.flywheel_left.setVelocity(0.0)
+            self.flywheel_right.setVelocity(0.0)
+            self.is_spinning = False
+            self.is_idle = False
 
     def trigger(self):
-        """Atis tetiklendiginde solenoidi ileri iter."""
+        """FIRING evresinde 80 ms solenoid itme darbesini baslatir."""
+        self.solenoid_trigger_time = self.robot.getTime()
         if self.solenoid:
             self.solenoid_state = "pushing"
             self.pending_dart_spawn = True
@@ -63,7 +110,7 @@ class WebotsFlywheelLauncher:
             self._spawn_dart()
 
     def update(self, sim_time):
-        """Solenoid durum makinesini ve eski dartlarin temizligini yonetir."""
+        """Solenoid darbe zamanlamasini (80 ms) ve eski dart temizligini sim_t uzerinden yonetir."""
         if self.solenoid and self.solenoid_sensor:
             if self.solenoid_state == "pushing":
                 if self.solenoid_sensor.getValue() >= 0.040:
@@ -72,15 +119,23 @@ class WebotsFlywheelLauncher:
                     if self.pending_dart_spawn:
                         self._spawn_dart()
                         self.pending_dart_spawn = False
+                elif (sim_time - self.solenoid_trigger_time) > 0.15:
+                    # Sensor/model takildiysa dart'i yine de birak ve solenoidi geri cek.
+                    if self.pending_dart_spawn:
+                        self._spawn_dart()
+                        self.pending_dart_spawn = False
+                    self.solenoid.setPosition(0.0)
+                    self.solenoid_state = "retracting"
             elif self.solenoid_state == "holding":
-                if (sim_time - self.solenoid_hold_start) >= 0.06:
+                # 80 ms (0.08 s) darbe suresi
+                if (sim_time - self.solenoid_hold_start) >= self.SOLENOID_PULSE_S:
                     self.solenoid.setPosition(0.0)
                     self.solenoid_state = "retracting"
             elif self.solenoid_state == "retracting":
                 if self.solenoid_sensor.getValue() <= 0.005:
                     self.solenoid_state = "idle"
 
-        # 2.5 saniyeden eski dartlari sahneden kaldir.
+        # 2.5 saniyeden eski dartlari sahneden kaldir
         while self.active_dart_nodes and (sim_time - self.active_dart_nodes[0][1]) > 2.5:
             old_node, _ = self.active_dart_nodes.pop(0)
             try:
@@ -99,81 +154,67 @@ class WebotsFlywheelLauncher:
         fy_dir = head_rot[4]
         fz_dir = head_rot[7]
 
-        ux_dir = head_rot[2]
-        uy_dir = head_rot[5]
-        uz_dir = head_rot[8]
+        # Namlu cikis konumu (Namlu ucu +0.065 m onde)
+        spawn_x = head_pos[0] + fx_dir * 0.065
+        spawn_y = head_pos[1] + fy_dir * 0.065
+        spawn_z = head_pos[2] + fz_dir * 0.065
 
-        # Namlu ucunun agzi: Kafa merkezinden local Y = +0.09 m, Z = 0.0 m
-        spawn_x = head_pos[0] + 0.09 * fx_dir
-        spawn_y = head_pos[1] + 0.09 * fy_dir
-        spawn_z = head_pos[2] + 0.09 * fz_dir
-
-        vx = self.MUZZLE_VELOCITY * fx_dir
-        vy = self.MUZZLE_VELOCITY * fy_dir
-        vz = self.MUZZLE_VELOCITY * fz_dir
-
-        c1x = uy_dir * (-fz_dir) - uz_dir * (-fy_dir)
-        c1y = uz_dir * (-fx_dir) - ux_dir * (-fz_dir)
-        c1z = ux_dir * (-fy_dir) - uy_dir * (-fx_dir)
-
-        R_dart = [
-            [c1x, ux_dir, -fx_dir],
-            [c1y, uy_dir, -fy_dir],
-            [c1z, uz_dir, -fz_dir]
+        # Dart govdesini namlu eksenine hizala
+        R_pitch90 = [
+            [1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0],
+            [0.0, -1.0, 0.0]
         ]
-        rot_vrml = rot_matrix_to_axis_angle(R_dart)
+        R_comb = [
+            [sum(head_rot[3*r + k] * R_pitch90[k][c] for k in range(3)) for c in range(3)]
+            for r in range(3)
+        ]
+        rot_str = rot_matrix_to_axis_angle(R_comb)
 
+        # Webots PROTO dart dugumu
         dart_vrml = f"""
-        DEF DART_{self.total_darts_fired} Solid {{
+        Solid {{
           translation {spawn_x:.4f} {spawn_y:.4f} {spawn_z:.4f}
-          rotation {rot_vrml}
+          rotation {rot_str}
           children [
-            Shape {{
-              appearance PBRAppearance {{
-                baseColor 0.12 0.38 0.95
-                roughness 0.85
-              }}
-              geometry Cylinder {{
-                radius 0.0064
-                height 0.058
-              }}
-            }}
-            Pose {{
-              translation 0 0 -0.029
+            DEF DART_SHAPE Pose {{
               children [
                 Shape {{
                   appearance PBRAppearance {{
-                    baseColor 1.0 0.38 0.0
-                    roughness 0.4
+                    baseColor 0.1 0.3 0.9
+                    roughness 0.5
+                    metalness 0.1
                   }}
-                  geometry Sphere {{
-                    radius 0.0064
+                  geometry Cylinder {{
+                    height 0.072
+                    radius 0.0065
                   }}
                 }}
               ]
             }}
           ]
+          name "foam_dart_{self.total_darts_fired}"
           contactMaterial "dart_foam"
-          boundingObject Capsule {{
-            radius 0.0064
-            height 0.058
-          }}
+          boundingObject USE DART_SHAPE
           physics Physics {{
             density -1
             mass 0.012
-            centerOfMass [ 0 0 0 ]
-            inertiaMatrix [
-              0.000008 0.000008 0.000008
-              0 0 0
-            ]
+            damping Damping {{
+              linear 0.05
+              angular 0.1
+            }}
           }}
         }}
         """
 
-        self.root_children.importMFNodeFromString(-1, dart_vrml)
-        dart_node = self.root_children.getMFNode(-1)
-        dart_node.setVelocity([vx, vy, vz, 0.0, 0.0, 0.0])
-        self.active_dart_nodes.append((dart_node, self.robot.getTime()))
-
-        print(f"\n[ATES] FIZIKSEL NERF DARTI #{self.total_darts_fired} FIRLADI! // "
-              f"V=10.0 m/s | Vx={vx:+.2f} Vy={vy:+.2f} Vz={vz:+.2f} | Volan: 23,500 RPM")
+        if self.root_children:
+            self.root_children.importMFNodeFromString(-1, dart_vrml)
+            dart_node = self.root_children.getMFNode(-1)
+            if dart_node:
+                # 10 m/s namlu cikis hizi
+                vx = fx_dir * self.MUZZLE_VELOCITY
+                vy = fy_dir * self.MUZZLE_VELOCITY
+                vz = fz_dir * self.MUZZLE_VELOCITY
+                dart_node.setVelocity([vx, vy, vz, 0.0, 0.0, 0.0])
+                current_time = self.robot.getTime()
+                self.active_dart_nodes.append((dart_node, current_time))

@@ -1,0 +1,13 @@
+{
+  "active_profile": 2,
+  "profiles": [
+    "0 STATIK",
+    "1 YAVAS SINUS",
+    "2 STANDART SINUS",
+    "3 CEVIK SINUS",
+    "4 STEP / HOLD",
+    "5 ZIGZAG",
+    "6 TILT-ONLY",
+    "7 FIGURE-8"
+  ]
+}
