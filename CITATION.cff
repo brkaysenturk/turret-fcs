@@ -1,13 +1,14 @@
-cff-version: 1.2.0
+cff-version: 1.2.1
 message: "If you use this software in your research, please cite it as below."
 title: "Turret FCS: Autonomous Air Defense Fire Control System with Dual-Mode P/RL Tracking and Closed-Loop Telemetry"
 authors:
-  - family-names: "YTU Senior Design Team"
+  - family-names: "Senturk"
+    given-names: "Berkay"
     affiliation: "Yildiz Technical University"
-version: 1.3
-date-released: 2026-10-21
+version: 2.0.0
+date-released: 2026-10-24
 license: MIT
-repository-code: "https://github.com/berkay/turret_fcs"
+repository-code: "https://github.com/brkaysenturk/turret-fcs"
 keywords:
   - "fire control system"
   - "reinforcement learning"
