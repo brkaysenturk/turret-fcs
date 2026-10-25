@@ -21,6 +21,8 @@ import threading
 import time
 import cv2
 
+from .config import CONFIG
+
 
 class CameraThread:
     """
@@ -43,7 +45,13 @@ class CameraThread:
             pass
         return 0, "Default Camera"
 
-    def __init__(self, src=None, width=1280, height=720, fps=30):
+    def __init__(
+        self,
+        src=None,
+        width=CONFIG.optics.default_width,
+        height=CONFIG.optics.default_height,
+        fps=CONFIG.optics.default_fps,
+    ):
         if src is None:
             self.src, self.cam_name = self.detect_camera()
         else:

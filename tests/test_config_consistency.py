@@ -55,12 +55,19 @@ def test_config_ssot_and_component_defaults():
     for obj in (rl, env):
         assert math.isclose(obj.max_step_pan_deg, CONFIG.actuator.max_step_pan_deg, abs_tol=1e-5)
         assert math.isclose(obj.max_step_tilt_deg, CONFIG.actuator.max_step_tilt_deg, abs_tol=1e-5)
+    assert math.isclose(env.d_err_scale, CONFIG.rl.d_err_scale, abs_tol=1e-6)
+    assert math.isclose(env.d_err_ema_alpha, CONFIG.rl.d_err_ema_alpha, abs_tol=1e-6)
     assert math.isclose(env.v_max_px_s, CONFIG.rl.v_max_px_s, abs_tol=1e-6)
     assert math.isclose(env.dist_min_m, CONFIG.rl.dist_min_m, abs_tol=1e-6)
     assert math.isclose(env.dist_max_m, CONFIG.rl.dist_max_m, abs_tol=1e-6)
     assert math.isclose(env.yolo_noise_std, CONFIG.rl.yolo_noise_std, abs_tol=1e-6)
     assert env.max_steps == CONFIG.rl.episode_steps
     assert math.isclose(env.servo_deadband, CONFIG.actuator.servo_deadband_deg, abs_tol=1e-5)
+    assert math.isclose(env.backlash_deg, CONFIG.actuator.backlash_deg, abs_tol=1e-5)
+    assert math.isclose(env.lambda_u, CONFIG.rl.lambda_u, abs_tol=1e-6)
+    assert math.isclose(env.mu_du, CONFIG.rl.mu_du, abs_tol=1e-6)
+    assert math.isclose(env.progress_gain, CONFIG.rl.progress_gain, abs_tol=1e-6)
+    assert math.isclose(env.error_gain, CONFIG.rl.error_gain, abs_tol=1e-6)
 
     # 4. Optik ve Model Yollari
     assert CONFIG.optics.compute_fx(1280) > 1000.0

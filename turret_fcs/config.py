@@ -35,6 +35,7 @@ class OpticsConfig:
     v_fov_deg: float = 28.6
     default_width: int = 1280
     default_height: int = 720
+    default_fps: int = 30
 
     def compute_fx(self, width: int = 1280) -> float:
         return float((width / 2.0) / math.tan(math.radians(self.h_fov_deg / 2.0)))
@@ -67,6 +68,7 @@ class ActuatorConfig:
     max_step_pan_deg: float = 1.50     # RL kare basi maksimum Pan adimi (30 FPS'te 45 deg/s)
     max_step_tilt_deg: float = 0.75    # RL kare basi maksimum Tilt adimi (30 FPS'te 22.5 deg/s - donanim eylemsizlik uyumu)
     servo_deadband_deg: float = 0.10   # STM32 0.1 deg UART kuantalama ve servo mekanik olu bolgesi
+    backlash_deg: float = 1.20         # MG996R disli boslugu (histerezis olu bolgesi, derece)
 
 
 @dataclass(frozen=True)
@@ -87,8 +89,7 @@ class BallisticsConfig:
     projectile_speed_mps: float = 10.0
     gravity_accel: float = 9.80665
     default_distance_m: float = 2.0
-    # Atis sekansi zamanlamalari (saniye)
-    spinup_time_s: float = 1.00     # Volan motorlarinin maksimum devre ve balistik slew acisina ulasma suresi
+    # Atis sekansi zamanlamalari (saniye; spin-up sureleri FlywheelConfig icindedir)
     settle_time_s: float = 0.15     # Slew sonrasi servo oturma (sabit hold; lead/gravity canli)
     firing_pulse_s: float = 0.08    # Solenoid itici darbe suresi (80 ms - STM32 firmware ile uyumlu)
     recovery_time_s: float = 0.35   # Mekanik geri toplama suresi
@@ -115,6 +116,12 @@ class RLConfig:
     servo_tau_min_s: float = 0.035       # Domain randomization servo zaman sabiti
     servo_tau_max_s: float = 0.065
     episode_steps: int = 300             # Egitim bolumu uzunlugu
+    lambda_u: float = 0.02               # Kontrol eforu ceza katsayisi
+    mu_du: float = 0.08                  # Komut degisimi (jerk) ceza katsayisi
+    progress_gain: float = 2.0           # Hata azalma ilerleme odulu katsayisi
+    error_gain: float = 0.05             # Kalici karesel hata ceza katsayisi
+    bullseye_reward: float = 0.50        # Tam merkez (bullseye) arti odulu
+    bullseye_threshold_norm: float = 0.05  # Bullseye normalize hata yaricapi esigi
 
 
 @dataclass(frozen=True)
@@ -178,6 +185,8 @@ class SelectorConfig:
     spatial_gate_px: float = 250.0
     min_aspect_ratio: float = 0.35
     max_aspect_ratio: float = 2.50
+    yolo_imgsz: int = 640
+    tracker_config: str = "bytetrack.yaml"
 
 
 @dataclass(frozen=True)

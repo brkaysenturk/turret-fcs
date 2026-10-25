@@ -248,7 +248,7 @@ def generate_plots():
 
     table_data = [
         ["Metrik", "P Kontrolcu", "PPO RL", "Karsilastirma"],
-        ["Mimari Tip", "P (Kazanc Planli)", "PPO Derin RL", "Deterministik / Ogrenilmis"],
+        ["Mimari Tip", "Tip-1 P (Saf Oransal)", "PPO Derin RL", "Deterministik / Ogrenilmis"],
         ["Kilit Orani", f"%{p_lock_pct:.1f}", f"%{rl_lock_pct:.1f}", "Dengeli Kararlilik"],
         ["Pan RMS Hatasi", f"{p_pan_rms:.2f} deg", f"{rl_pan_rms:.2f} deg", f"RL (%{pan_impr:.1f} cevik)"],
         ["Tilt RMS Hatasi", f"{p_tilt_rms:.2f} deg", f"{rl_tilt_rms:.2f} deg", "Yuksek Hassasiyet"],

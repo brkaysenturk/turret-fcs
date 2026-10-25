@@ -65,10 +65,10 @@ void FCS_Comm_RxCallback(UART_HandleTypeDef *huart)
 
         if (rx_index >= PROTO_CMD_FRAME_LEN)
         {
-            rx_index = 0;
-
             if (Proto_VerifyChecksum(rx_buffer, PROTO_CMD_FRAME_LEN))
             {
+                rx_index = 0;
+
                 int16_t p = (int16_t)(rx_buffer[1] | (rx_buffer[2] << 8));
                 int16_t t = (int16_t)(rx_buffer[3] | (rx_buffer[4] << 8));
                 uint8_t st = rx_buffer[5];
@@ -96,6 +96,26 @@ void FCS_Comm_RxCallback(UART_HandleTypeDef *huart)
                     estop_streak = 0;
                     accept_command(p, t, st);
                 }
+            }
+            else
+            {
+                // Checksum hatali: kayan pencere (sliding window) ile tampon icindeki
+                // bir sonraki olasi 0xAA basligini bul ve kaydir (paket kaybini onler).
+                uint8_t shift = PROTO_CMD_FRAME_LEN;
+                for (uint8_t i = 1u; i < PROTO_CMD_FRAME_LEN; i++)
+                {
+                    if (rx_buffer[i] == PROTO_PC_TO_STM_HEADER)
+                    {
+                        shift = i;
+                        break;
+                    }
+                }
+                uint8_t remaining = (uint8_t)(PROTO_CMD_FRAME_LEN - shift);
+                for (uint8_t j = 0u; j < remaining; j++)
+                {
+                    rx_buffer[j] = rx_buffer[shift + j];
+                }
+                rx_index = remaining;
             }
         }
     }
@@ -164,4 +184,3 @@ bool FCS_Comm_GetCommand(float *pan, float *tilt, uint8_t *state)
 
     return true;
 }
-

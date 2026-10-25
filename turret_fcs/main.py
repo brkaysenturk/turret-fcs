@@ -123,7 +123,7 @@ def main():
                 else:
                     hud.log_event("[LIDAR] TF-LUNA TIMEOUT / OFFLINE", color=(0, 0, 255))
 
-            ret, frame = cap.read(wait_for_new=True)
+            ret, frame, frame_id = cap.read(wait_for_new=True, return_id=True)
             if not ret or frame is None:
                 hud.log_event("[CAM] FRAME TIMEOUT / CAMERA OFFLINE", color=(0, 0, 255))
                 break
@@ -150,7 +150,14 @@ def main():
                 fcs.sync_turret_pose(eff_hw_pan, eff_hw_tilt)
 
             conf_val = fcs.selector.min_conf
-            results = model.track(frame, imgsz=640, conf=conf_val, persist=True, tracker="bytetrack.yaml", verbose=False)
+            results = model.track(
+                frame,
+                imgsz=CONFIG.selector.yolo_imgsz,
+                conf=conf_val,
+                persist=True,
+                tracker=CONFIG.selector.tracker_config,
+                verbose=False,
+            )
             boxes = results[0].boxes if len(results) > 0 else []
 
             # 1. Angajman durum makinesini guncelle
@@ -212,7 +219,7 @@ def main():
                     fire_stage=eng_state.phase,
                     servo_pan_fb=hw_pan,
                     servo_tilt_fb=hw_tilt,
-                    frame_id=cap.current_frame_id if cap else None,
+                    frame_id=frame_id,
                     latency_ms=(time.perf_counter() - loop_started) * 1000.0,
                 )
 
@@ -248,7 +255,7 @@ def main():
                 is_estop=is_estop,
                 now=now,
                 is_range_valid=(fcs.range_valid and fcs.range_stable),
-                is_flywheel_idle=True,
+                is_flywheel_idle=(fcs.is_locked and not is_estop),
                 log_event_cb=emit_event,
             )
             if should_exit:

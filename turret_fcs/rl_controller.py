@@ -122,7 +122,6 @@ class RLController:
 
         self.max_step_pan_deg = CONFIG.actuator.max_step_pan_deg
         self.max_step_tilt_deg = CONFIG.actuator.max_step_tilt_deg
-        self.max_step_deg = self.max_step_pan_deg
         self.v_max_px_s = float(v_max_px_s)
         self.dist_min_m = float(dist_min_m)
         self.dist_max_m = float(dist_max_m)

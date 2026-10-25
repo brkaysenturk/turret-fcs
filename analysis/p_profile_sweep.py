@@ -14,14 +14,18 @@ import tempfile
 import time
 from pathlib import Path
 
+import sys
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from turret_fcs.config import CONFIG
+
 WEBOTS = r"C:\Program Files\Webots\msys64\mingw64\bin\webots.exe"
 WORLD = ROOT / "webots" / "worlds" / "webots_turret_fcs.wbt"
 LOG_DIR = ROOT / "webots" / "logs"
 RESULTS = ROOT / "webots" / "logs" / "p_sweep_results.csv"
-FX = 1411.0
+FX = CONFIG.optics.compute_fx(CONFIG.optics.default_width)
 
 PROFILES = {1: "sine_slow", 2: "sine_std", 3: "sine_fast", 4: "step_hold", 5: "zigzag", 7: "figure8"}
 GAINS = [0.20, 0.24, 0.28, 0.30, 0.32, 0.34, 0.36, 0.38]

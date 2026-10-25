@@ -77,20 +77,27 @@ class PController:
         self.smooth_cmd_pan = 0.0
         self.smooth_cmd_tilt = 0.0
 
-    def compute_angles(self, bx, by, center_x, center_y, fx, fy):
+    def compute_angles(self, bx, by, center_x, center_y, fx, fy, dt=CONFIG.rl.nominal_dt_s):
         """Kamera merkezinden hedefin acisal sapmasini hesaplar; tek EMA uygular."""
         target_err_x = bx - center_x
         target_err_y = by - center_y
         raw_pan = np.degrees(np.arctan(target_err_x / max(fx, 1e-6)))
         raw_tilt = np.degrees(np.arctan(-target_err_y / max(fy, 1e-6)))
 
-        self.actual_pan = self.alpha * raw_pan + (1.0 - self.alpha) * self.actual_pan
-        self.actual_tilt = self.alpha * raw_tilt + (1.0 - self.alpha) * self.actual_tilt
+        if dt is None or float(dt) <= 0.0:
+            alpha_eff = self.alpha
+        else:
+            dt_safe = float(np.clip(float(dt), 0.005, 0.200))
+            base_retain = float(np.clip(1.0 - self.alpha, 0.0, 1.0))
+            alpha_eff = float(1.0 - (base_retain ** (dt_safe / CONFIG.rl.nominal_dt_s)))
+        self.actual_pan = alpha_eff * raw_pan + (1.0 - alpha_eff) * self.actual_pan
+        self.actual_tilt = alpha_eff * raw_tilt + (1.0 - alpha_eff) * self.actual_tilt
         return self.actual_pan, self.actual_tilt
 
     def compute_gravity_comp(self, dist_cm):
         """Analitik yercekimi dususu kompanzasyonu: theta = arctan(g * D / (2 * v^2))."""
-        target_d_m = (dist_cm / 100.0) if (dist_cm is not None and dist_cm > 20) else self.DEFAULT_DISTANCE_M
+        min_dist_cm = CONFIG.lidar.min_distance_m * 100.0
+        target_d_m = (dist_cm / 100.0) if (dist_cm is not None and dist_cm >= min_dist_cm) else self.DEFAULT_DISTANCE_M
         v_sq_2 = 2.0 * (self.PROJECTILE_SPEED_MPS ** 2)
         return float(np.degrees(np.arctan((self.GRAVITY_ACCEL * target_d_m) / v_sq_2)))
 
@@ -103,7 +110,7 @@ class PController:
     def max_step_for(self, dt, axis="pan"):
         """FPS'ten bagimsiz kare basi adim limiti (30 FPS'te pan: 1.50, tilt: 0.75)."""
         dt_safe = max(1e-3, float(dt))
-        rate_scale = float(np.clip(dt_safe / 0.03333, 0.25, 3.0))
+        rate_scale = float(np.clip(dt_safe / CONFIG.rl.nominal_dt_s, 0.25, 3.0))
         if axis == "tilt":
             return float(min(self.max_output_tilt * rate_scale, CONFIG.actuator.max_step_tilt_deg))
         return float(min(self.max_output * rate_scale, CONFIG.control.max_command_step_deg))
@@ -115,7 +122,7 @@ class PController:
         else:
             effective = float(np.sign(error_deg)) * (abs_error - deadband)
             # kp_frame 30 FPS nominal kazancidir; dt ile olceklenir.
-            desired = kp_frame * effective * (dt / 0.03333)
+            desired = kp_frame * effective * (dt / CONFIG.rl.nominal_dt_s)
 
         # Komut derece/kare cinsinden oldugu icin ivme siniri: a * dt^2 (derece/kare)
         max_delta = accel_deg_s2 * (dt ** 2)

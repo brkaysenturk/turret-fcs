@@ -353,25 +353,23 @@ def sim_p_multiaxis_tracking():
     for k in range(1, N_dyn):
         if k % frame_steps == 0:
             idx_m = max(0, k - delay_steps)
-            # Pan hesaplamasi (Soft deadband + kazanc planlama)
+            # Pan hesaplamasi (Yumusak olu bolge + saf oransal Tip-1 P)
             e_p = target_pan_dyn[idx_m] - pos_p[idx_m]
             abs_ep = abs(e_p)
             if abs_ep <= DEADBAND_PAN:
                 cmd_p_cur = 0.0
             else:
                 eff_p = np.sign(e_p) * (abs_ep - DEADBAND_PAN)
-                far_mult_p = 1.6 if abs_ep > 3.0 else 1.0
-                cmd_p_cur = np.clip(KP_PAN_FRAME * far_mult_p * eff_p, -MAX_OUTPUT_FRAME, MAX_OUTPUT_FRAME)
+                cmd_p_cur = np.clip(KP_PAN_FRAME * eff_p, -MAX_OUTPUT_FRAME, MAX_OUTPUT_FRAME)
 
-            # Tilt hesaplamasi (Soft deadband + kazanc planlama)
+            # Tilt hesaplamasi (Yumusak olu bolge + saf oransal Tip-1 P)
             e_t = target_tilt_dyn[idx_m] - pos_t[idx_m]
             abs_et = abs(e_t)
             if abs_et <= DEADBAND_TILT:
                 cmd_t_cur = 0.0
             else:
                 eff_t = np.sign(e_t) * (abs_et - DEADBAND_TILT)
-                far_mult_t = 1.4 if abs_et > 2.0 else 1.0
-                cmd_t_cur = np.clip(KP_TILT_FRAME * far_mult_t * eff_t, -MAX_STEP_TILT_FRAME, MAX_STEP_TILT_FRAME)
+                cmd_t_cur = np.clip(KP_TILT_FRAME * eff_t, -MAX_STEP_TILT_FRAME, MAX_STEP_TILT_FRAME)
 
         # 1. derece eyleyici gecikmesi (tau = 45 ms)
         u_p = cmd_p_cur / DT_FRAME
@@ -649,9 +647,8 @@ for i in range(N_dyn):
     else:
         cmd = np.clip(KP_PAN_FRAME * np.sign(meas_err_deg) * (abs_e - DEADBAND_PAN), -MAX_OUTPUT_FRAME, MAX_OUTPUT_FRAME)
 
-    # Hiz ileri beslemesi katkisi
-    ff_cmd = np.clip(kf_state_v * 0.05 * DT_FRAME * 0.90, -0.6, 0.6)
-    total_cmd = np.clip(cmd + ff_cmd, -MAX_OUTPUT_FRAME, MAX_OUTPUT_FRAME)
+    # Saf oransal P kontrol komutu (Kalman yalnizca lead/telemetri icindir, motoru surmez)
+    total_cmd = np.clip(cmd, -MAX_OUTPUT_FRAME, MAX_OUTPUT_FRAME)
 
     cur_turret_pan += total_cmd / 0.05
     pan_err_dyn[i] = meas_err_deg

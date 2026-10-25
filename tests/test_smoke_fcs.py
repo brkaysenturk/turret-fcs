@@ -69,3 +69,11 @@ def test_fcs_ballistic_slew_and_lead():
          measured_y + fcs.target_velocity[1] * lead_time],
         abs=1e-6,
     )
+
+    # Kisa sureli (3 kare) hedef kaybinda coasting (predict_only) sayesinde yeniden yakalamada hiz sicramaz
+    vel_before_dropout = float(fcs.target_velocity[0])
+    for j in range(1, 4):
+        fcs.update(None, 640, 360, 1411.0, 1411.0, 0.033, dist_cm=200)
+    bx_reacquired = 640.0 + 100.0 * 0.033 * 33
+    fcs.update([bx_reacquired - 20, 340, bx_reacquired + 20, 380], 640, 360, 1411.0, 1411.0, 0.033, dist_cm=200)
+    assert fcs.target_velocity[0] == pytest.approx(vel_before_dropout, rel=0.08)

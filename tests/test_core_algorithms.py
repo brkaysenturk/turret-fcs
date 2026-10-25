@@ -39,7 +39,7 @@ def _packet(distance_cm, strength, pan_deg, tilt_deg):
 
 
 def test_target_selector_tracking_and_spatial_gating():
-    """TargetSelector kisa sureli hedef kaybi histerezisi ve mekansal kapi reddini dogrular."""
+    """TargetSelector kisa sureli hedef kaybi histerezisi, mekansal kapi ve guven agirlikli secimi dogrular."""
     # 1. Histerezis ve kisa sureli kayip toleransi
     sel = TargetSelector(min_conf=0.28, track_min_conf=0.16, max_lost_frames=3, spatial_gate_px=250)
     first = sel.select_best_target([_Box([600, 340, 640, 380], track_id=1)], 640, 360)
@@ -69,6 +69,20 @@ def test_target_selector_tracking_and_spatial_gating():
     )
     assert chosen == (610, 342, 650, 382)
     assert sel.locked_track_id == 2
+
+    # 3. Guven agirlikli secim: merkeze cok az daha yakin ama dusuk guvenli (0.30) sahte kutu yerine
+    #    hemen yanindaki yuksek guvenli (0.95) gercek hedef secilmeli
+    sel_conf = TargetSelector(min_conf=0.28)
+    best_conf = sel_conf.select_best_target(
+        [
+            _Box([720, 340, 760, 380], conf=0.30, track_id=10),  # dx = 100 px, score = 10000 / 0.30 = 33333
+            _Box([735, 340, 775, 380], conf=0.95, track_id=11),  # dx = 115 px, score = 13225 / 0.95 = 13921
+        ],
+        640,
+        360,
+    )
+    assert best_conf == (735, 340, 775, 380)
+    assert sel_conf.locked_track_id == 11
 
 
 def test_uart_communication_rx_and_tx():

@@ -72,6 +72,13 @@ def test_p_controller_acceleration_and_dt_scaling():
     for test_dt, expected in ((0.03333, 1.50), (0.0622, 1.50), (0.01667, 0.75)):
         assert PController().max_step_for(test_dt) == pytest.approx(expected, abs=0.01)
 
+    p_30 = PController()
+    p_60 = PController()
+    pan_30, _ = p_30.compute_angles(740.0, 360.0, 640.0, 360.0, 1411.0, 1411.0, dt=0.03333)
+    p_60.compute_angles(740.0, 360.0, 640.0, 360.0, 1411.0, 1411.0, dt=0.016665)
+    pan_60, _ = p_60.compute_angles(740.0, 360.0, 640.0, 360.0, 1411.0, 1411.0, dt=0.016665)
+    assert pan_60 == pytest.approx(pan_30, rel=1e-4)
+
 
 def test_p_controller_target_lost_reset_prevents_wrong_direction_motion():
     """Hedef kaybinda smooth_cmd sifirlanarak zit yondeki yeni hedefe ters hareket edilmesi engellenir."""

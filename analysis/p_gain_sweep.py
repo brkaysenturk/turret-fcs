@@ -60,7 +60,8 @@ def summarize(path, limit=600):
         rows = [r for r in csv.DictReader(fh) if int(float(r.get("target_detected") or 0)) == 1][:limit]
     if len(rows) < 100:
         return None
-    fx = 1411.0
+    from turret_fcs.config import CONFIG
+    fx = CONFIG.optics.compute_fx(CONFIG.optics.default_width)
     pan = []
     cmd = []
     for row in rows:

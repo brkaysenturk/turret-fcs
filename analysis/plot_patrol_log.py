@@ -56,7 +56,10 @@ def find_latest_log():
     ]
     all_files = []
     for p in patterns:
-        all_files.extend(glob.glob(p))
+        all_files.extend(
+            f for f in glob.glob(p)
+            if not f.endswith("_events.csv") and "consolidated_runs_summary" not in f
+        )
     if not all_files:
         return None
     return max(all_files, key=os.path.getctime)

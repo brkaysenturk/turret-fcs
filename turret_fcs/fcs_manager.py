@@ -36,7 +36,7 @@ class FCSManager:
     atesleme koordinasyonunu yoneten ust seviye yonetici sinifi.
     """
 
-    def __init__(self, control_mode="P", max_lost_frames=5, patrol_enabled=False):
+    def __init__(self, control_mode="P", max_lost_frames=CONFIG.selector.max_lost_frames, patrol_enabled=False):
         self.selector = TargetSelector()
         self.tracker = KalmanFilter()
         self.lock_mgr = LockManager()
@@ -100,6 +100,15 @@ class FCSManager:
         self.last_cmd_tilt = u_tilt
         return u_pan, u_tilt
 
+    def _compute_ego_pixel_shift(self, dt, fx, fy):
+        """1. derece servo yanitini gunceller ve kare basi ego piksel kaymasini hesaplar."""
+        alpha_m = float(dt / (self.ego_tau_s + dt))
+        self.ego_step_pan_deg = (1.0 - alpha_m) * self.ego_step_pan_deg + alpha_m * self.last_cmd_pan
+        self.ego_step_tilt_deg = (1.0 - alpha_m) * self.ego_step_tilt_deg + alpha_m * self.last_cmd_tilt
+        ego_dx = -float(fx) * float(np.tan(np.radians(self.ego_step_pan_deg)))
+        ego_dy = float(fy) * float(np.tan(np.radians(self.ego_step_tilt_deg)))
+        return ego_dx, ego_dy
+
     def _estimate_geom_distance(self, box_dim, fx, fy):
         """Hedef kutusunun acisal boyutundan mesafe tahmini (0.15 m yaricap varsayimi)."""
         if not box_dim or fx is None or fy is None:
@@ -153,7 +162,7 @@ class FCSManager:
         self.range_geom_mismatch = geom_bad
 
         last = float(self.last_valid_target_dist_m)
-        jump = abs(d_new - last) > L.jump_threshold_m
+        jump = bool(self._range_history) and (abs(d_new - last) > L.jump_threshold_m)
         self.range_jump = jump
 
         if jump:
@@ -252,7 +261,6 @@ class FCSManager:
 
     def _update_tracking_and_ballistics(self, best_box, center_x, center_y, fx, fy, dt, is_firing, dist_cm):
         """Hedef acilari, menzil kapilama, ego-hareket, Kalman hiz kestirimi ve kilit durumunu gunceller."""
-        was_lost = (self.frames_since_lost > 0)
         self.frames_since_lost = 0
         x1, y1, x2, y2 = best_box
         bx = (x1 + x2) // 2
@@ -281,12 +289,8 @@ class FCSManager:
         ))
 
         # 3. Ego-Motion (son motor komutunun 1. derece servo yaniti)
-        if not was_lost:
-            alpha_m = float(dt / (self.ego_tau_s + dt))
-            self.ego_step_pan_deg = (1.0 - alpha_m) * self.ego_step_pan_deg + alpha_m * self.last_cmd_pan
-            self.ego_step_tilt_deg = (1.0 - alpha_m) * self.ego_step_tilt_deg + alpha_m * self.last_cmd_tilt
-            ego_dx = -float(fx) * float(np.tan(np.radians(self.ego_step_pan_deg)))
-            ego_dy = float(fy) * float(np.tan(np.radians(self.ego_step_tilt_deg)))
+        if self.tracker.initialized:
+            ego_dx, ego_dy = self._compute_ego_pixel_shift(dt, fx, fy)
         else:
             self.ego_step_pan_deg = 0.0
             self.ego_step_tilt_deg = 0.0
@@ -352,8 +356,12 @@ class FCSManager:
 
         return self._integrate_command(u_p_pan, u_p_tilt)
 
-    def _handle_target_lost(self, dt):
-        """Hedef kaybinda tolerans sayacini, sifirlamayi ve Figure-8 devriye hareketini yonetir."""
+    def _handle_target_lost(self, dt, fx=None, fy=None):
+        """Hedef kaybinda tolerans sayacini, coasting kestirimini, sifirlamayi ve Figure-8 devriye hareketini yonetir."""
+        if fx is None:
+            fx = CONFIG.optics.compute_fx(CONFIG.optics.default_width)
+        if fy is None:
+            fy = CONFIG.optics.compute_fy(CONFIG.optics.default_height)
         self.frames_since_lost += 1
         self.last_pan_err_deg = 0.0
         self.last_tilt_err_deg = 0.0
@@ -370,6 +378,11 @@ class FCSManager:
             self.ego_step_tilt_deg = 0.0
             self.prev_applied_lead_pan = 0.0
             self.prev_applied_lead_tilt = 0.0
+        elif self.tracker.initialized:
+            ego_dx, ego_dy = self._compute_ego_pixel_shift(dt, fx, fy)
+            px, py, kvx, kvy = self.tracker.predict_only(dt=dt, ego_dx=ego_dx, ego_dy=ego_dy)
+            self.target_velocity = np.array([kvx, kvy], dtype=float)
+            self.pred_center = np.array([px, py], dtype=float)
 
         self.p_controller.actual_pan = 0.0
         self.p_controller.actual_tilt = 0.0
@@ -394,7 +407,7 @@ class FCSManager:
             return self._select_control_command(
                 bx, by, center_x, center_y, fx, fy, pan_deg, tilt_deg, d_m, dt, slew_factor
             )
-        return self._handle_target_lost(dt)
+        return self._handle_target_lost(dt, fx=fx, fy=fy)
 
     def sync_turret_pose(self, pan_deg, tilt_deg):
         """STM32 geri beslemesinden taretin mutlak pozunu senkronize eder.
@@ -432,4 +445,3 @@ class FCSManager:
             self.rl_controller.reset()
         self.patrol.reset()
         self.selector.reset()
-

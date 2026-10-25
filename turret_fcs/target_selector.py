@@ -10,8 +10,8 @@ ELEME VE PUANLAMA KRITERLERI:
 2. Geometrik Alan ve Boyut Filtresi: Cok kucuk (area < 400 px^2) gurultuler ve asiri buyuk
    yanlis tespitler (area > 400.000 px^2) elenir.
 3. En Boy Orani (Aspect Ratio): 0.35 - 2.50 arasindaki gecerli sekiller kabul edilir.
-4. Nisangah Mesafesi (Crosshair Distance): Nisangah merkezine (reticle center) en yakin
-   olan hedef en yuksek oncelikle secilir.
+4. Nisangah Mesafesi ve Guven Agirligi: Nisangah merkezine (reticle center) en yakin
+   ve yuksek guven skorlu (dist_sq / conf) hedef en yuksek oncelikle secilir.
 ================================================================================
 """
 
@@ -141,14 +141,14 @@ class TargetSelector:
                 if c["track_id"] == self.locked_track_id and self._within_spatial_gate(c):
                     return self._accept(c)
 
-        # 2. ID yoksa veya ID atlamasi supheliyse onceki konuma en yakin aday.
+        # 2. ID yoksa veya ID atlamasi supheliyse onceki konuma en yakin (guven agirlikli) aday.
         if self.last_target_center is not None and self.lost_counter <= self.max_lost_frames:
             spatial_candidates = [c for c in candidates if self._within_spatial_gate(c)]
             if spatial_candidates:
-                return self._accept(min(spatial_candidates, key=lambda c: c["dist_sq_last"]))
+                return self._accept(min(spatial_candidates, key=lambda c: c["dist_sq_last"] / max(c["conf"], 0.1)))
 
-        # 3. Yeni hedef: ekran merkezine en yakin aday.
-        return self._accept(min(candidates, key=lambda c: c["dist_sq_center"]))
+        # 3. Yeni hedef: ekran merkezine en yakin ve guvenilir aday.
+        return self._accept(min(candidates, key=lambda c: c["dist_sq_center"] / max(c["conf"], 0.1)))
 
     def _within_spatial_gate(self, candidate):
         if candidate["dist_sq_last"] is None:

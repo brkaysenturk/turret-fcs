@@ -46,3 +46,10 @@ def test_lidar_range_gating_and_freeze():
         fcs_fire._update_lidar_range(300, False, None, 1000.0, 1000.0)
     assert fcs_fire.last_valid_target_dist_m == 3.0
     assert fcs_fire.range_valid is True
+
+    # 6. İlk hedef yakalamada (henüz menzil kilitlenmemişken) farklı boyuttaki balonun
+    #    varsayılan 2.0m'den >0.5m uzakta olması durumunda geometri kilidine takılmadan kabulü
+    fcs_init = FCSManager(control_mode="P")
+    fcs_init._update_lidar_range(115, False, (60, 60), 1410.0, 1412.0)
+    assert fcs_init.range_valid is True
+    assert fcs_init.last_valid_target_dist_m == 1.15

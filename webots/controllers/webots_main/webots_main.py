@@ -58,14 +58,7 @@ def main():
     presenter = HUDPresenter(hud)
     start_mode = os.environ.get("WEBOTS_CONTROL_MODE", "P").strip().upper()
     fcs = FCSManager(control_mode=start_mode if start_mode in ("P", "RL") else "P", patrol_enabled=False)
-    engagement = EngagementManager(
-        idle_spinup_time_s=CONFIG.flywheel.idle_spinup_time_s,
-        cold_spinup_time_s=CONFIG.flywheel.cold_spinup_time_s,
-        settle_time_s=CONFIG.ballistics.settle_time_s,
-        firing_pulse_s=CONFIG.ballistics.firing_pulse_s,
-        recovery_time_s=CONFIG.ballistics.recovery_time_s,
-        eval_display_time_s=CONFIG.ballistics.eval_display_time_s,
-    )
+    engagement = EngagementManager()
     tuning = load_tuning()
     apply_tuning(fcs, tuning)
     ballistics = VirtualBallisticsEvaluator(bullet_speed=CONFIG.ballistics.projectile_speed_mps, supervisor=hw.robot)
@@ -114,7 +107,14 @@ def main():
 
             # YOLO Takip (ByteTrack ile)
             conf_val = fcs.selector.min_conf
-            results = model.track(frame, imgsz=640, conf=conf_val, persist=True, tracker="bytetrack.yaml", verbose=False)
+            results = model.track(
+                frame,
+                imgsz=CONFIG.selector.yolo_imgsz,
+                conf=conf_val,
+                persist=True,
+                tracker=CONFIG.selector.tracker_config,
+                verbose=False,
+            )
             boxes = results[0].boxes if len(results) > 0 else []
 
             # 2 Asamali Balistik Angajman Yonetimi (SSOT FSM)
@@ -165,14 +165,7 @@ def main():
                     launcher.stop_flywheels()
 
             # FCS Durum Bayragi
-            if is_estop:
-                fcs_state = FCSState.ESTOP
-            elif eng_state.phase == "FIRING":
-                fcs_state = FCSState.FIRING
-            elif fcs.is_locked:
-                fcs_state = FCSState.LOCKED
-            else:
-                fcs_state = FCSState.TRACKING
+            fcs_state = FCSState.ESTOP if is_estop else eng_state.fcs_fire_cmd_state
 
             # E-STOP veya Normal Motor Surusu
             if is_estop:

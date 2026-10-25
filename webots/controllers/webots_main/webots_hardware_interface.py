@@ -70,12 +70,14 @@ class WebotsHardwareInterface:
             self.w_cam = self.camera.getWidth()
             self.h_cam = self.camera.getHeight()
         else:
-            self.w_cam = 1280
-            self.h_cam = 720
+            self.w_cam = CONFIG.optics.default_width
+            self.h_cam = CONFIG.optics.default_height
 
         # 80 ms kamera/algilama gecikmesi: (sim_t, frame, pan, tilt, dist, strength)
         # Zaman damgali kuyruk; kare ile birlikte pozu ve mesafeyi de geciktirir.
-        self.observation_delay_s = float(os.environ.get("WEBOTS_OBS_DELAY_S", "0.080"))
+        self.observation_delay_s = float(
+            os.environ.get("WEBOTS_OBS_DELAY_S", str(CONFIG.ballistics.system_latency_s))
+        )
         self.observation_delay_s = max(0.04, min(0.12, self.observation_delay_s))
         self.observation_queue = collections.deque(maxlen=8)
 
@@ -92,7 +94,7 @@ class WebotsHardwareInterface:
         self.servo_tau = CONFIG.mount.servo_tau  # 0.045 s (45 ms motor zaman sabiti)
         self.servo_lag_pan_deg = 0.0
         self.servo_lag_tilt_deg = 0.0
-        self.backlash_deg = 1.20                 # 1.2 derece mekanik disli boslugu
+        self.backlash_deg = CONFIG.actuator.backlash_deg  # 1.2 derece mekanik disli boslugu
         self.backlash_pan_out = 0.0
         self.backlash_tilt_out = 0.0
 
@@ -154,7 +156,11 @@ class WebotsHardwareInterface:
         if not self.lidar:
             return 0, 0
         dist_val = self.lidar.getValue()
-        dist_cm = int(dist_val * 100.0) if (0.20 <= dist_val <= 8.0) else 0
+        dist_cm = (
+            int(dist_val * 100.0)
+            if (CONFIG.lidar.min_distance_m <= dist_val <= CONFIG.lidar.max_distance_m)
+            else 0
+        )
         strength = 1500 if dist_cm > 0 else 0
         return dist_cm, strength
 
@@ -213,7 +219,7 @@ class WebotsHardwareInterface:
         if self.tilt_motor:
             self.tilt_motor.setPosition(math.radians(act_w_tilt))
 
-    def _apply_backlash(self, target_angle, last_output, backlash_deg=1.20):
+    def _apply_backlash(self, target_angle, last_output, backlash_deg=CONFIG.actuator.backlash_deg):
         """
         Dogru mekanik bosluk modeli: cikis, hedefe backlash kadar yakinlasinca
         bosluk icinde kalir; hedef bosluktan fazla uzaklasirsa aradaki fark

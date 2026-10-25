@@ -24,9 +24,13 @@ def main():
     balloon_dir.mkdir(parents=True, exist_ok=True)
     bg_dir.mkdir(parents=True, exist_ok=True)
 
-    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+    from turret_fcs.camera_thread import CameraThread
+    from turret_fcs.config import CONFIG
+
+    cam_idx, cam_api = CameraThread.detect_camera()
+    cap = cv2.VideoCapture(cam_idx, cam_api)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, CONFIG.optics.default_width)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CONFIG.optics.default_height)
 
     if not cap.isOpened():
         print("[HATA] C270 kamerasi acilamadi! Baska bir program tarafindan kullaniliyor olabilir.")
