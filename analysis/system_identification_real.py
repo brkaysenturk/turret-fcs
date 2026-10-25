@@ -294,7 +294,7 @@ def run_system_identification(log_path: Path):
     print(f"    - Kestirilen Kazanc (K)           : {fopdt['gain_K']:.3f}")
     print(f"    - Model Uydurma RMSE              : {fopdt['rmse_deg']:.3f} derece")
 
-    out_png = FIG_DIR / "system_id_real_hardware.png"
+    out_png = FIG_DIR / "fig13_system_id_real_hardware.png"
     plot_system_identification_results(fopdt, reversal, noise, out_png)
 
     summary = {

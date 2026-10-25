@@ -57,7 +57,7 @@ Sistem, tek bir operatörün hava sahasını izlemesine ve yalnızca güvenli ki
 | **Gömülü denetleyici** | STM32F401RE Nucleo, ARM Cortex-M4 @ 84 MHz | 100 Hz servo/LiDAR döngüsü, güvenlik bekçileri |
 | **Eyleyiciler** | MG996R/DS3218 servolar, çift FF-180 volan, JF-0530B solenoid | Taret yönlendirme ve dart fırlatma |
 | **Arayüz** | MIL-STD taktik HUD + Telemetri v2 | Operatör kararı ve mühendislik kaydı |
-| **Dijital ikiz** | Webots R2025a, 80 ms taşıma gecikmesi, 45 ms servo lag, 1.20° backlash | Donanıma zarar vermeden doğrulama |
+| **Dijital ikiz** | Webots R2025a, 66.7 ms (2 kare) taşıma gecikmesi, 45-68 ms servo lag, 1.61° backlash | Donanıma zarar vermeden doğrulama |
 
 ---
 
@@ -267,13 +267,13 @@ Hedef hızına göre dinamik kilit eşiği (1.60° - 3.00°), +0.60° çıkış 
 
 #### `p_controller.py` — Hassas kilit kontrolcüsü
 
-Tek EMA (alpha = 0.85) ile ölçüm gürültüsünü yumuşatır. Yumuşak ölü bölge (pan 0.85°, tilt 0.95°) içinde motoru sıfırlar; dışında `Kp * (|e| - db)` ile oransal komut üretir. Pan `Kp = 0.22`, tilt `Kp = 0.11` değerindedir. Komut, pan 400°/s² ve tilt 267°/s² ivme sınırına ve kare başına 1.50°/0.75° adım sınırına tabidir. Ki ve Kd yoktur; Kalman hızı motor komutuna girmez.
+Tek EMA (alpha = 0.8659) ile ölçüm gürültüsünü yumuşatır. Yumuşak ölü bölge (pan 0.85°, tilt 0.95°) içinde motoru sıfırlar; dışında `Kp * (|e| - db)` ile oransal komut üretir. 1.61° donanım dişli boşluğu için Optuna TPE ile optimize edilen pan `Kp = 0.2598` (~0.26), tilt `Kp = 0.1691` (~0.17) kazançları kullanılır. Komut, pan 456.9°/s² ve tilt 181.5°/s² ivme sınırına ve kare başına 1.50°/0.75° adım sınırına tabidir. Ki ve Kd yoktur; Kalman hızı motor komutuna girmez.
 
 **Ne sağlar:** Statik ve yavaş hedeflerde düşük titreşimli, öngörülebilir ve mekanik olarak nazik bir kilit sağlar.
 
 #### `rl_controller.py` — Çevik takip kontrolcüsü
 
-PPO politikasını Stable-Baselines3 veya PyTorch gerektirmeyen 11-64-64-2 NumPy MLP ile çalıştırır. Gözlem 11 boyuttadır: normalize hata (x, y), hata türevi (x, y), hız (x, y), normalize mesafe ve son iki adımın normalize eylem geçmişi. Çalışma zamanında hız gözlemi sıfırlanır; politika konum hatası, hata türevi ve eylem geçmişiyle kararlı kalır. Çıkışta açısal yumuşak ölü bölge (Hermite taper), yön değiştirme sönümü (0.50) ve P ile aynı ivme/adım sınırları uygulanır. P harmanı yoktur; politika doğrudan motor adımı üretir.
+PPO politikasını Stable-Baselines3 veya PyTorch gerektirmeyen 11-64-64-2 NumPy MLP ile çalıştırır. Gözlem 11 boyuttadır: normalize hata (x, y), hata türevi (x, y), hız (x, y), normalize mesafe ve son iki adımın normalize eylem geçmişi. Çalışma zamanında hız gözlemi sıfırlanır; politika konum hatası, hata türevi ve eylem geçmişiyle kararlı kalır. Çıkışta açısal yumuşak ölü bölge (pan 1.60°, tilt 1.60° simetrik Hermite taper), 2 karelik (~66 ms) çoklu çerçeve yön değiştirme sönümü (`reversal_hold_frames = 2`), tilt ekseninde 0.75° donanımsal tavan koruması ve P ile uyumlu ivme/adım sınırları uygulanır. P harmanı yoktur; politika doğrudan motor adımı üretir.
 
 **Ne sağlar:** 8-10°/s mertebesindeki manevralarda taşıma gecikmesini eylem geçmişiyle telafi ederek kilidi korur.
 
@@ -318,7 +318,7 @@ Optik, kontrol, aktüatör, Kalman, balistik, RL, LiDAR, volan, montaj, kilit ve
 
 #### `turret_fcs/rl_sim/turret_env.py` — Gymnasium ortamı
 
-Gerçek plant kısıtlarını modeller: 1.20° dişli boşluğu, 0.10° servo ölü bölgesi, 1.50°/kare pan-tilt adım sınırı, 35-65 ms servo zaman sabiti, 1-3 kare taşıma gecikmesi, C270 optik modeli ve YOLO kutu gürültüsü. Hedef yörüngeleri statik, doğrusal, zigzag, kaçış ve dairesel olarak rastgeleleştirilir. Gözlem 7 boyutlu gecikmeli sensör verisi + 4 boyutlu taze eylem geçmişi = 11 boyuttur.
+Gerçek plant kısıtlarını modeller: 1.61° dişli boşluğu (donanım sistem tanımlamasıyla), 0.10° servo ölü bölgesi, pan 1.50° ve tilt 0.75° adım sınırları, 45-68 ms servo zaman sabiti, 2 kare (66.7 ms) taşıma gecikmesi, 2.10 px YOLO kutu gürültüsü ve C270 optik modeli. Hedef yörüngeleri statik, doğrusal, zigzag, kaçış ve dairesel olarak rastgeleleştirilir. Gözlem 7 boyutlu gecikmeli sensör verisi + 4 boyutlu taze eylem geçmişi = 11 boyuttur.
 
 **Ne sağlar:** Politikayı gerçek donanıma yakın bir plant üzerinde, gecikme ve gürültüye dayanıklı olarak eğitir.
 
@@ -332,13 +332,17 @@ Gerçek plant kısıtlarını modeller: 1.20° dişli boşluğu, 0.10° servo ö
 
 | Betik | Ne üretir? |
 | :--- | :--- |
-| `plot_tuned_system.py` | 20° basamak yanıtı, faz portresi, Bode, dinamik takip, Lissajous, balistik ve kapalı çevrim kilit figürleri |
-| `system_identification.py` | Sentetik FOPDT/SOPDT model uydurma, kök-yer eğrisi ve kapalı çevrim karşılaştırması |
-| `generate_kalman_plots.py` | Kalman konum/hız kestirimi, inovasyon dağılımı ve doğrulama tablosu |
-| `generate_benchmark_plots.py` | TurretEnv üzerinde P ve PPO RL karşılaştırma paneli |
+| `plot_tuned_system.py` | 20° basamak yanıtı, faz portresi, Bode, dinamik takip, Lissajous, balistik ve kapalı çevrim kilit figürleri (fig1-fig8) |
+| `system_identification_real.py` | Canlı telemetriden gerçek donanım Sistem Tanılaması (1.61° backlash, 66.7 ms gecikme, fig13) |
+| `optimize_p_controller.py` | 5 parametreli Tip-1 P kontrolcü Optuna TPE çok değişkenli optimizasyonu (1.61° backlash) |
+| `optimize_rl_wrapper.py` | RL kontrolcü Hermite taper ve yön değiştirme sönümü Optuna TPE optimizasyonu |
+| `optimize_selector_evt.py` | Aşırı Değer Teorisi (EVT) ile hedef seçici güven eşiği optimizasyonu (fig12) |
+| `optimize_ballistics_roc.py` | Balistik vuruş olasılığı ROC / Youden J eşik optimizasyonu |
+| `generate_kalman_plots.py` | Kalman konum/hız kestirimi, inovasyon dağılımı ve doğrulama tablosu (fig10) |
+| `generate_benchmark_plots.py` | TurretEnv üzerinde P ve PPO RL karşılaştırma paneli (fig11) |
 | `inspect_logs.py` | Son telemetri CSV'sinde kilit, hata, salınım ve kesintisiz kilit serisi raporu |
 | `export_rl_policy.py` | SB3 `.zip` modelini bağımsız `.npz` NumPy MLP'ye aktarır |
-| `rl_diagnose.py` | Üretim RL yolu ile ham politikayı aynı tohumlarda karşılaştırır |
+| `system_identification.py` | Sentetik FOPDT/SOPDT model uydurma ve kök-yer eğrisi (fig9) |
 | `p_profile_sweep.py` | 6 hedef profili × 8 P kazancı Webots taraması |
 
 ### 6.7 Webots dijital ikizi
@@ -346,7 +350,7 @@ Gerçek plant kısıtlarını modeller: 1.20° dişli boşluğu, 0.10° servo ö
 | Modül | Ne işe yarar? |
 | :--- | :--- |
 | `webots_main.py` | Üretim `FCSManager`, `EngagementManager`, HUD ve telemetri kodunu Webots'ta çalıştırır |
-| `webots_hardware_interface.py` | Motor, enkoder, kamera ve LiDAR cihazlarını üretim arayüzüne bağlar; 80 ms gözlem gecikmesi, 45 ms servo lag, 1.20° backlash ve 0.1° kuantalama uygular |
+| `webots_hardware_interface.py` | Motor, enkoder, kamera ve LiDAR cihazlarını üretim arayüzüne bağlar; 66.7 ms (2 kare) gözlem gecikmesi, 45-68 ms servo lag, 1.61° backlash ve 0.1° kuantalama uygular |
 | `webots_flywheel_launcher.py` | Volan spin-up, boşta dönüş ve solenoid tetiklemesini simüle eder |
 | `webots_virtual_ballistics.py` | Sanal mermi uçuşu ve isabet değerlendirmesi üretir |
 | `webots_telemetry_logger.py` | Webots oturumunu CSV olarak kaydeder |
@@ -389,7 +393,7 @@ u = sign(e) * Kp * (|e| - db),       |e| > db
 u(k) = clip(u_desired, u(k-1) - a * dt^2, u(k-1) + a * dt^2)
 ```
 
-Pan için `a = 400°/s²`, tilt için `a = 267°/s²` kullanılır. Bu, sabit bir hız tavanı koymadan kalkış ve yön değişimlerini yumuşatır.
+Pan için `a = 456.9°/s²`, tilt için `a = 181.5°/s²` kullanılır (Optuna TPE optimal). Bu, sabit bir hız tavanı koymadan kalkış ve yön değişimlerini yumuşatır.
 
 ### 7.3 CV Kalman ve ego-hareket telafisi
 
@@ -426,10 +430,13 @@ Hedefin açısal yarıçapı `theta_target`, toplam belirsizlik `sigma_total` ol
 
 ```text
 nc = (angular_error / sigma_total)^2
-x_cutoff = (theta_target / sigma_total)^2
-p_hit = ncx2.cdf(x_cutoff, df=2, nc=nc) * 100
+x_cutoff = (theta_target_lethal / sigma_total)^2
+p_raw = ncx2.cdf(x_cutoff, df=2, nc=nc) * 100
+p_hit = p_raw * s_tracking * s_gate
 sigma_total^2 = sigma_weapon^2 + (0.25 * omega * t_total)^2
 ```
+
+Burada hedef yarıçapı %60 ölümcül çekirdek (`theta_target_lethal = 0.60 * theta_target`) ile sınırlandırılır; vuruş olasılığı ayrıca takip kararlılık sayacı (`s_tracking = 0.15 + 0.85 * (counter/10)^1.5`) ve kilit kapısı aşımıyla modüle edilerek taret yönelirken (slew anında) sahte %99 vuruş olasılığı oluşması engellenir.
 
 `sigma_weapon = 1.25°`, `t_total = t_flight + 0.080 s` sistem gecikmesidir. Sonuç %0 - %100 aralığında HUD'a ve telemetriye yazılır.
 
@@ -452,7 +459,7 @@ r = 2.0 * (e_prev^2 - e^2)
     + bullseye
 ```
 
-Hata azalışı pozitif, hata karesi, kontrol eforu ve eylem değişimi negatif ağırlıklıdır. `bullseye`, hata 0.05 normalize birimin altına indiğinde verilen bonusdur. Eğitimde 1.20° backlash, 0.10° servo ölü bölgesi, 1.50°/kare adım sınırı ve 1-3 kare rastgele gecikme kullanılır.
+Hata azalışı pozitif, hata karesi, kontrol eforu ve eylem değişimi negatif ağırlıklıdır. `bullseye`, hata 0.05 normalize birimin altına indiğinde verilen bonusdur. Eğitimde 1.61° backlash, 0.10° servo ölü bölgesi, pan 1.50° / tilt 0.75° adım sınırı, 2 kare (66.7 ms) gecikme ve 2.10 px YOLO gürültüsü kullanılır.
 
 ---
 
@@ -525,16 +532,20 @@ Benzetim, 80 ms taşıma gecikmesi ve dinamik eyleyici lag'i altında dört tohu
 
 | Figür | Gösterdiği |
 | :--- | :--- |
-| `fig1_tuned_step_and_control_effort.png` | 20° basamak yanıtı; 0.51 s yerleşme, %9.8 aşım, pan/tilt kontrol eforu |
+| `fig1_tuned_step_and_control_effort.png` | 20° basamak yanıtı; pan/tilt kontrol eforu ve ivme sınırlı kalkış |
 | `fig2_tuned_phase_plane_portrait.png` | Faz düzlemi; yumuşak ölü bölgeye asimptotik yakınlaşma |
-| `fig3_tuned_bode_stability.png` | Açık çevrim Bode; 6.32 rad/s geçiş, 45.1° faz marjı, 7.2 dB kazanç marjı |
-| `fig4_tuned_dynamic_tracking.png` | Sinüzoidal hedefte pan/tilt takip ve hata |
+| `fig3_tuned_bode_stability.png` | Açık çevrim Bode; kazanç ve faz kararlılık marjları |
+| `fig4_tuned_dynamic_tracking.png` | Sinüzoidal hedefte pan/tilt dinamik takip ve hata |
 | `fig5_tuned_lissajous_coverage.png` | Figure-8 devriye yörüngesi ve 3B tarama hacmi |
 | `fig6_tuned_ballistic_characteristics.png` | Mesafeye göre uçuş süresi ve süper-elevasyon |
-| `fig7_sim_still_lock.png` | Sabit hedefte kapalı çevrim kilit ve motor sessizliği (benzetim) |
-| `fig8_sim_moving_tracking.png` | Manevralı hedefte takip ve kilit kararlılığı (benzetim) |
+| `fig7_sim_still_lock.png` | Sabit hedefte kapalı çevrim kilit ve motor sessizliği |
+| `fig8_sim_moving_tracking.png` | Manevralı hedefte takip ve kilit kararlılığı |
 | `fig9_system_identification.png` | Sentetik FOPDT/SOPDT sistem tanımlama ve kök-yer eğrisi |
 | `fig10_kalman_tracking_performance.png` | Kalman konum/hız doğruluğu, inovasyon dağılımı ve KPI tablosu |
+| `fig11_p_vs_rl_final_benchmark.png` | Kapalı çevrim TurretEnv üzerinde P ve PPO RL karşılaştırma paneli |
+| `fig12_selector_evt_optimization.png` | Aşırı Değer Teorisi (EVT) ile hedef güven skoru analizi ve eşik tespiti |
+| `fig13_system_id_real_hardware.png` | Gerçek donanım telemetrisinden dişli boşluğu (1.61°) ve gecikme kestirimi |
+| `ballistics_roc_optimization.png` | Balistik vuruş olasılığı ROC eğrisi ve Youden J optimal kesme noktası |
 
 ![20 Derece Basamak Yanıtı](analysis/figures/fig1_tuned_step_and_control_effort.png)
 
@@ -555,6 +566,12 @@ Benzetim, 80 ms taşıma gecikmesi ve dinamik eyleyici lag'i altında dört tohu
 ![Sistem Tanımlama](analysis/figures/fig9_system_identification.png)
 
 ![Kalman Doğrulama](analysis/figures/fig10_kalman_tracking_performance.png)
+
+![Hedef Güven Eşiği EVT Optimizasyonu](analysis/figures/fig12_selector_evt_optimization.png)
+
+![Gerçek Donanım Sistem Tanılaması](analysis/figures/fig13_system_id_real_hardware.png)
+
+![Balistik ROC Eğrisi](analysis/figures/ballistics_roc_optimization.png)
 
 ---
 
@@ -710,13 +727,18 @@ Eğitim çıktısı `turret_fcs/rl_sim/models/` altına yazılır. Üretim çık
 turret_fcs/
 ├── .github/workflows/ci.yml          # Python 3.10-3.12 test matrisi
 ├── analysis/                         # Kontrol, Kalman, telemetri ve Webots analiz araçları
-│   ├── figures/                      # 300 DPI doğrulama figürleri
-│   ├── plot_tuned_system.py
-│   ├── system_identification.py
-│   ├── generate_kalman_plots.py
-│   ├── generate_benchmark_plots.py
-│   ├── inspect_logs.py
-│   └── export_rl_policy.py
+│   ├── figures/                      # 300 DPI doğrulama figürleri (fig1 - fig13)
+│   ├── optimize_p_controller.py      # 5 parametreli P Optuna TPE aracı
+│   ├── optimize_rl_wrapper.py        # RL sarmalayıcı ve taper Optuna TPE aracı
+│   ├── optimize_selector_evt.py      # EVT hedef seçici güven eşiği aracı
+│   ├── optimize_ballistics_roc.py    # Vuruş olasılığı ROC eşik aracı
+│   ├── system_identification_real.py # Canlı telemetri Sistem Tanılama aracı
+│   ├── plot_tuned_system.py          # Sistem basamak, Bode, faz, devriye çizici
+│   ├── generate_kalman_plots.py      # Kalman doğrulama paneli
+│   ├── generate_benchmark_plots.py   # P vs RL benchmark paneli
+│   ├── inspect_logs.py               # Telemetri istatistik analizörü
+│   ├── export_rl_policy.py           # SB3 -> NumPy MLP aktarıcı
+│   └── p_optuna_results.json         # P kontrolcü optimal hiperparametreleri
 ├── docs/
 │   ├── assets/                       # Mimari, akış, donanım şemaları ve CAD renderları
 │   ├── cad/                          # 3B baskı STL dosyaları

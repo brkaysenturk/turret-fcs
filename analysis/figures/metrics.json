@@ -2,31 +2,31 @@
   "system": "Turret FCS",
   "timestamp": "2026-10-24",
   "control": {
-    "kp_pan_frame": 0.22,
-    "kp_tilt_frame": 0.11,
-    "kv_pan_continuous_1_s": 6.6000000000000005,
-    "kv_tilt_continuous_1_s": 3.3000000000000003,
+    "kp_pan_frame": 0.1953,
+    "kp_tilt_frame": 0.1544,
+    "kv_pan_continuous_1_s": 5.859,
+    "kv_tilt_continuous_1_s": 4.632000000000001,
     "deadband_pan_deg": 0.85,
     "deadband_tilt_deg": 0.95,
-    "taper_pan_deg": 2.0,
-    "taper_tilt_deg": 3.0,
+    "taper_pan_deg": 1.6,
+    "taper_tilt_deg": 1.6,
     "max_output_frame_deg": 1.5,
     "max_slew_velocity_deg_s": 45.0,
     "max_step_tilt_deg": 0.75,
     "max_slew_velocity_tilt_deg_s": 22.5,
-    "crossover_freq_w_gc_rad_s": 6.32,
-    "phase_margin_pm_deg": 45.1,
-    "phase_crossover_w_pc_rad_s": 13.07,
-    "gain_margin_gm_db": 7.2,
+    "crossover_freq_w_gc_rad_s": 5.47,
+    "phase_margin_pm_deg": 48.7,
+    "phase_crossover_w_pc_rad_s": 12.75,
+    "gain_margin_gm_db": 9.2,
     "bode_theoretical_exact_model": {
       "model_description": "Analitik L(s) transfer fonksiyonu: exact pure delay (80 ms) + 1st order servo lag (tau = 45 ms)",
-      "crossover_freq_w_gc_rad_s": 6.32,
-      "phase_margin_pm_deg": 45.1,
-      "phase_crossover_w_pc_rad_s": 13.07,
-      "gain_margin_gm_db": 7.2
+      "crossover_freq_w_gc_rad_s": 5.47,
+      "phase_margin_pm_deg": 48.7,
+      "phase_crossover_w_pc_rad_s": 12.75,
+      "gain_margin_gm_db": 9.2
     },
-    "settling_time_20deg_s": 0.51,
-    "overshoot_pct": 9.8
+    "settling_time_20deg_s": 0.54,
+    "overshoot_pct": 9.3
   },
   "ballistics": {
     "projectile_speed_v0_mps": 10.0,
@@ -37,8 +37,8 @@
     "flight_time_5m_ms": 500.0
   },
   "hardware_dynamics": {
-    "servo_tau_s": 0.045,
-    "system_latency_s": 0.08,
+    "servo_tau_s": 0.0682,
+    "system_latency_s": 0.0667,
     "sampling_fps": 30.0,
     "sampling_dt_s": 0.03333
   }

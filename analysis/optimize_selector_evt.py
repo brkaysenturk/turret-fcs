@@ -88,7 +88,7 @@ def run_selector_optimization(csv_path: Path):
     ax2.grid(True)
     ax2.legend(loc="upper right")
 
-    out_png = FIG_DIR / "selector_evt_optimization.png"
+    out_png = FIG_DIR / "fig12_selector_evt_optimization.png"
     plt.tight_layout()
     plt.savefig(out_png, dpi=300, bbox_inches="tight")
     plt.close()
