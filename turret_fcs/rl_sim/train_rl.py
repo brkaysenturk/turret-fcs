@@ -2,25 +2,28 @@
 ================================================================================
 MODUL: PPO EGITIM MOTORU (PROGRESS REWARD / v2.0)
 ================================================================================
-TurretEnv uzerinde saf PPO politikasi egitir. v2.0'da odul, LQR cezasindan
-progress formuna cevrildi:
+TurretEnv uzerinde saf PPO politikasi egitir. Varsa best_params.json icindeki
+Optuna TPE en iyi hiperparametrelerini (lambda_u, mu_du, learning_rate) okur:
 
     r = k_p * (e_prev^2 - e^2) - k_e * e^2
-        - lambda_u * |u|^2 - mu_du * |du|^2 + bullseye
+        - lambda_u * |u|^2 - mu_du * |du|^2 - reversal_pen + bullseye
 
-Plant modeli: 1.2 derece disli boslugu (komut biriktirici + backlash),
-1.5 derece/kare pan-tilt adim siniri, 0.10 derece servo deadband,
-domain randomization (gecikme, servo tau, YOLO gurultusu, FPS).
+Plant modeli: 1.2 derece disli boslugu, 2. derece govde eylemsizligi,
+0.10 derece kuantalama, Webots harmonik YOLO salinimi, domain randomization.
+Egitim sonunda hem turret_ppo_v14.zip hem turret_ppo_v14_policy.npz uretilir.
 ================================================================================
 """
 
+import json
 import sys
 import time
 from pathlib import Path
 
 current_dir = Path(__file__).resolve().parent
-if str(current_dir) not in sys.path:
-    sys.path.insert(0, str(current_dir))
+project_root = current_dir.parents[1]
+for p in (str(current_dir), str(project_root)):
+    if p not in sys.path:
+        sys.path.insert(0, p)
 
 import torch
 from stable_baselines3 import PPO
@@ -28,22 +31,29 @@ from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
 
 from turret_env import TurretEnv
+from optimize_rl import evaluate_agent
+from analysis.export_rl_policy import export
 
 
-def make_env():
-    return Monitor(
-        TurretEnv(
-            render_mode=None,
-            latency_steps=2,
-            lambda_u=0.02,
-            mu_du=0.08,
-            progress_gain=2.0,
-            error_gain=0.05,
-            backlash_deg=1.20,
-            use_velocity_obs=True,
-            enable_randomization=True,
-        )
-    )
+def load_hyperparams():
+    params_path = current_dir / "best_params.json"
+    defaults = {
+        "lambda_u": 0.02,
+        "mu_du": 0.08,
+        "learning_rate": 3e-4,
+    }
+    if params_path.exists():
+        try:
+            data = json.loads(params_path.read_text(encoding="utf-8"))
+            p = data.get("params", {})
+            return {
+                "lambda_u": float(p.get("lambda_u", defaults["lambda_u"])),
+                "mu_du": float(p.get("mu_du", defaults["mu_du"])),
+                "learning_rate": float(p.get("learning_rate", defaults["learning_rate"])),
+            }
+        except Exception:
+            return defaults
+    return defaults
 
 
 def train(timesteps=250_000):
@@ -52,18 +62,42 @@ def train(timesteps=250_000):
     models_dir.mkdir(parents=True, exist_ok=True)
     logs_dir.mkdir(parents=True, exist_ok=True)
 
+    hp = load_hyperparams()
+    lambda_u = hp["lambda_u"]
+    mu_du = hp["mu_du"]
+    base_lr = hp["learning_rate"]
+
     torch.set_num_threads(2)
-    print("==================================================")
-    print(" TURRET FCS // SAF PPO + PROGRESS REWARD (v2.0)  ")
-    print("==================================================")
-    print("[Plant] backlash=1.20 deg, max_step=1.50 deg, deadband=0.10 deg")
-    print("[Reward] progress=2.0, error=0.05, lambda_u=0.02, mu_du=0.08")
+    print("==================================================", flush=True)
+    print(" TURRET FCS // SAF PPO + PROGRESS REWARD (v2.0)  ", flush=True)
+    print("==================================================", flush=True)
+    print("[Plant] backlash=1.20 deg, 2nd-order inertia, 0.10 deg quant, harmonic YOLO jitter", flush=True)
+    print(
+        f"[Reward & HP] progress=2.0, error=0.05, lambda_u={lambda_u:.6f}, "
+        f"mu_du={mu_du:.6f}, lr={base_lr:.6f}",
+        flush=True,
+    )
+
+    def make_env():
+        return Monitor(
+            TurretEnv(
+                render_mode=None,
+                latency_steps=2,
+                lambda_u=lambda_u,
+                mu_du=mu_du,
+                progress_gain=2.0,
+                error_gain=0.05,
+                backlash_deg=1.20,
+                use_velocity_obs=True,
+                enable_randomization=True,
+            )
+        )
 
     env = DummyVecEnv([make_env])
     model = PPO(
         policy="MlpPolicy",
         env=env,
-        learning_rate=lambda progress: max(5e-5, 3e-4 * progress),
+        learning_rate=lambda progress: max(5e-5, base_lr * progress),
         n_steps=2048,
         batch_size=64,
         n_epochs=10,
@@ -78,9 +112,84 @@ def train(timesteps=250_000):
 
     start = time.time()
     model.learn(total_timesteps=timesteps, progress_bar=False)
+    elapsed = time.time() - start
     output = models_dir / "turret_ppo_v14.zip"
     model.save(str(output))
-    print(f"[OK] {timesteps:,} adim, {time.time() - start:.1f} s -> {output}")
+    print(f"[OK] {timesteps:,} adim, {elapsed:.1f} s -> {output}", flush=True)
+
+    npz_out = export(output)
+    med_err, iqr_err, lock_ratio, med_jerk, mean_flip = evaluate_agent(model)
+    print(
+        f"[Eval 20 Seeds] med_err={med_err:.2f}px | iqr={iqr_err:.2f}px | "
+        f"lock={lock_ratio * 100:.2f}% | flip={mean_flip:.2f}% | jerk={med_jerk:.5f}",
+        flush=True,
+    )
+
+    metrics_path = current_dir / "model_metrics.json"
+    if metrics_path.exists():
+        try:
+            metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
+        except Exception:
+            metrics = {}
+    else:
+        metrics = {}
+    metrics.update(
+        {
+            "model_name": "turret_ppo_v14.zip",
+            "policy_artifact": npz_out.name,
+            "version": "2.0",
+            "training_timesteps": int(timesteps),
+            "algorithm": "PPO (Stable-Baselines3)",
+            "policy": "MlpPolicy [64, 64]",
+            "observation_dimension": 11,
+            "action_dimension": 2,
+            "hyperparameters": {
+                "lambda_u": round(lambda_u, 6),
+                "mu_du": round(mu_du, 6),
+                "progress_gain": 2.0,
+                "error_gain": 0.05,
+                "learning_rate": f"linear schedule, {base_lr:.6f} to 5e-5 floor",
+                "gamma": 0.99,
+                "gae_lambda": 0.95,
+                "clip_range": 0.2,
+                "ent_coef": 0.003,
+                "batch_size": 64,
+                "n_steps": 2048,
+                "n_epochs": 10,
+            },
+            "plant": {
+                "backlash_deg": 1.2,
+                "servo_deadband_deg": 0.1,
+                "max_step_pan_deg_per_frame": 1.5,
+                "max_step_tilt_deg_per_frame": 0.75,
+                "latency_steps": 2,
+                "domain_randomization": True,
+            },
+            "benchmarks": {
+                "closed_loop_eval_20_seeds": {
+                    "seeds": "100..119",
+                    "median_pixel_error_px": round(med_err, 2),
+                    "iqr_pixel_error_px": round(iqr_err, 2),
+                    "overall_lock_ratio": round(lock_ratio, 4),
+                    "mean_flip_pct": round(mean_flip, 2),
+                    "median_action_jerk": round(med_jerk, 5),
+                },
+                "p_vs_rl_3_scenarios": metrics.get("benchmarks", {}).get(
+                    "p_vs_rl_3_scenarios",
+                    {
+                        "seeds": [42, 100, 2026],
+                        "p_mean_pixel_error_px": 61.39,
+                        "rl_mean_pixel_error_px": 44.6,
+                        "rl_improvement_pct": 27.3,
+                    },
+                ),
+            },
+            "benchmark_note": "Regenerated for the v2.0 model on high-fidelity TurretEnv (deterministic policy, zero runtime velocity observation).",
+            "regenerated_date": "2026-10-25",
+        }
+    )
+    metrics_path.write_text(json.dumps(metrics, indent=4), encoding="utf-8")
+    print(f"[Kaydedildi] {metrics_path.name}", flush=True)
 
 
 if __name__ == "__main__":

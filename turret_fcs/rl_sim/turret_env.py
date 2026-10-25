@@ -89,12 +89,15 @@ class TurretEnv(gym.Env):
         self.max_tilt_deg = CONFIG.mount.tilt_limit_max
         self.max_step_pan_deg = CONFIG.actuator.max_step_pan_deg
         self.max_step_tilt_deg = CONFIG.actuator.max_step_tilt_deg
-        self.max_step_deg = self.max_step_pan_deg
         self.servo_deadband = CONFIG.actuator.servo_deadband_deg
         self.servo_tau = CONFIG.mount.servo_tau
         self.yolo_noise_std = CONFIG.rl.yolo_noise_std
 
         # 3. Bryson Kurali ile Normalizasyon Olcekleri (RL cikarimi ile ayni kaynak)
+        self.d_err_scale = CONFIG.rl.d_err_scale
+        self.d_err_ema_alpha = CONFIG.rl.d_err_ema_alpha
+        self.d_err_scale = CONFIG.rl.d_err_scale
+        self.d_err_ema_alpha = CONFIG.rl.d_err_ema_alpha
         self.v_max_px_s = CONFIG.rl.v_max_px_s
         self.dist_min_m = CONFIG.rl.dist_min_m
         self.dist_max_m = CONFIG.rl.dist_max_m
@@ -123,6 +126,8 @@ class TurretEnv(gym.Env):
         self.cmd_tilt_deg = 0.0
         self.backlash_pan_out = 0.0
         self.backlash_tilt_out = 0.0
+        self.body_vel_pan = 0.0
+        self.body_vel_tilt = 0.0
         self.prev_e_sq = None
         self.target_pos_3d = np.zeros(3, dtype=np.float32)
         self.target_vel_3d = np.zeros(3, dtype=np.float32)
@@ -131,7 +136,6 @@ class TurretEnv(gym.Env):
         self.last_action = np.zeros(2, dtype=np.float32)
         self.act_hist_1 = np.zeros(2, dtype=np.float32)
         self.act_hist_2 = np.zeros(2, dtype=np.float32)
-        self.last_dist_val = 1.0
         self.last_pixel_pos = (self.center_x, self.center_y)
         self.trajectory_type = "linear"
         self.step_count = 0
@@ -151,8 +155,15 @@ class TurretEnv(gym.Env):
         py = self.center_y - math.tan(math.radians(rel_tilt)) * self.fy
 
         # Domain Randomization: YOLO tespit kutusu titresimi
-        noise_x = float(np.random.normal(0.0, self.yolo_noise_std)) if (self.enable_randomization and self.yolo_noise_std > 0) else 0.0
-        noise_y = float(np.random.normal(0.0, self.yolo_noise_std)) if (self.enable_randomization and self.yolo_noise_std > 0) else 0.0
+        if self.enable_randomization and self.yolo_noise_std > 0:
+            sim_t = self.step_count * self.dt
+            jx = 3.0 * (0.65 * math.sin(7.3 * sim_t) + 0.35 * math.sin(17.1 * sim_t))
+            jy = 3.0 * (0.60 * math.sin(9.7 * sim_t + 0.7) + 0.40 * math.sin(21.3 * sim_t))
+            noise_x = float(np.random.normal(0.0, self.yolo_noise_std * 0.6)) + jx
+            noise_y = float(np.random.normal(0.0, self.yolo_noise_std * 0.6)) + jy
+        else:
+            noise_x, noise_y = 0.0, 0.0
+
         px_noisy = px + noise_x
         py_noisy = py + noise_y
         self.last_pixel_pos = (float(px_noisy), float(py_noisy))
@@ -162,10 +173,10 @@ class TurretEnv(gym.Env):
         err_y_norm = np.clip((py_noisy - self.center_y) / (self.screen_h / 2.0), -1.5, 1.5)
 
         # 2. Hata Turevi (Dusuk geciren filtreli / EMA smoothed - gurultuden arindirilmis)
-        raw_d_err_x = (err_x_norm - self.last_err[0]) / max(self.dt, 1e-4) * 0.05
-        raw_d_err_y = (err_y_norm - self.last_err[1]) / max(self.dt, 1e-4) * 0.05
-        self.d_err_filt[0] = 0.40 * raw_d_err_x + 0.60 * self.d_err_filt[0]
-        self.d_err_filt[1] = 0.40 * raw_d_err_y + 0.60 * self.d_err_filt[1]
+        raw_d_err_x = (err_x_norm - self.last_err[0]) / max(self.dt, 1e-4) * self.d_err_scale
+        raw_d_err_y = (err_y_norm - self.last_err[1]) / max(self.dt, 1e-4) * self.d_err_scale
+        self.d_err_filt[0] = self.d_err_ema_alpha * raw_d_err_x + (1.0 - self.d_err_ema_alpha) * self.d_err_filt[0]
+        self.d_err_filt[1] = self.d_err_ema_alpha * raw_d_err_y + (1.0 - self.d_err_ema_alpha) * self.d_err_filt[1]
         d_err_x = np.clip(self.d_err_filt[0], -1.0, 1.0)
         d_err_y = np.clip(self.d_err_filt[1], -1.0, 1.0)
         self.last_err = np.array([err_x_norm, err_y_norm], dtype=np.float32)
@@ -226,13 +237,14 @@ class TurretEnv(gym.Env):
         self.cmd_tilt_deg = 0.0
         self.backlash_pan_out = 0.0
         self.backlash_tilt_out = 0.0
+        self.body_vel_pan = 0.0
+        self.body_vel_tilt = 0.0
         self.prev_e_sq = None
         self.last_err = np.zeros(2, dtype=np.float32)
         self.d_err_filt = np.zeros(2, dtype=np.float32)
         self.last_action = np.zeros(2, dtype=np.float32)
         self.act_hist_1 = np.zeros(2, dtype=np.float32)
         self.act_hist_2 = np.zeros(2, dtype=np.float32)
-        self.last_dist_val = 1.0
 
         # Domain Randomization: Bolum basi fiziksel parametre dagilimi
         if self.enable_randomization:
@@ -301,15 +313,15 @@ class TurretEnv(gym.Env):
         cmd_tilt_step = float(action[1]) * self.max_step_tilt_deg
 
         # A) STM32 Kuantalama ve Servo Olu Bolge Modeli (Yumusak Gecisli - Zero Jerk)
-        if abs(cmd_pan_step) < self.servo_deadband:
+        if not self.enable_randomization and abs(cmd_pan_step) < self.servo_deadband:
             eff_pan_step = 0.0
         else:
-            eff_pan_step = math.copysign(abs(cmd_pan_step) - self.servo_deadband * 0.5, cmd_pan_step)
+            eff_pan_step = cmd_pan_step if self.enable_randomization else math.copysign(abs(cmd_pan_step) - self.servo_deadband * 0.5, cmd_pan_step)
 
-        if abs(cmd_tilt_step) < self.servo_deadband:
+        if not self.enable_randomization and abs(cmd_tilt_step) < self.servo_deadband:
             eff_tilt_step = 0.0
         else:
-            eff_tilt_step = math.copysign(abs(cmd_tilt_step) - self.servo_deadband * 0.5, cmd_tilt_step)
+            eff_tilt_step = cmd_tilt_step if self.enable_randomization else math.copysign(abs(cmd_tilt_step) - self.servo_deadband * 0.5, cmd_tilt_step)
 
         # B) 1. Derece Viskoz Motor Dinamigi (Lag Filtresi)
         alpha_m = self.dt / (self.servo_tau + self.dt)
@@ -322,14 +334,24 @@ class TurretEnv(gym.Env):
         self.cmd_tilt_deg += self.actual_tilt_step
         self.cmd_pan_deg = float(np.clip(self.cmd_pan_deg, -self.max_pan_deg, self.max_pan_deg))
         self.cmd_tilt_deg = float(np.clip(self.cmd_tilt_deg, -self.max_tilt_deg, self.max_tilt_deg))
-        self.turret_pan = float(np.clip(
-            self._apply_backlash(self.cmd_pan_deg, self.backlash_pan_out),
-            -self.max_pan_deg, self.max_pan_deg,
-        ))
-        self.turret_tilt = float(np.clip(
-            self._apply_backlash(self.cmd_tilt_deg, self.backlash_tilt_out),
-            -self.max_tilt_deg, self.max_tilt_deg,
-        ))
+        q_step = max(0.05, float(self.servo_deadband))
+        q_pan = round(self.cmd_pan_deg / q_step) * q_step if self.enable_randomization else self.cmd_pan_deg
+        q_tilt = round(self.cmd_tilt_deg / q_step) * q_step if self.enable_randomization else self.cmd_tilt_deg
+        self.turret_pan = float(np.clip(self._apply_backlash(q_pan, self.backlash_pan_out), -self.max_pan_deg, self.max_pan_deg))
+
+
+
+
+        self.turret_tilt = float(np.clip(self._apply_backlash(q_tilt, self.backlash_tilt_out), -self.max_tilt_deg, self.max_tilt_deg))
+
+
+        if self.enable_randomization:
+            gear_step_pan = self.turret_pan - self.backlash_pan_out
+            gear_step_tilt = self.turret_tilt - self.backlash_tilt_out
+            self.body_vel_pan = 0.25 * self.body_vel_pan + 0.75 * gear_step_pan
+            self.body_vel_tilt = 0.25 * self.body_vel_tilt + 0.75 * gear_step_tilt
+            self.turret_pan = float(np.clip(self.backlash_pan_out + self.body_vel_pan, -self.max_pan_deg, self.max_pan_deg))
+            self.turret_tilt = float(np.clip(self.backlash_tilt_out + self.body_vel_tilt, -self.max_tilt_deg, self.max_tilt_deg))
         self.backlash_pan_out = self.turret_pan
         self.backlash_tilt_out = self.turret_tilt
 
@@ -375,13 +397,21 @@ class TurretEnv(gym.Env):
 
         u_norm_sq = float(action[0]**2 + action[1]**2)
         du_norm_sq = float((action[0] - self.last_action[0])**2 + (action[1] - self.last_action[1])**2)
+        reversal_pen = sum(
+            0.08 * abs(float(action[idx] - self.last_action[idx]))
+            for idx in (0, 1)
+            if float(action[idx]) * float(self.last_action[idx]) < -1e-3
+        )
         self.last_action = action.copy()
+        near_lock_scale = 1.8 if current_dist < 0.08 else 1.0
 
         r_tracking = self.progress_gain * float(np.clip(progress, -2.0, 2.0))
         r_error = -self.error_gain * e_norm_sq
-        r_effort = -self.lambda_u * u_norm_sq
-        r_jerk = -self.mu_du * du_norm_sq
-        r_bullseye = 0.50 if current_dist < 0.05 else 0.0
+        r_effort = -self.lambda_u * near_lock_scale * u_norm_sq
+        r_jerk = -self.mu_du * near_lock_scale * du_norm_sq - reversal_pen
+        calm_factor = float(math.exp(-3.0 * (u_norm_sq + du_norm_sq)))
+        r_alive = 0.15 * float(math.exp(-2.5 * e_norm_sq))
+        r_bullseye = (CONFIG.rl.bullseye_reward * calm_factor if current_dist < CONFIG.rl.bullseye_threshold_norm else 0.0) + r_alive
 
         reward = float(r_tracking + r_error + r_effort + r_jerk + r_bullseye)
 
@@ -390,8 +420,42 @@ class TurretEnv(gym.Env):
 
         # Hedef kadrajdan tamamen kacarsa bolum sonlanir
         if current_dist > 1.4:
-            terminated = True
-            reward -= 2.0
+            terminated = False
+            reward -= 0.50
 
         return obs, reward, terminated, truncated, {"pixel_dist": current_dist}
+
+    def render(self):
+        """Gorsel test modu (human veya rgb_array) icin 2B taktiksel kadraj cizer."""
+        if self.render_mode not in ("human", "rgb_array"):
+            return None
+        import cv2
+
+        w, h = int(self.screen_w), int(self.screen_h)
+        cx, cy = int(self.center_x), int(self.center_y)
+        canvas = np.zeros((h, w, 3), dtype=np.uint8)
+
+        cv2.line(canvas, (cx - 40, cy), (cx + 40, cy), (80, 180, 80), 1)
+        cv2.line(canvas, (cx, cy - 40), (cx, cy + 40), (80, 180, 80), 1)
+        cv2.circle(canvas, (cx, cy), 30, (0, 200, 0), 1)
+
+        tx = int(np.clip(self.last_pixel_pos[0], 0, w - 1))
+        ty = int(np.clip(self.last_pixel_pos[1], 0, h - 1))
+        cv2.circle(canvas, (tx, ty), 14, (0, 0, 255), -1)
+
+        info_text = (
+            f"Step: {self.step_count:03d} | Trajectory: {self.trajectory_type} | "
+            f"Pan: {self.turret_pan:+.1f} deg | Tilt: {self.turret_tilt:+.1f} deg"
+        )
+        cv2.putText(canvas, info_text, (20, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (220, 220, 220), 2)
+
+        if self.render_mode == "human":
+            cv2.imshow("TurretEnv RL Simulation", canvas)
+            return None
+        return canvas[:, :, ::-1]
+
+    def close(self):
+        if self.render_mode == "human":
+            import cv2
+            cv2.destroyAllWindows()
 
