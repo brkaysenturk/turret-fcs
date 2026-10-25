@@ -1,0 +1,24 @@
+# Set default behavior, in case users don't have core.autocrlf set.
+* text=auto
+
+# Explicitly mark binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.stl binary
+*.zip binary
+*.npz binary
+*.pt binary
+
+# 3D assets line endings
+*.obj text eol=lf
+*.mtl text eol=lf
+
+# GitHub Linguist language statistics
+# Treat vendor HAL / CMSIS drivers as third-party vendored code
+stm32/turret_main/Drivers/** linguist-vendored
+
+# STM32CubeIDE generated startup/linker files: keep in repo, exclude from language stats
+stm32/turret_main/Core/Startup/*.s linguist-generated
+stm32/turret_main/*.ld linguist-generated

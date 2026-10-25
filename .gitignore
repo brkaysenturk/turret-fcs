@@ -7,8 +7,16 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.pyd
+*.egg-info/
+build/
+dist/
 .env
 .env*.local
+
+# Webots / CubeIDE local state
+stm32/cubeide_workspace/
+stm32/turret_main/.settings/
+stm32/turret_main/*.launch
 
 # Compiled Binaries & Executables
 *.exe
@@ -25,6 +33,7 @@ __pycache__/
 *.map
 *.d
 stm32/**/Debug/
+stm32/**/Release/
 
 # Operating System Files
 Thumbs.db
@@ -50,9 +59,9 @@ webots/worlds/.*.wbproj
 webots/worlds/.*.jpg
 webots/worlds/.*.png
 
-# Logs, Metrics & Telemetry (Representative evidence kept in docs/evidence/)
+# Logs, Metrics & Telemetry
 logs/
-webots/analysis/*.csv
+webots/logs/
 *.tfevents.*
 *.log
 *.tmp
@@ -61,25 +70,29 @@ temp/
 scratch/
 *system_identification_analysis.png
 
-# Datasets and Legacy Code
+# Pytest Cache & Local Test Artifacts
+.pytest_cache/
+.git_backup*/
+
+# Datasets & Training Runs
 datasets/
-legacy/
+runs/
 
 # Large 3D CAD models
 *.stl
 *.step
 !docs/cad/*.stl
 
-# Model Weights & Checkpoints (Keep only active trained production weights)
-weights/
+# Model Weights & Checkpoints
+# Heavy PyTorch binary weights are distributed via GitHub Releases Assets.
 *.pt
 *.zip
-turret_fcs/rl_sim/models/*_steps.zip
-turret_fcs/rl_sim/models/*_250k.zip
-runs/**/last.pt
+weights/*.pt
+!weights/
+!weights/README.md
+!turret_fcs/rl_sim/models/turret_ppo_v14.zip
+!turret_fcs/rl_sim/models/turret_ppo_v14_policy.npz
 
-# Whitelist production neural network weights and 3D assets
-!runs/detect/balloon_detector/weights/best.pt
-!turret_fcs/rl_sim/models/turret_ppo_final.zip
+# 3D assets required by simulation
 !webots/worlds/red_ballonn/red ballon.obj
 !webots/worlds/tf_luna/TF-Luna 3D structure.obj

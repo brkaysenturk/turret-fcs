@@ -56,8 +56,8 @@ def analyze_single_log(filepath):
     cmd_pans = [abs(float(r["cmd_pan"])) for r in det_rows] if det_count else []
     cmd_tilts = [abs(float(r["cmd_tilt"])) for r in det_rows] if det_count else []
 
-    sat_pan_count = sum(1 for c in cmd_pans if c >= 2.70)
-    sat_tilt_count = sum(1 for c in cmd_tilts if c >= 2.70)
+    sat_pan_count = sum(1 for c in cmd_pans if c >= 1.45)
+    sat_tilt_count = sum(1 for c in cmd_tilts if c >= 1.45)
     sat_pct = ((sat_pan_count + sat_tilt_count) / (2 * det_count) * 100.0) if det_count else 0.0
 
     # Kilit kesintisizlik serileri (Lock streak)
@@ -123,7 +123,7 @@ def main():
     print(f"Toplam {len(csv_files)} telemetri log dosyasi birlestiriliyor...")
 
     for f in csv_files:
-        if "consolidated" in os.path.basename(f):
+        if "consolidated" in os.path.basename(f) or "events" in os.path.basename(f):
             continue
         res = analyze_single_log(f)
         if res:
@@ -139,23 +139,39 @@ def main():
             writer.writerows(summary_list)
         print(f"[OK] Birlestirilmis telemetri ozeti kaydedildi: {summary_csv_path}")
 
-    # 2. 12 Ekim Testleri Karsilastirma Grafigi Uret
-    oct12_runs = [r for r in summary_list if "20261012" in r["filename"]]
-    if oct12_runs:
-        plot_oct12_comparison(oct12_runs)
+    # 2. Saha Testleri Karsilastirma Grafigi Uret (En guncel test serisi)
+    today_runs = [r for r in summary_list if "20261024" in r["filename"]]
+    runs_to_plot = today_runs if today_runs else summary_list
+    if runs_to_plot:
+        plot_field_tests_comparison(runs_to_plot)
 
 
-def plot_oct12_comparison(runs):
+def plot_field_tests_comparison(runs):
     labels = []
     lock_rates = []
     med_errors = []
     mean_errors = []
     sat_rates = []
     durations = []
+    samples = []
 
     for r in runs:
         fn = r["filename"]
-        if "145309" in fn:
+        if "114837" in fn:
+            name = "11:48\n(Kalibrasyon)"
+        elif "121753" in fn:
+            name = "12:17\n(P Modu)"
+        elif "125615" in fn:
+            name = "12:56\n(P+RL Hibrit)"
+        elif "143300" in fn:
+            name = "14:33\n(RL Ilk)"
+        elif "145050" in fn:
+            name = "14:50\n(RL Ayar)"
+        elif "145910" in fn:
+            name = "14:59\n(RL Olcek)"
+        elif "150820" in fn:
+            name = "15:08\n(v2.0 Nihai/Son Log)"
+        elif "145309" in fn:
             name = "Test 14:53\n(PID/RL/HYB)"
         elif "175926" in fn:
             name = "Test 17:59\n(Stabil P)"
@@ -166,15 +182,17 @@ def plot_oct12_comparison(runs):
         elif "failed" in fn:
             name = "Test 20:55\n(Adaptif Basarisiz)"
         else:
-            name = fn[:18]
+            name = fn[15:21]
+
         labels.append(name)
         lock_rates.append(r["lock_when_detected_pct"])
         med_errors.append(r["median_error_deg"])
         mean_errors.append(r["mean_error_deg"])
         sat_rates.append(r["actuator_saturation_pct"])
         durations.append(r["duration_sec"])
+        samples.append(r["samples"])
 
-    fig, axes = plt.subplots(2, 2, figsize=(14, 9), dpi=300)
+    fig, axes = plt.subplots(2, 2, figsize=(15, 10), dpi=300)
     fig.patch.set_facecolor("#FAFAFA")
 
     x = np.arange(len(labels))
@@ -183,70 +201,88 @@ def plot_oct12_comparison(runs):
     # 1. Kilitlenme Orani (%)
     ax = axes[0, 0]
     ax.set_facecolor("#FFFFFF")
-    colors_lock = ["#2E7D32" if v > 30 else ("#1976D2" if v > 15 else "#D32F2F") for v in lock_rates]
-    bars = ax.bar(x, lock_rates, width, color=colors_lock, edgecolor="#333", alpha=0.88)
+    # 15:08 (Son log) için özel vurgulayıcı renk
+    colors_lock = [
+        "#1B5E20" if "Nihai" in lbl else ("#2E7D32" if v >= 50 else ("#1976D2" if v >= 35 else "#D32F2F"))
+        for lbl, v in zip(labels, lock_rates)
+    ]
+    edge_colors = ["#FFD700" if "Nihai" in lbl else "#333333" for lbl in labels]
+    edge_widths = [2.2 if "Nihai" in lbl else 0.8 for lbl in labels]
+
+    bars = ax.bar(x, lock_rates, width, color=colors_lock, edgecolor=edge_colors, linewidth=edge_widths, alpha=0.90)
     ax.set_title("Hedef Gorunurken Kilit Basarimi (%)", fontsize=12, fontweight="bold", pad=10)
     ax.set_ylabel("Kilit Orani (%)", fontsize=10)
     ax.set_xticks(x)
-    ax.set_xticklabels(labels, fontsize=9)
-    ax.set_ylim(0, 60)
-    ax.grid(axis="y", linestyle="--", alpha=0.5)
-    for bar in bars:
+    ax.set_xticklabels(labels, fontsize=8.5)
+    ax.set_ylim(0, 78)
+    ax.grid(axis="y", linestyle="--", alpha=0.4)
+    for i, bar in enumerate(bars):
         h = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width() / 2.0, h + 1.0, f"%{h:.1f}", ha="center", va="bottom", fontsize=9, fontweight="bold")
+        if "Nihai" in labels[i]:
+            ax.text(bar.get_x() + bar.get_width() / 2.0, h + 1.2, f"%{h:.1f}\n(RL %65.5 | P %61.0)",
+                    ha="center", va="bottom", fontsize=8.2, fontweight="bold", color="#1B5E20")
+        else:
+            ax.text(bar.get_x() + bar.get_width() / 2.0, h + 1.0, f"%{h:.1f}", ha="center", va="bottom", fontsize=8.5, fontweight="bold")
 
     # 2. Medyan ve Ortalama Aci Hatasi (derece)
     ax = axes[0, 1]
     ax.set_facecolor("#FFFFFF")
-    w2 = 0.30
+    w2 = 0.28
     b1 = ax.bar(x - w2 / 2, med_errors, w2, label="Medyan Hata", color="#0288D1", edgecolor="#333", alpha=0.88)
     b2 = ax.bar(x + w2 / 2, mean_errors, w2, label="Ortalama Hata", color="#FB8C00", edgecolor="#333", alpha=0.88)
     ax.set_title("Acisal Takip Hatasi (Derece - Dusuk Olan Iyi)", fontsize=12, fontweight="bold", pad=10)
     ax.set_ylabel("Acisal Hata (°)", fontsize=10)
     ax.set_xticks(x)
-    ax.set_xticklabels(labels, fontsize=9)
-    ax.set_ylim(0, 15)
-    ax.grid(axis="y", linestyle="--", alpha=0.5)
-    ax.legend(loc="upper left")
+    ax.set_xticklabels(labels, fontsize=8.5)
+    ax.set_ylim(0, 6.2)
+    ax.grid(axis="y", linestyle="--", alpha=0.4)
+    ax.legend(loc="upper right", fontsize=8.5)
     for bar in b1:
         h = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width() / 2.0, h + 0.3, f"{h:.1f}°", ha="center", va="bottom", fontsize=8)
+        ax.text(bar.get_x() + bar.get_width() / 2.0, h + 0.10, f"{h:.1f}°", ha="center", va="bottom", fontsize=7.5)
+    for bar in b2:
+        h = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width() / 2.0, h + 0.10, f"{h:.1f}°", ha="center", va="bottom", fontsize=7.5)
 
     # 3. Motor Doyum Orani (%)
     ax = axes[1, 0]
     ax.set_facecolor("#FFFFFF")
-    colors_sat = ["#D32F2F" if v > 20 else "#388E3C" for v in sat_rates]
+    colors_sat = ["#388E3C" if v <= 5.0 else ("#F57C00" if v <= 10.0 else "#D32F2F") for v in sat_rates]
     bars = ax.bar(x, sat_rates, width, color=colors_sat, edgecolor="#333", alpha=0.88)
-    ax.set_title("Eyleyici Doyum Orani (|Komut| >= 2.70°)", fontsize=12, fontweight="bold", pad=10)
+    ax.set_title("Eyleyici Doyum Orani (|Komut| >= 1.45° / 45°/s)", fontsize=12, fontweight="bold", pad=10)
     ax.set_ylabel("Doyum Orani (%)", fontsize=10)
     ax.set_xticks(x)
-    ax.set_xticklabels(labels, fontsize=9)
-    ax.set_ylim(0, 65)
-    ax.grid(axis="y", linestyle="--", alpha=0.5)
+    ax.set_xticklabels(labels, fontsize=8.5)
+    ax.set_ylim(0, 18)
+    ax.grid(axis="y", linestyle="--", alpha=0.4)
     for bar in bars:
         h = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width() / 2.0, h + 1.0, f"%{h:.1f}", ha="center", va="bottom", fontsize=9, fontweight="bold")
+        ax.text(bar.get_x() + bar.get_width() / 2.0, h + 0.35, f"%{h:.1f}", ha="center", va="bottom", fontsize=8.5, fontweight="bold")
 
     # 4. Test Suresi ve Toplam Ornek
     ax = axes[1, 1]
     ax.set_facecolor("#FFFFFF")
     bars = ax.bar(x, durations, width, color="#5E35B1", edgecolor="#333", alpha=0.88)
-    ax.set_title("Oturum Test Suresi (Saniye)", fontsize=12, fontweight="bold", pad=10)
-    ax.set_ylabel("Sure (s)", fontsize=10)
+    ax.set_title("Oturum Test Suresi ve Toplam Ornek", fontsize=12, fontweight="bold", pad=10)
+    ax.set_ylabel("Sure (saniye)", fontsize=10)
     ax.set_xticks(x)
-    ax.set_xticklabels(labels, fontsize=9)
-    ax.grid(axis="y", linestyle="--", alpha=0.5)
-    for bar in bars:
+    ax.set_xticklabels(labels, fontsize=8.5)
+    ax.set_ylim(0, 240)
+    ax.grid(axis="y", linestyle="--", alpha=0.4)
+    for bar, n_samp in zip(bars, samples):
         h = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width() / 2.0, h + 15.0, f"{int(h)}s", ha="center", va="bottom", fontsize=9, fontweight="bold")
+        ax.text(bar.get_x() + bar.get_width() / 2.0, h + 4.0, f"{int(h)}s\n({n_samp} k)", ha="center", va="bottom", fontsize=7.8, fontweight="bold")
 
-    plt.suptitle("TURRET FCS // 12 EKIM 2026 SAHA TESTLERI KARSILASTIRMALI ANALIZ RAPORU", fontsize=14, fontweight="bold", y=0.98)
+    plt.suptitle("TURRET FCS // SAHA TESTLERI KARSILASTIRMALI ANALIZ RAPORU (v2.0 Uretim Dogrulamasi)", fontsize=13.5, fontweight="bold", y=0.98)
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 
-    out_fig = FIG_DIR / "oct12_field_tests_analysis.png"
-    plt.savefig(out_fig, dpi=300)
+    # Hem kullanıcının istediği 'oct12_field_tests_analysis.png' hem de 'field_tests_analysis.png' olarak kaydet
+    out_fig1 = FIG_DIR / "oct12_field_tests_analysis.png"
+    out_fig2 = FIG_DIR / "field_tests_analysis.png"
+    plt.savefig(out_fig1, dpi=300)
+    plt.savefig(out_fig2, dpi=300)
     plt.close()
-    print(f"[OK] Karsilastirmali analiz grafigi olusturuldu: {out_fig}")
+    print(f"[OK] Karsilastirmali analiz grafigi olusturuldu:\n   --> {out_fig1}\n   --> {out_fig2}")
 
 
 if __name__ == "__main__":

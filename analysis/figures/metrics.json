@@ -1,35 +1,32 @@
 {
-  "system_version": "v1.3",
-  "timestamp": "2026-10-22",
+  "system": "Turret FCS",
+  "timestamp": "2026-10-24",
   "control": {
-    "kp_pan_frame": 0.1,
-    "kp_tilt_frame": 0.05,
-    "kv_pan_continuous_1_s": 3.0,
-    "kv_tilt_continuous_1_s": 1.5,
+    "kp_pan_frame": 0.22,
+    "kp_tilt_frame": 0.11,
+    "kv_pan_continuous_1_s": 6.6000000000000005,
+    "kv_tilt_continuous_1_s": 3.3000000000000003,
     "deadband_pan_deg": 0.85,
     "deadband_tilt_deg": 0.95,
-    "max_output_frame_deg": 1.35,
-    "max_slew_velocity_deg_s": 40.5,
-    "crossover_freq_w_gc_rad_s": 2.99,
-    "phase_margin_pm_deg": 68.7,
+    "taper_pan_deg": 2.0,
+    "taper_tilt_deg": 3.0,
+    "max_output_frame_deg": 1.5,
+    "max_slew_velocity_deg_s": 45.0,
+    "max_step_tilt_deg": 0.75,
+    "max_slew_velocity_tilt_deg_s": 22.5,
+    "crossover_freq_w_gc_rad_s": 6.32,
+    "phase_margin_pm_deg": 45.1,
     "phase_crossover_w_pc_rad_s": 13.07,
-    "gain_margin_gm_db": 14.1,
+    "gain_margin_gm_db": 7.2,
     "bode_theoretical_exact_model": {
-      "model_description": "Exact pure delay (80 ms) + 1st order servo lag (tau = 45 ms)",
-      "crossover_freq_w_gc_rad_s": 2.99,
-      "phase_margin_pm_deg": 68.7,
+      "model_description": "Analitik L(s) transfer fonksiyonu: exact pure delay (80 ms) + 1st order servo lag (tau = 45 ms)",
+      "crossover_freq_w_gc_rad_s": 6.32,
+      "phase_margin_pm_deg": 45.1,
       "phase_crossover_w_pc_rad_s": 13.07,
-      "gain_margin_gm_db": 14.1
+      "gain_margin_gm_db": 7.2
     },
-    "bode_identified_sopdt_model": {
-      "model_description": "Identified 2nd-order SOPDT actuator (wn = 17.4 rad/s, zeta = 0.72) + 80 ms delay",
-      "crossover_freq_w_gc_rad_s": 2.98,
-      "phase_margin_pm_deg": 62.2,
-      "phase_crossover_w_pc_rad_s": 11.2,
-      "gain_margin_gm_db": 10.3
-    },
-    "settling_time_20deg_s": 1.48,
-    "overshoot_pct": 0.0
+    "settling_time_20deg_s": 0.51,
+    "overshoot_pct": 9.8
   },
   "ballistics": {
     "projectile_speed_v0_mps": 10.0,

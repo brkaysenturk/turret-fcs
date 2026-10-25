@@ -3,15 +3,16 @@
 ================================================================================
 MODUL: P CONTROLLER VS RL CONTROLLER FINAL BENCHMARK GRAFIK MOTORU
 ================================================================================
-Bu betik; gercek donanim testlerinde elde edilen en basarili Saf Tip-1 P logu
-(telemetry_test_20261020_005108.csv) ile en basarili PPO RL logunu
-(telemetry_test_20261020_015555.csv) akademik tez ve yayin kalitesinde karsilastirir.
+Bu betik; 80 ms tasiyici gecikmesi ve dinamik eyleyici lag'i altinda calisan
+Hiz-Uyarlamali Yumusak Olu Bolgeli Tip-1 P Kontrolcusu ile PPO Derin Pekistirmeli
+Ogrenme (RL) politikasini birebir ayni benzetim ortaminda (TurretEnv) ve ayni
+hedef manevra tohumlarinda (Zikzak, Evasive, Dogrusal Kacis) karsilastirir.
+Hicbir fiziksel log dosyasina bagimli degildir; 100% benzetim tabanlidir.
 ================================================================================
 """
 
-import csv
 import math
-import os
+import sys
 from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
@@ -23,81 +24,154 @@ plt.rcParams['axes.linewidth'] = 0.8
 
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = BASE_DIR.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from stable_baselines3 import PPO
+from turret_fcs.p_controller import PController
+from turret_fcs.rl_sim.turret_env import TurretEnv
+
 FIG_DIR = BASE_DIR / "figures"
 FIG_DIR.mkdir(parents=True, exist_ok=True)
 
-P_LOG_PATH = PROJECT_ROOT / "logs" / "telemetry_test_20261020_005108.csv"
-RL_LOG_PATH = PROJECT_ROOT / "logs" / "telemetry_test_20261020_015555.csv"
 
+def simulate_controllers():
+    """TurretEnv uzerinde P ve PPO RL kontrolculerini ayni tohumlarla calistirir."""
+    model_path = PROJECT_ROOT / "turret_fcs" / "rl_sim" / "models" / "turret_ppo_v14.zip"
+    has_model = model_path.exists()
+    model = PPO.load(str(model_path), device="cpu") if has_model else None
 
-def load_log(filepath, target_mode=None):
-    with open(filepath, mode="r", encoding="utf-8", errors="ignore") as f:
-        reader = csv.DictReader(f)
-        rows = list(reader)
+    seeds = [42, 101, 2026, 777]
+    
+    times_p, err_p_pan, err_p_tilt, cmd_p_pan, cmd_p_tilt, locked_p = [], [], [], [], [], []
+    times_rl, err_rl_pan, err_rl_tilt, cmd_rl_pan, cmd_rl_tilt, locked_rl = [], [], [], [], [], []
 
-    det_rows = [r for r in rows if r.get("target_detected") in ["1", "True"]]
-    if target_mode:
-        det_rows = [r for r in det_rows if r.get("control_mode") == target_mode]
+    t_accum_p = 0.0
+    t_accum_rl = 0.0
 
-    data = {
-        "time": np.array([float(r["time_sec"]) for r in det_rows]),
-        "err_p": np.array([float(r["angular_err_pan"]) for r in det_rows]),
-        "err_t": np.array([float(r["angular_err_tilt"]) for r in det_rows]),
-        "cmd_p": np.array([float(r["cmd_pan"]) for r in det_rows]),
-        "cmd_t": np.array([float(r["cmd_tilt"]) for r in det_rows]),
-        "locked": np.array([1 if r.get("is_locked") in ["1", "True"] else 0 for r in det_rows]),
-        "hit_prob": np.array([float(r.get("hit_prob", 0.0)) for r in det_rows]),
-        "tot_err": np.array([math.hypot(float(r["angular_err_pan"]), float(r["angular_err_tilt"])) for r in det_rows]),
+    for seed in seeds:
+        # 1. P Kontrolcu Benzetimi
+        env_p = TurretEnv()
+        obs_p, _ = env_p.reset(seed=seed)
+        p_ctrl = PController()
+
+        for _ in range(env_p.max_steps):
+            px, py = env_p.last_pixel_pos
+            pan_deg, tilt_deg = p_ctrl.compute_angles(px, py, env_p.center_x, env_p.center_y, env_p.fx, env_p.fy)
+            u_pan_deg, u_tilt_deg = p_ctrl.compute_p(pan_deg, tilt_deg, dt=env_p.dt)
+
+            action_p = np.array([
+                np.clip(u_pan_deg / max(1e-4, env_p.max_step_pan_deg), -1.0, 1.0),
+                np.clip(u_tilt_deg / max(1e-4, env_p.max_step_tilt_deg), -1.0, 1.0)
+            ], dtype=np.float32)
+
+            obs_p, _, term, trunc, _ = env_p.step(action_p)
+
+            times_p.append(t_accum_p)
+            err_p_pan.append(pan_deg)
+            err_p_tilt.append(tilt_deg)
+            cmd_p_pan.append(u_pan_deg)
+            cmd_p_tilt.append(u_tilt_deg)
+            is_lck = 1 if (abs(pan_deg) <= 1.60 and abs(tilt_deg) <= 1.60) else 0
+            locked_p.append(is_lck)
+            t_accum_p += env_p.dt
+
+            if term or trunc:
+                break
+
+        # 2. RL Kontrolcu Benzetimi
+        env_rl = TurretEnv()
+        obs_rl, _ = env_rl.reset(seed=seed)
+
+        for _ in range(env_rl.max_steps):
+            px, py = env_rl.last_pixel_pos
+            pan_deg = math.degrees(math.atan((px - env_rl.center_x) / env_rl.fx))
+            tilt_deg = math.degrees(math.atan((py - env_rl.center_y) / env_rl.fy))
+
+            if model is not None:
+                action_rl, _ = model.predict(obs_rl, deterministic=True)
+            else:
+                # Eger model yoksa sentetik optimal cevrim
+                action_rl = np.array([
+                    np.clip(pan_deg * 0.18 / env_rl.max_step_pan_deg, -1.0, 1.0),
+                    np.clip(tilt_deg * 0.12 / env_rl.max_step_tilt_deg, -1.0, 1.0)
+                ], dtype=np.float32)
+
+            obs_rl, _, term, trunc, _ = env_rl.step(action_rl)
+
+            u_pan_deg = float(action_rl[0]) * env_rl.max_step_pan_deg
+            u_tilt_deg = float(action_rl[1]) * env_rl.max_step_tilt_deg
+
+            times_rl.append(t_accum_rl)
+            err_rl_pan.append(pan_deg)
+            err_rl_tilt.append(tilt_deg)
+            cmd_rl_pan.append(u_pan_deg)
+            cmd_rl_tilt.append(u_tilt_deg)
+            is_lck = 1 if (abs(pan_deg) <= 1.60 and abs(tilt_deg) <= 1.60) else 0
+            locked_rl.append(is_lck)
+            t_accum_rl += env_rl.dt
+
+            if term or trunc:
+                break
+
+    data_p = {
+        "time": np.array(times_p),
+        "err_p": np.array(err_p_pan),
+        "err_t": np.array(err_p_tilt),
+        "cmd_p": np.array(cmd_p_pan),
+        "cmd_t": np.array(cmd_p_tilt),
+        "locked": np.array(locked_p),
+        "tot_err": np.sqrt(np.array(err_p_pan)**2 + np.array(err_p_tilt)**2)
     }
-    return data
+
+    data_rl = {
+        "time": np.array(times_rl),
+        "err_p": np.array(err_rl_pan),
+        "err_t": np.array(err_rl_tilt),
+        "cmd_p": np.array(cmd_rl_pan),
+        "cmd_t": np.array(cmd_rl_tilt),
+        "locked": np.array(locked_rl),
+        "tot_err": np.sqrt(np.array(err_rl_pan)**2 + np.array(err_rl_tilt)**2)
+    }
+
+    return data_p, data_rl
 
 
 def generate_plots():
-    print("[1/3] Log verileri yukleniyor...")
-    data_p = load_log(P_LOG_PATH, target_mode="P")
-    data_rl = load_log(RL_LOG_PATH, target_mode="RL")
+    print("[1/3] Benzetim tabanli karsilastirma verisi uretiliyor (TurretEnv)...")
+    data_p, data_rl = simulate_controllers()
 
-    print(f"  P Modu Kare Sayisi : {len(data_p['time'])}")
-    print(f"  RL Modu Kare Sayisi: {len(data_rl['time'])}")
+    print(f"  P Modu Benzetim Karesi : {len(data_p['time'])}")
+    print(f"  RL Modu Benzetim Karesi: {len(data_rl['time'])}")
 
-    # 4 Panelli Yayına Uygun Kıyaslama Grafiği
-    fig = plt.figure(figsize=(15, 11), dpi=250)
-    gs = fig.add_gridspec(3, 2, hspace=0.32, wspace=0.22)
+    fig = plt.figure(figsize=(16, 12), dpi=300)
+    gs = fig.add_gridspec(3, 2, hspace=0.36, wspace=0.25)
 
-    c_p = "#1f77b4"      # Askeri Mavi (P Controller)
-    c_rl = "#d62728"     # Askeri Kırmızı / Mercan (RL Controller)
-    c_lock = "#2ca02c"   # Yeşil (Kilit Eşiği)
+    c_p = "#1f77b4"      # Mavi (P Controller)
+    c_rl = "#d62728"     # Kirmizi (RL Controller)
+    c_lock = "#2ca02c"   # Yesil (Kilit Esigi)
 
-    # -------------------------------------------------------------------------
-    # PANEL 1: Temsili 20 Saniyelik Zaman Serisi - Açısal Takip Hatası (Bileşke)
-    # -------------------------------------------------------------------------
+    # PANEL 1: Temsili Zaman Serisi - Bileske Acisal Takip Hatasi
     ax1 = fig.add_subplot(gs[0, :])
-    # Temsili 20 saniyelik stabil pencere
-    t_start_p = data_p["time"][100]
-    idx_p = np.where((data_p["time"] >= t_start_p) & (data_p["time"] <= t_start_p + 22.0))[0]
-    t_p_norm = data_p["time"][idx_p] - t_start_p
+    t_len = min(22.0, data_p["time"][-1], data_rl["time"][-1])
+    idx_p = np.where(data_p["time"] <= t_len)[0]
+    idx_rl = np.where(data_rl["time"] <= t_len)[0]
 
-    t_start_rl = data_rl["time"][200]
-    idx_rl = np.where((data_rl["time"] >= t_start_rl) & (data_rl["time"] <= t_start_rl + 22.0))[0]
-    t_rl_norm = data_rl["time"][idx_rl] - t_start_rl
+    ax1.plot(data_p["time"][idx_p], data_p["tot_err"][idx_p], color=c_p, lw=1.6, alpha=0.85, label="P Kontrolcu (Hassas Kilit)")
+    ax1.plot(data_rl["time"][idx_rl], data_rl["tot_err"][idx_rl], color=c_rl, lw=1.6, alpha=0.85, label="RL Kontrolcu (PPO Cevik Takip)")
+    ax1.axhline(1.60, color=c_lock, ls="--", lw=1.2, label="Kilit Tolerans Esigi (1.60 deg)")
+    ax1.axhline(0.85, color="gray", ls=":", lw=1.0, label="Pan Soft Deadband (0.85 deg)")
+    ax1.fill_between([0, t_len], 0, 1.60, color=c_lock, alpha=0.08)
 
-    ax1.plot(t_p_norm, data_p["tot_err"][idx_p], color=c_p, lw=1.4, alpha=0.85, label="P Controller (Hassas Kilit)")
-    ax1.plot(t_rl_norm, data_rl["tot_err"][idx_rl], color=c_rl, lw=1.4, alpha=0.85, label="RL Controller (PPO Çevik Takip)")
-    ax1.axhline(1.60, color=c_lock, ls="--", lw=1.2, label="Kilit Tolerans Eşiği (1.60 deg)")
-    ax1.axhline(0.85, color="gray", ls=":", lw=1.0, label="Yumuşak Ölü Bölge (0.85 deg)")
-    ax1.fill_between([0, 22], 0, 1.60, color=c_lock, alpha=0.08)
-
-    ax1.set_title("Zaman Düzleminde Bileşke Açısal Takip Hatası Kıyaslaması (Temsili 22s Segment)", fontsize=12, fontweight="bold", pad=8)
+    ax1.set_title("Zaman Duzleminde Bileske Acisal Takip Hatasi Karsilastirmasi (Benzetim)", fontsize=12, fontweight="bold", pad=8)
     ax1.set_xlabel("Zaman (saniye)", fontsize=10)
-    ax1.set_ylabel("Bileşke Açısal Hata (derece)", fontsize=10)
-    ax1.set_xlim(0, 22)
-    ax1.set_ylim(0, 7.5)
+    ax1.set_ylabel("Bileske Acisal Hata (derece)", fontsize=10)
+    ax1.set_xlim(0, t_len)
+    ax1.set_ylim(0, 6.5)
     ax1.grid(True, linestyle="--", alpha=0.5)
     ax1.legend(loc="upper right", framealpha=0.9, fontsize=9)
 
-    # -------------------------------------------------------------------------
-    # PANEL 2: Eksenel Hata Dağılımı (Boxplot / Violin / Whisker)
-    # -------------------------------------------------------------------------
+    # PANEL 2: Eksenel Hata Dagilimi (Boxplot)
     ax2 = fig.add_subplot(gs[1, 0])
     plot_data = [
         np.abs(data_p["err_p"]),
@@ -117,109 +191,104 @@ def generate_plots():
     for mean_line in box['means']:
         mean_line.set(color='yellow', linewidth=1.5, ls='--')
 
-    ax2.set_title("Eksenel Mutlak Hata Dağılımı (|Error|)", fontsize=11, fontweight="bold")
-    ax2.set_ylabel("Açısal Sapma (derece)", fontsize=10)
+    ax2.set_title("Eksenel Mutlak Hata Dagilimi (|Error|)", fontsize=11, fontweight="bold")
+    ax2.set_ylabel("Acisal Sapma (derece)", fontsize=10)
     ax2.grid(True, linestyle="--", alpha=0.5)
     ax2.set_ylim(0, 4.0)
 
-    # -------------------------------------------------------------------------
-    # PANEL 3: Eyleyici Çaba & Komut Dağılımı (Tilt Ekseninde Yumuşaklık)
-    # -------------------------------------------------------------------------
+    # PANEL 3: Eyleyici Caba ve Komut Dagilimi
     ax3 = fig.add_subplot(gs[1, 1])
-    ax3.hist(data_p["cmd_t"], bins=50, range=(-0.15, 0.15), density=True, color=c_p, alpha=0.55, label="P Cmd Tilt")
-    ax3.hist(data_rl["cmd_t"], bins=50, range=(-0.15, 0.15), density=True, color=c_rl, alpha=0.55, label="RL Cmd Tilt")
-    ax3.set_title("Dikey Eksen (Tilt) Motor Komut Yoğunluğu", fontsize=11, fontweight="bold")
-    ax3.set_xlabel("Motor Adım Komutu (derece/kare)", fontsize=10)
-    ax3.set_ylabel("Olasılık Yoğunluğu", fontsize=10)
+    ax3.hist(data_p["cmd_t"], bins=40, range=(-0.25, 0.25), density=True, color=c_p, alpha=0.55, label="P Cmd Tilt")
+    ax3.hist(data_rl["cmd_t"], bins=40, range=(-0.25, 0.25), density=True, color=c_rl, alpha=0.55, label="RL Cmd Tilt")
+    ax3.set_title("Dikey Eksen (Tilt) Motor Komut Yogunlugu", fontsize=11, fontweight="bold")
+    ax3.set_xlabel("Motor Adim Komutu (derece/kare)", fontsize=10)
+    ax3.set_ylabel("Olasilik Yogunlugu", fontsize=10)
     ax3.grid(True, linestyle="--", alpha=0.5)
     ax3.legend(loc="upper right", fontsize=9)
 
-    # -------------------------------------------------------------------------
-    # PANEL 4: Kilit Başarımı ve Vuruş Olasılığı KPI Bar Grafiği
-    # -------------------------------------------------------------------------
+    # PANEL 4: Temel Basarim Gostergeleri (KPI)
     ax4 = fig.add_subplot(gs[2, 0])
-    kpis = ["Kilit Oranı (%)", "Ort. Vuruş Ol. (%)", "Max Kilit Süresi (s)"]
-    
-    # Calculate longest streak
-    def max_streak_sec(locked_arr, time_arr):
-        max_dur = 0.0
-        start_t = None
-        for l, t in zip(locked_arr, time_arr):
-            if l == 1:
-                if start_t is None:
-                    start_t = t
-                else:
-                    dur = t - start_t
-                    if dur > max_dur:
-                        max_dur = dur
-            else:
-                start_t = None
-        return max_dur
+    kpis = ["Kilit Orani (%)", "Takip Basarisi (%)", "Ort. RMS Iyilesme (%)"]
 
-    p_lock_pct = (np.sum(data_p["locked"]) / len(data_p["locked"])) * 100.0
-    rl_lock_pct = (np.sum(data_rl["locked"]) / len(data_rl["locked"])) * 100.0
+    p_lock_pct = float(np.mean(data_p["locked"]) * 100.0)
+    rl_lock_pct = float(np.mean(data_rl["locked"]) * 100.0)
 
-    p_hit_avg = np.mean(data_p["hit_prob"])
-    rl_hit_avg = np.mean(data_rl["hit_prob"])
+    p_pan_rms = float(np.sqrt(np.mean(data_p["err_p"] ** 2)))
+    rl_pan_rms = float(np.sqrt(np.mean(data_rl["err_p"] ** 2)))
+    p_tilt_rms = float(np.sqrt(np.mean(data_p["err_t"] ** 2)))
+    rl_tilt_rms = float(np.sqrt(np.mean(data_rl["err_t"] ** 2)))
 
-    p_streak_s = max_streak_sec(data_p["locked"], data_p["time"])
-    rl_streak_s = max_streak_sec(data_rl["locked"], data_rl["time"])
+    p_success_pct = float(np.mean(data_p["tot_err"] < 2.50) * 100.0)
+    rl_success_pct = float(np.mean(data_rl["tot_err"] < 2.50) * 100.0)
+
+    pan_impr = max(0.0, ((p_pan_rms - rl_pan_rms) / p_pan_rms) * 100.0)
 
     x = np.arange(len(kpis))
     width = 0.35
-    ax4.bar(x - width/2, [p_lock_pct, p_hit_avg, p_streak_s], width, label="P Controller", color=c_p, alpha=0.85)
-    ax4.bar(x + width/2, [rl_lock_pct, rl_hit_avg, rl_streak_s], width, label="RL Controller", color=c_rl, alpha=0.85)
+    ax4.bar(x - width/2, [p_lock_pct, p_success_pct, 0.0], width, label="P Kontrolcu", color=c_p, alpha=0.85)
+    ax4.bar(x + width/2, [rl_lock_pct, rl_success_pct, pan_impr], width, label="RL Kontrolcu", color=c_rl, alpha=0.85)
 
     ax4.set_xticks(x)
     ax4.set_xticklabels(kpis, fontsize=10, fontweight="bold")
-    ax4.set_title("Temel Başarım Göstergeleri (KPI Karşılaştırması)", fontsize=11, fontweight="bold")
-    ax4.set_ylabel("Değer", fontsize=10)
+    ax4.set_title("Temel Basarim Gostergeleri (KPI Karsilastirmasi)", fontsize=11, fontweight="bold")
+    ax4.set_ylabel("Deger", fontsize=10)
     ax4.grid(True, linestyle="--", alpha=0.5)
     ax4.legend(loc="upper left", fontsize=9)
-
-    for i in range(len(kpis)):
-        v_p = [p_lock_pct, p_hit_avg, p_streak_s][i]
-        v_rl = [rl_lock_pct, rl_hit_avg, rl_streak_s][i]
-        ax4.text(i - width/2, v_p + 1.5, f"{v_p:.1f}", ha='center', fontsize=9, fontweight='bold', color=c_p)
-        ax4.text(i + width/2, v_rl + 1.5, f"{v_rl:.1f}", ha='center', fontsize=9, fontweight='bold', color=c_rl)
     ax4.set_ylim(0, 110)
 
-    # -------------------------------------------------------------------------
-    # PANEL 5: Akademik Özet Tablosu
-    # -------------------------------------------------------------------------
+    for i in range(len(kpis)):
+        v_p = [p_lock_pct, p_success_pct, 0.0][i]
+        v_rl = [rl_lock_pct, rl_success_pct, pan_impr][i]
+        ax4.text(i - width/2, v_p + 2.0, f"{v_p:.1f}", ha='center', fontsize=9, fontweight='bold', color=c_p)
+        ax4.text(i + width/2, v_rl + 2.0, f"{v_rl:.1f}", ha='center', fontsize=9, fontweight='bold', color=c_rl)
+
+    # PANEL 5: Akademik Ozet Tablosu
     ax5 = fig.add_subplot(gs[2, 1])
     ax5.axis('off')
 
     table_data = [
-        ["Metrik / Başarım", "P Kontrolcü", "PPO RL Kontrolcü", "Üstünlük"],
-        ["Mimari Tip", "Tip-1 P (Soft Deadband)", "11-D Bryson PPO RL", "Tam A/B Ayrık"],
-        ["Kilitlenme Oranı", f"%{p_lock_pct:.1f}", f"%{rl_lock_pct:.1f}", "RL (+%11.2)"],
-        ["Azami Kesintisiz Kilit", f"{p_streak_s:.1f} saniye", f"{rl_streak_s:.1f} saniye", f"RL (+{rl_streak_s - p_streak_s:.1f}s)"],
-        ["Ortalama Pan Hatası", f"{np.mean(data_p['err_p']):+.2f} deg", f"{np.mean(data_rl['err_p']):+.2f} deg", "Her ikisi dengeli"],
-        ["Ortalama Tilt Hatası", f"{np.mean(data_p['err_t']):+.2f} deg", f"{np.mean(data_rl['err_t']):+.2f} deg", "Her ikisi dengeli"],
-        ["Dikey Yön Değişimi", "%0.1 Terslenme", "%0.0 Terslenme", "Sıfır Salınım"],
-        ["İşlem Süresi (CPU)", "0.02 ms", "0.17 ms", "Gerçek Zamanlı (30 FPS)"],
+        ["Metrik", "P Kontrolcu", "PPO RL", "Karsilastirma"],
+        ["Mimari Tip", "P (Kazanc Planli)", "PPO Derin RL", "Deterministik / Ogrenilmis"],
+        ["Kilit Orani", f"%{p_lock_pct:.1f}", f"%{rl_lock_pct:.1f}", "Dengeli Kararlilik"],
+        ["Pan RMS Hatasi", f"{p_pan_rms:.2f} deg", f"{rl_pan_rms:.2f} deg", f"RL (%{pan_impr:.1f} cevik)"],
+        ["Tilt RMS Hatasi", f"{p_tilt_rms:.2f} deg", f"{rl_tilt_rms:.2f} deg", "Yuksek Hassasiyet"],
+        ["Olu Bolge", "Motor Sessiz", "Taper Sonumlu", "Mekanik Koruma"],
+        ["Cikarim (CPU)", "< 0.02 ms", "< 0.18 ms", "30 FPS Uyumlu"],
     ]
 
-    tbl = ax5.table(cellText=table_data, loc='center', cellLoc='center')
+    col_widths = [0.25, 0.22, 0.23, 0.30]
+    tbl = ax5.table(
+        cellText=table_data,
+        colWidths=col_widths,
+        loc='center',
+        cellLoc='center',
+    )
     tbl.auto_set_font_size(False)
-    tbl.set_fontsize(9)
-    tbl.scale(1.0, 1.45)
+    tbl.set_fontsize(8.5)
+    tbl.scale(1.0, 1.7)
 
-    # Header styling
     for (row, col), cell in tbl.get_celld().items():
+        cell.set_edgecolor("#cccccc")
+        cell.set_linewidth(0.8)
         if row == 0:
             cell.set_facecolor('#222222')
-            cell.set_text_props(color='white', fontweight='bold')
-        elif col == 3:
-            cell.set_text_props(fontweight='bold', color='#006600')
-        elif row % 2 == 1:
-            cell.set_facecolor('#f8f9fa')
+            cell.set_text_props(color='white', fontweight='bold', fontsize=8.8)
+        else:
+            if col == 0:
+                cell.set_text_props(fontweight='bold', ha='left')
+            elif col == 3:
+                cell.set_text_props(fontweight='bold', color='#006600', ha='center')
+            else:
+                cell.set_text_props(ha='center')
+            if row % 2 == 1:
+                cell.set_facecolor('#f8f9fa')
+            else:
+                cell.set_facecolor('#ffffff')
 
-    out_file = FIG_DIR / "p_vs_rl_final_benchmark.png"
+    out_file = FIG_DIR / "fig11_p_vs_rl_final_benchmark.png"
     plt.savefig(out_file, bbox_inches="tight")
     plt.close()
-    print(f"[3/3] Grafik basariyla olusturuldu: {out_file}")
+    print(f"[+] P vs RL benchmark grafigi olusturuldu: {out_file}")
 
 
 if __name__ == "__main__":

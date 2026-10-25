@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "turret_fcs"
-version = "1.3"
+version = "2.0.0"
 description = "Autonomous Air Defense Turret Fire Control System (FCS) - YTU Senior Capstone Project"
 readme = "README.md"
-requires-python = ">=3.9, <3.13"
+requires-python = ">=3.10, <3.13"
 license = { text = "MIT" }
 authors = [
     { name = "Berkay Senturk" }
@@ -17,28 +17,31 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "numpy>=1.24.0",
-    "opencv-python>=4.8.0,<5.0.0",
-    "scipy>=1.11.0",
-    "matplotlib>=3.7.0,<4.0.0",
-    "torch>=2.0.0",
-    "ultralytics>=8.0.0",
-    "pyserial>=3.5",
-    "stable-baselines3>=2.2.0,<3.0.0",
-    "gymnasium>=0.29.0,<1.1.0",
-    "pyyaml>=6.0",
-    "optuna>=3.5.0",
+    "numpy==1.26.4",
+    "opencv-python==4.10.0.84",
+    "scipy==1.14.1",
+    "matplotlib==3.9.2",
+    "torch==2.5.1",
+    "ultralytics==8.3.40",
+    "lapx==0.5.12; sys_platform == 'win32'",
+    "lap==0.5.13; sys_platform != 'win32'",
+    "stable-baselines3==2.4.1",
+    "gymnasium==1.0.0",
+    "tensorboard==2.18.0",
+    "pyserial==3.5",
+    "pygrabber==0.2; sys_platform == 'win32'",
+    "pyyaml==6.0.2",
+    "optuna==4.1.0",
 ]
 
 [project.optional-dependencies]
 test = [
-    "pytest>=8.0.0",
+    "pytest==8.3.4",
 ]
 
 [project.scripts]
@@ -48,5 +51,12 @@ turret-fcs = "turret_fcs.main:main"
 where = ["."]
 include = ["turret_fcs*"]
 
+[tool.setuptools.package-data]
+turret_fcs = [
+    "rl_sim/models/*.npz",
+    "rl_sim/models/*.zip",
+]
+
 [tool.pytest.ini_options]
-pythonpath = ["."]
+pythonpath = [".", "webots/controllers/webots_main"]
+testpaths = ["tests"]

@@ -20,7 +20,6 @@ KULLANIM:
 import argparse
 import csv
 import glob
-import math
 import os
 import sys
 from pathlib import Path
