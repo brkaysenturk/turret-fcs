@@ -25,10 +25,7 @@ import numpy as np
 from scipy.stats import ncx2
 
 
-try:
-    from .config import CONFIG
-except (ImportError, ValueError):
-    from config import CONFIG
+from .config import CONFIG
 
 
 class LockManager:
@@ -46,6 +43,7 @@ class LockManager:
         self.lock_threshold_frames = lock_threshold_frames
         self.lock_exit_margin_deg = lock_exit_margin_deg
         self.fx = float(fx) if fx is not None else CONFIG.optics.compute_fx(CONFIG.optics.default_width)
+        self.fy = CONFIG.optics.compute_fy(CONFIG.optics.default_height)
 
         self.stability_counter = 0
         self.is_locked = False
@@ -57,11 +55,11 @@ class LockManager:
 
     def compute_dynamic_threshold(self, target_velocity):
         speed_mag = float(np.hypot(target_velocity[0], target_velocity[1]))
-        if speed_mag < 15.0:
-            return 1.60
-        if speed_mag < 45.0:
-            return 2.20
-        return 3.00
+        if speed_mag < CONFIG.lock.threshold_low_speed_px_s:
+            return CONFIG.lock.gate_slow_deg
+        if speed_mag < CONFIG.lock.threshold_high_speed_px_s:
+            return CONFIG.lock.gate_medium_deg
+        return CONFIG.lock.gate_fast_deg
 
     def compute_hit_probability(
         self,
@@ -81,7 +79,7 @@ class LockManager:
         """
         d = max(0.5, float(dist_m)) if dist_m is not None else CONFIG.ballistics.default_distance_m
         effective_fx = float(fx) if (fx is not None and fx > 100.0) else self.fx
-        effective_fy = float(fy) if (fy is not None and fy > 100.0) else (effective_fx * (9.0 / 16.0))
+        effective_fy = float(fy) if (fy is not None and fy > 100.0) else self.fy
 
         # 1. Hedef Acisal Yaricapi: Varsa dogrudan YOLO kutu boyutundan, yoksa mesafeden cikar
         if box_dim is not None and len(box_dim) >= 2 and box_dim[0] > 0 and box_dim[1] > 0:

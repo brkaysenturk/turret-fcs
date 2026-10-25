@@ -1,85 +1,84 @@
 """
 ================================================================================
-MODUL: AYRIK EKSENLI YUMUSAK OLU BOLGELI TIP-1 P MOTOR KONTROLCUSU
+MODUL: URETIM P KONTROLCUSU (P CONTROLLER)
 ================================================================================
-Bu modul, kamera gorus acilarini, balistik yercekimi kompanzasyonunu (super-elevation),
-atis onleme acilarini ve gercek donanimda dogrulanmis yumusak olu bolgeli (Soft Deadband)
-saf oransal (Tip-1 P) motor kontrol komutlarini hesaplar.
+Tip-1 P omurgasini koruyan, gereksiz cift filtrelemeyi ve sabit slew tavanini
+kaldiran dogrusal Tip-1 P kontrolcusu:
 
-KONTROL PARAMETRELERI:
-- Pan:  Kp = 0.10 (30 FPS bazinda, dt normalizasyonu ile Kp_s = 3.0 1/s), Deadband = 0.85 deg
-- Tilt: Kp = 0.05 (30 FPS bazinda, dt normalizasyonu ile Kp_s = 1.5 1/s), Deadband = 0.95 deg
-- Filtre: alpha = 0.75 (EMA)
-- Komut Limiti: max_output = 1.35 deg (Tek kare mekanik jerk ve adim tavani ile korunur)
+1. ESKI SORUN - CIFT FILTRE VE SLEW TAVANI:
+   Eski kontrolcu kameradan gelen aciyi compute_angles icinde EMA ile
+   filtreliyor, compute_p icinde tekrar EMA'liyor ve ustune 0.20 derece/kare
+   pan slew koyuyordu. 30 FPS'de bu 6 derece/s yapay tavan demektir.
+   Yeni kontrolcu tek EMA (alpha = 0.85) uygular; sabit pan slew yerine komut
+   ivme siniri (pan 400, tilt 267 derece/s^2) kullanarak steady-state hiz
+   tavanini kaldirir, kalkis ve donuslerde mekanik darbeleri onler.
 
-KONTROL TEORISI GEREKCESI:
-STM32 gomulu yazilimindaki pozisyon biriktiricisi theta(k) = theta(k-1) + delta_theta
-ayrik zamanda dogal bir integrator gibi davranir (Tip-1 Servomekanizma).
-Klasik kontrol teorisine gore (Ogata / Franklin):
-1. Statik Hedefler (Konum Basamak Girisi): Tip-1 acik cevrim integratoru sayesinde
-   harici bir yazilimsal integral (Ki) terimine ihtiyac duymadan sifir kalici durum hatasi (e_ss = 0) saglar.
-2. Hareketli Hedefler (Acisal Hiz Rampa Girisi): Tip-1 sistemlerde rampa hatasi e_ss = omega / Kv olur.
-   Sistemimiz bu sonlu rampa gecikmesini, Kalman filtresi hedef hiz kestirimi ve
-   balistik atis onleme ofseti (kinematik lead offset) ile telafi eder;
-   cevik manevralarda ise yapay zeka (RL) denetleyicisi devreye girer.
-Yazilima harici bir Ki integrali konulmamasinin temel sebebi, acik cevrime ikinci bir kutup
-ekleyerek (Tip-2 rezonansi) faz cokmesine ve servo limit dongusu titresimine yol acmasini engellemektir.
-Kamera gurultusunu servolara tasimamak icin turev (D) terimi yerine Yumusak Olu Bolge (Soft Deadband) kullanilir.
-===============================================================================
+2. KONTROL STRUKTURU:
+   - Tek EMA (tek filtre katmani), varsayilan alpha = 0.85.
+   - Yumusak olu bolge korunur (pan 0.85, tilt 0.95 derece).
+   - Sabit oransal kazanc (nominal 30 FPS: pan Kp=0.22, tilt Kp=0.11).
+   - Pan/tilt icin ayri ivme (jerk) siniri; steady-state takip hizi kisitlanmaz.
+   - Ki ve Kd yoktur. Hiz feedforward'i yoktur; Kalman hizi P motoruna girmez.
+
+3. DOGRULAMA:
+   Webots profil taramasi ve gercek taret geri bildirimi ile taban kazanc
+   0.22/0.11 olarak belirlenmistir. (0.30 gercek donanimda rezonansa girmistir).
+================================================================================
 """
 
 import numpy as np
 
-try:
-    from .config import CONFIG
-except (ImportError, ValueError):
-    from config import CONFIG
+from .config import CONFIG
 
 
 class PController:
-    """
-    Kamera gorus acilarini, balistik telafiyi ve ayrik eksenli yumusak olu bolgeli
-    saf oransal (Tip-1 P) motor duzeltme komutlarini hesaplar.
-    """
+    """Tek filtreli, ivme sinirli, yumusak olu bolgeli saf Tip-1 P kontrolcusu."""
 
     DEFAULT_DISTANCE_M = CONFIG.ballistics.default_distance_m
     PROJECTILE_SPEED_MPS = CONFIG.ballistics.projectile_speed_mps
     GRAVITY_ACCEL = CONFIG.ballistics.gravity_accel
 
     MAX_OUTPUT_DEG = CONFIG.control.max_output_deg
+    MAX_OUTPUT_TILT_DEG = CONFIG.actuator.max_step_tilt_deg
     DEADBAND_PAN_DEG = CONFIG.control.deadband_pan_deg
     DEADBAND_TILT_DEG = CONFIG.control.deadband_tilt_deg
+    ALPHA_FILTER = CONFIG.control.alpha_filter
+    KP_PAN_FRAME = CONFIG.control.kp_pan
+    KP_TILT_FRAME = CONFIG.control.kp_tilt
+    CMD_ACCEL_PAN = CONFIG.control.cmd_accel_pan_deg_s2
+    CMD_ACCEL_TILT = CONFIG.control.cmd_accel_tilt_deg_s2
 
     def __init__(
         self,
-        kp_pan=CONFIG.control.kp_pan,
-        kp_tilt=CONFIG.control.kp_tilt,
-        alpha=CONFIG.control.alpha_filter,
+        kp_pan=KP_PAN_FRAME,
+        kp_tilt=KP_TILT_FRAME,
+        alpha=ALPHA_FILTER,
         max_output=MAX_OUTPUT_DEG,
+        max_output_tilt=MAX_OUTPUT_TILT_DEG,
         deadband_pan=DEADBAND_PAN_DEG,
         deadband_tilt=DEADBAND_TILT_DEG,
+        cmd_accel_pan_deg_s2=CMD_ACCEL_PAN,
+        cmd_accel_tilt_deg_s2=CMD_ACCEL_TILT,
     ):
-        # 30 FPS bazinda girilen kazanci surekli zaman formuna (1/s) donusturur
         self.kp_frame_pan = float(kp_pan)
         self.kp_frame_tilt = float(kp_tilt)
 
-        self.kp_pan = self.kp_frame_pan if self.kp_frame_pan >= 1.0 else (self.kp_frame_pan / 0.03333)
-        self.kp_tilt = self.kp_frame_tilt if self.kp_frame_tilt >= 1.0 else (self.kp_frame_tilt / 0.03333)
-
-        # Filtre ve sinirlar
         self.alpha = float(alpha)
         self.max_output = float(max_output)
+        self.max_output_tilt = float(max_output_tilt)
         self.deadband_pan = float(deadband_pan)
         self.deadband_tilt = float(deadband_tilt)
 
-        # Anlik ve filtrelenmis acilar
+        self.cmd_accel_pan_deg_s2 = max(1.0, float(cmd_accel_pan_deg_s2))
+        self.cmd_accel_tilt_deg_s2 = max(1.0, float(cmd_accel_tilt_deg_s2))
+
         self.actual_pan = 0.0
         self.actual_tilt = 0.0
-        self.filtered_pan = 0.0
-        self.filtered_tilt = 0.0
+        self.smooth_cmd_pan = 0.0
+        self.smooth_cmd_tilt = 0.0
 
     def compute_angles(self, bx, by, center_x, center_y, fx, fy):
-        """Kamera merkezinden hedefin acisal sapmasini hesaplar ve EMA ile filtreler."""
+        """Kamera merkezinden hedefin acisal sapmasini hesaplar; tek EMA uygular."""
         target_err_x = bx - center_x
         target_err_y = by - center_y
         raw_pan = np.degrees(np.arctan(target_err_x / max(fx, 1e-6)))
@@ -101,44 +100,57 @@ class PController:
         lead_tilt = np.degrees(np.arctan(-d_lead_y / max(fy, 1e-6)))
         return float(lead_pan), float(lead_tilt)
 
-    def compute_p(self, active_pan, active_tilt, dt=0.033, **kwargs):
-        """Yumusak olu bolgeli ve dt-normalizasyonlu Tip-1 P motor komutunu hesaplar."""
-        # Dongu gecikmelerinde maksimum dt sinirlamasi (50 ms)
-        effective_dt = max(0.010, min(float(dt), 0.050))
+    def max_step_for(self, dt, axis="pan"):
+        """FPS'ten bagimsiz kare basi adim limiti (30 FPS'te pan: 1.50, tilt: 0.75)."""
+        dt_safe = max(1e-3, float(dt))
+        rate_scale = float(np.clip(dt_safe / 0.03333, 0.25, 3.0))
+        if axis == "tilt":
+            return float(min(self.max_output_tilt * rate_scale, CONFIG.actuator.max_step_tilt_deg))
+        return float(min(self.max_output * rate_scale, CONFIG.control.max_command_step_deg))
 
-        self.filtered_pan = self.alpha * active_pan + (1.0 - self.alpha) * self.filtered_pan
-        self.filtered_tilt = self.alpha * active_tilt + (1.0 - self.alpha) * self.filtered_tilt
-
-        # =========================================================================
-        # 1. PAN EKSENI (Yatay)
-        # =========================================================================
-        abs_pan = abs(self.filtered_pan)
-        if abs_pan <= self.deadband_pan:
-            u_pan = 0.0
+    def _axis_command(self, error_deg, kp_frame, deadband, accel_deg_s2, previous, dt):
+        abs_error = abs(float(error_deg))
+        if abs_error <= deadband:
+            desired = 0.0
         else:
-            eff_pan = np.sign(self.filtered_pan) * (abs_pan - self.deadband_pan)
-            u_pan = self.kp_pan * eff_pan * effective_dt
+            effective = float(np.sign(error_deg)) * (abs_error - deadband)
+            # kp_frame 30 FPS nominal kazancidir; dt ile olceklenir.
+            desired = kp_frame * effective * (dt / 0.03333)
 
-        # =========================================================================
-        # 2. TILT EKSENI (Dikey)
-        # =========================================================================
-        abs_tilt = abs(self.filtered_tilt)
-        if abs_tilt <= self.deadband_tilt:
-            u_tilt = 0.0
-        else:
-            eff_tilt = np.sign(self.filtered_tilt) * (abs_tilt - self.deadband_tilt)
-            u_tilt = self.kp_tilt * eff_tilt * effective_dt
+        # Komut derece/kare cinsinden oldugu icin ivme siniri: a * dt^2 (derece/kare)
+        max_delta = accel_deg_s2 * (dt ** 2)
+        return float(np.clip(desired, previous - max_delta, previous + max_delta))
 
-        # Tek karede verilebilecek maksimum mekanik adim siniri
-        max_step = float(min(self.max_output, self.max_output * (effective_dt / 0.03333)))
-        u_pan = float(np.clip(u_pan, -max_step, max_step))
-        u_tilt = float(np.clip(u_tilt, -max_step, max_step))
+    def compute_p(self, active_pan, active_tilt, dt=0.033):
+        """Tek filtreli, ivme sinirli, yumusak olu bolgeli saf Tip-1 P komutu."""
+        effective_dt = max(0.010, min(float(dt), 0.100))
 
+        u_pan = self._axis_command(
+            active_pan, self.kp_frame_pan, self.deadband_pan,
+            self.cmd_accel_pan_deg_s2, self.smooth_cmd_pan, effective_dt,
+        )
+        u_tilt = self._axis_command(
+            active_tilt, self.kp_frame_tilt, self.deadband_tilt,
+            self.cmd_accel_tilt_deg_s2, self.smooth_cmd_tilt, effective_dt,
+        )
+
+        max_step_pan = self.max_step_for(dt, axis="pan")
+        max_step_tilt = self.max_step_for(dt, axis="tilt")
+        u_pan = float(np.clip(u_pan, -max_step_pan, max_step_pan))
+        u_tilt = float(np.clip(u_tilt, -max_step_tilt, max_step_tilt))
+        self.smooth_cmd_pan = u_pan
+        self.smooth_cmd_tilt = u_tilt
         return u_pan, u_tilt
 
     def reset(self):
         """Kontrolcunun ic durumlarini sifirlar."""
         self.actual_pan = 0.0
         self.actual_tilt = 0.0
-        self.filtered_pan = 0.0
-        self.filtered_tilt = 0.0
+        self.smooth_cmd_pan = 0.0
+        self.smooth_cmd_tilt = 0.0
+
+    def on_target_lost(self):
+        """Hedef kaybedildiginde komut ivme rampasi hafizasini sifirlar."""
+        self.smooth_cmd_pan = 0.0
+        self.smooth_cmd_tilt = 0.0
+

@@ -16,131 +16,151 @@ ELEME VE PUANLAMA KRITERLERI:
 """
 
 
+from .config import CONFIG
+
+
 class TargetSelector:
     """
-    YOLO tespitlerinden en uygun hedef sinir kutusunu guvene, alana, aspect orana ve 
+    YOLO tespitlerinden en uygun hedef sinir kutusunu guvene, alana, aspect orana ve
     nisangaha olan mesafeye gore secen sinif.
     """
 
-    def __init__(self, min_conf=0.28, min_area=400, max_area=400000, min_dim=18, max_lost_frames=5):
-        self.search_min_conf = float(min_conf)  # Ilk tespit arama esigi (Ev: 0.28 | Okul: 0.45)
-        self.track_min_conf = 0.16              # Kilitliyken hareket bulanikligi (motion-blur) tolerans esigi
+    def __init__(
+        self,
+        min_conf=CONFIG.selector.min_conf,
+        min_area=CONFIG.selector.min_area,
+        max_area=CONFIG.selector.max_area,
+        min_dim=CONFIG.selector.min_dim,
+        max_lost_frames=CONFIG.selector.max_lost_frames,
+        track_min_conf=CONFIG.selector.track_min_conf,
+        spatial_gate_px=CONFIG.selector.spatial_gate_px,
+        min_aspect_ratio=CONFIG.selector.min_aspect_ratio,
+        max_aspect_ratio=CONFIG.selector.max_aspect_ratio,
+    ):
+        self.search_min_conf = float(min_conf)
+        self.track_min_conf = float(track_min_conf)
         self.min_area = min_area
         self.max_area = max_area
         self.min_dim = min_dim
         self.max_lost_frames = max_lost_frames
+        self.spatial_gate_px = float(spatial_gate_px)
+        self.min_aspect_ratio = float(min_aspect_ratio)
+        self.max_aspect_ratio = float(max_aspect_ratio)
         self.locked_track_id = None
-        self.last_target_center = None          # (cx, cy) Mekansal sadakat (spatial persistence)
+        self.last_target_center = None
         self.lost_counter = 0
         self.last_target_conf = 0.0
 
     @property
     def is_tracking(self):
-        """Aktif bir hedef takibi suruyor mu?"""
-        return (self.locked_track_id is not None or self.last_target_center is not None) and (self.lost_counter == 0)
+        """Hedef, tolerans penceresi icinde hala takip ediliyor mu?"""
+        has_target = self.locked_track_id is not None or self.last_target_center is not None
+        return has_target and self.lost_counter <= self.max_lost_frames
 
     @property
     def min_conf(self):
-        """Kilitli hedef takipteyken hareket bulanikligi aninda kopmamasi icin dinamik esik (Histerezis)."""
-        if self.is_tracking:
-            return self.track_min_conf
-        return self.search_min_conf
+        """Kilitli takipte motion-blur toleransi; arama modunda daha siki esik."""
+        return self.track_min_conf if self.is_tracking else self.search_min_conf
+
+    @staticmethod
+    def _box_conf(box):
+        try:
+            value = box.conf[0]
+            return float(value.cpu().numpy()) if hasattr(value, "cpu") else float(value)
+        except Exception:
+            return float(getattr(box, "conf", 0.0))
+
+    @staticmethod
+    def _box_coords(box):
+        try:
+            value = box.xyxy[0]
+            coords = value.cpu().numpy() if hasattr(value, "cpu") else value
+            return tuple(int(v) for v in coords)
+        except Exception:
+            return None
+
+    @staticmethod
+    def _box_id(box):
+        try:
+            if getattr(box, "id", None) is None:
+                return None
+            value = box.id[0]
+            return int(value.cpu().numpy()) if hasattr(value, "cpu") else int(value)
+        except Exception:
+            return None
+
+    def _register_loss(self):
+        self.lost_counter += 1
+        if self.lost_counter > self.max_lost_frames:
+            self.reset()
+        self.last_target_conf = 0.0
 
     def select_best_target(self, boxes, center_x, center_y):
         if len(boxes) == 0:
-            self.lost_counter += 1
-            if self.lost_counter > self.max_lost_frames:
-                self.reset()
-            self.last_target_conf = 0.0
+            self._register_loss()
             return None
 
         candidates = []
         effective_conf_thresh = self.min_conf
         for box in boxes:
-            try:
-                conf = float(box.conf[0].cpu().numpy()) if hasattr(box.conf[0], "cpu") else float(box.conf[0])
-            except Exception:
-                conf = float(box.conf) if hasattr(box, "conf") else 0.0
-
+            conf = self._box_conf(box)
             if conf < effective_conf_thresh:
                 continue
 
-            try:
-                raw_coords = box.xyxy[0].cpu().numpy() if hasattr(box.xyxy[0], "cpu") else box.xyxy[0]
-                x1, y1, x2, y2 = map(int, raw_coords)
-            except Exception:
+            coords = self._box_coords(box)
+            if coords is None:
                 continue
-
-            bw = x2 - x1
-            bh = y2 - y1
+            x1, y1, x2, y2 = coords
+            bw, bh = x2 - x1, y2 - y1
             area = bw * bh
-
             if area < self.min_area or area > self.max_area or bw < self.min_dim or bh < self.min_dim:
                 continue
-
-            aspect_ratio = bw / float(bh)
-            if not (0.35 < aspect_ratio < 2.50):
+            if not (self.min_aspect_ratio < bw / float(bh) < self.max_aspect_ratio):
                 continue
 
-            track_id = None
-            if hasattr(box, "id") and box.id is not None:
-                try:
-                    track_id = int(box.id[0].cpu().numpy()) if hasattr(box.id[0], "cpu") else int(box.id[0])
-                except Exception:
-                    track_id = None
-
-            cx = (x1 + x2) // 2
-            cy = (y1 + y2) // 2
-            dist_sq_center = (cx - center_x) ** 2 + (cy - center_y) ** 2
-
+            cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
             dist_sq_last = None
             if self.last_target_center is not None:
                 dist_sq_last = (cx - self.last_target_center[0]) ** 2 + (cy - self.last_target_center[1]) ** 2
-
             candidates.append({
                 "box": (x1, y1, x2, y2),
                 "center": (cx, cy),
-                "track_id": track_id,
-                "dist_sq_center": dist_sq_center,
+                "track_id": self._box_id(box),
                 "dist_sq_last": dist_sq_last,
-                "conf": conf
+                "dist_sq_center": (cx - center_x) ** 2 + (cy - center_y) ** 2,
+                "conf": conf,
             })
 
         if not candidates:
-            self.lost_counter += 1
-            if self.lost_counter > self.max_lost_frames:
-                self.reset()
-            self.last_target_conf = 0.0
+            self._register_loss()
             return None
 
-        # 1. ByteTrack kimligi (track_id) hala kadrajdaysa ona sadik kal
+        # 1. ByteTrack kimligi: yalnizca son konuma makul uzakliktaysa kabul et.
         if self.locked_track_id is not None:
             for c in candidates:
-                if c["track_id"] is not None and c["track_id"] == self.locked_track_id:
-                    self.lost_counter = 0
-                    self.last_target_center = c["center"]
-                    self.last_target_conf = float(c["conf"])
-                    return c["box"]
+                if c["track_id"] == self.locked_track_id and self._within_spatial_gate(c):
+                    return self._accept(c)
 
-        # 2. ByteTrack ID yoksa bile bir onceki karedeki konuma en yakin adayi sec (Mekansal Sadakat)
+        # 2. ID yoksa veya ID atlamasi supheliyse onceki konuma en yakin aday.
         if self.last_target_center is not None and self.lost_counter <= self.max_lost_frames:
-            # Onceki konuma 180 piksel icindeki en yakin adayi al
-            spatial_candidates = [c for c in candidates if c["dist_sq_last"] is not None and c["dist_sq_last"] <= (180 ** 2)]
+            spatial_candidates = [c for c in candidates if self._within_spatial_gate(c)]
             if spatial_candidates:
-                best = min(spatial_candidates, key=lambda c: c["dist_sq_last"])
-                self.locked_track_id = best["track_id"]
-                self.last_target_center = best["center"]
-                self.lost_counter = 0
-                self.last_target_conf = float(best["conf"])
-                return best["box"]
+                return self._accept(min(spatial_candidates, key=lambda c: c["dist_sq_last"]))
 
-        # 3. Kilitli veya takip edilen hedef yoksa: Ekran merkezine en yakin olan birincil tehdidi sec
-        best = min(candidates, key=lambda c: c["dist_sq_center"])
-        self.locked_track_id = best["track_id"]
-        self.last_target_center = best["center"]
+        # 3. Yeni hedef: ekran merkezine en yakin aday.
+        return self._accept(min(candidates, key=lambda c: c["dist_sq_center"]))
+
+    def _within_spatial_gate(self, candidate):
+        if candidate["dist_sq_last"] is None:
+            return False
+        return candidate["dist_sq_last"] <= self.spatial_gate_px ** 2
+
+    def _accept(self, candidate):
+        self.locked_track_id = candidate["track_id"]
+        self.last_target_center = candidate["center"]
         self.lost_counter = 0
-        self.last_target_conf = float(best["conf"])
-        return best["box"]
+        self.last_target_conf = float(candidate["conf"])
+        return candidate["box"]
 
     def reset(self):
         """Hedef secici kilit hafizasini sifirlar."""

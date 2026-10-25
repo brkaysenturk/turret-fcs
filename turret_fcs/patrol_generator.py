@@ -27,6 +27,8 @@ taramasi yapmasini saglar:
 
 import numpy as np
 
+from .config import CONFIG
+
 
 class PatrolGenerator:
     """
@@ -35,12 +37,13 @@ class PatrolGenerator:
 
     def __init__(
         self,
-        wait_delay_sec=1.5,      # Wait delay after losing target before initiating patrol (seconds)
-        scan_pan_amp=45.0,       # Horizontal scan amplitude (+/- 45 deg -> with FOV covers ~140 deg airspace)
-        scan_tilt_amp=16.0,      # Vertical scan amplitude (+/- 16 deg -> with FOV covers ~65 deg vertical corridor)
-        scan_period_sec=8.0,     # Full scan cycle duration (8.0s -> smooth, low-jerk servo motion)
-        return_speed_dps=20.0,   # Return-to-center angular speed (20 deg/s)
-        max_slew_per_frame=1.5,  # Maximum step per frame (deg/frame - prevents servo shock)
+        wait_delay_sec=CONFIG.patrol.wait_delay_sec,
+        scan_pan_amp=CONFIG.patrol.scan_pan_amp,
+        scan_tilt_amp=CONFIG.patrol.scan_tilt_amp,
+        scan_period_sec=CONFIG.patrol.scan_period_sec,
+        return_speed_dps=CONFIG.patrol.return_speed_dps,
+        max_slew_per_frame=CONFIG.patrol.max_slew_per_frame,
+        min_dispatch_deg=CONFIG.patrol.min_dispatch_deg,
     ):
         self.wait_delay_sec = float(wait_delay_sec)
         self.scan_pan_amp = float(scan_pan_amp)
@@ -58,7 +61,7 @@ class PatrolGenerator:
         # Birikimli Geri Donus Adimlayici (MG996R 0.90 deg mekanik olu bolgeyi kirmak icin)
         self.accum_pan = 0.0
         self.accum_tilt = 0.0
-        self.min_dispatch_deg = 0.95  # Minimum mekanik hareket esigi (derece)
+        self.min_dispatch_deg = float(min_dispatch_deg)
 
     def on_target_detected(self, actual_pan=0.0, actual_tilt=0.0):
         """Reset patrol generator upon target acquisition."""
