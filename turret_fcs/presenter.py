@@ -79,7 +79,7 @@ class HUDPresenter:
 
         else:
             # Hedef yok: Arama / Devriye durumlari
-            reticle_color = (0, 191, 255)
+            reticle_color = (0, 255, 0)
             if getattr(fcs, "patrol_enabled", False):
                 status_text = f"PATROL: {getattr(fcs, 'patrol_status', 'STANDBY')}"
                 status_color = (0, 255, 0)
@@ -87,8 +87,8 @@ class HUDPresenter:
                 t_tilt = getattr(fcs, "turret_tilt_deg", 0.0)
                 angle_err_text = f"TURRET POSE:   [{t_pan:+.1f} , {t_tilt:+.1f}] deg"
             else:
-                status_text = "STATUS: SEARCHING AIRSPACE"
-                status_color = (0, 191, 255)
+                status_text = "STATUS: SEARCHING"
+                status_color = (0, 255, 0)
                 angle_err_text = "ANGULAR ERR:   [--.- , --.-] deg"
 
         # 4. Merkez Taktik Nisangahi

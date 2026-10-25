@@ -29,6 +29,7 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv
 
 from turret_env import TurretEnv
+from turret_fcs.config import CONFIG
 
 # CPU termal korumasi icin 2-thread kisiti
 torch.set_num_threads(2)
@@ -106,9 +107,9 @@ def evaluate_agent(model, test_seeds=EVAL_SEEDS, max_steps=300):
 
 
 def objective(trial):
-    # mu_du tamamen serbest (0.005 - 0.15 araliginda)
+    # mu_du serbest (0.005 - 0.20 araliginda, 1.61 deg backlash sönümü)
     lambda_u = trial.suggest_float("lambda_u", 0.008, 0.08, log=True)
-    mu_du = trial.suggest_float("mu_du", 0.005, 0.15, log=True)
+    mu_du = trial.suggest_float("mu_du", 0.005, 0.20, log=True)
     lr = trial.suggest_float("learning_rate", 1.5e-4, 4.2e-4, log=True)
 
     def env_fn():
@@ -119,7 +120,7 @@ def objective(trial):
             mu_du=mu_du,
             progress_gain=2.0,
             error_gain=0.05,
-            backlash_deg=1.20,
+            backlash_deg=CONFIG.actuator.backlash_deg,
             use_velocity_obs=True,
             enable_randomization=True,
         )
@@ -176,13 +177,13 @@ def objective(trial):
     return cost
 
 
-def run_optimization(n_trials=8):
+def run_optimization(n_trials=14):
     current_dir = Path(__file__).resolve().parent
     db_path = current_dir / "optuna_rl.db"
     storage_url = f"sqlite:///{db_path.as_posix()}"
 
     print("==================================================================", flush=True)
-    print(" TURRET FCS // REZONANS KORUMALI OPTUNA TPE TARAMASI (8 x 150K)   ", flush=True)
+    print(f" TURRET FCS // REZONANS KORUMALI OPTUNA TPE TARAMASI ({n_trials} x 150K)   ", flush=True)
     print("==================================================================", flush=True)
     print(f"[Optuna DB] {db_path.name}", flush=True)
     print(f"[Deneme] {n_trials} deneme x {SCREEN_STEPS:,} adim (mu_du serbest: 0.005..0.15)", flush=True)
@@ -255,5 +256,5 @@ def run_optimization(n_trials=8):
 
 
 if __name__ == "__main__":
-    trials = int(sys.argv[1]) if len(sys.argv) > 1 else 8
+    trials = int(sys.argv[1]) if len(sys.argv) > 1 else 14
     run_optimization(n_trials=trials)

@@ -51,9 +51,10 @@ def rate_scaled_step_limits(max_step_pan_deg, max_step_tilt_deg, dt,
     """Kare basi adim limitini dt'ye gore olcekler (egitimle ayni semantik)."""
     dt_safe = max(1e-3, float(dt))
     scale = float(np.clip(dt_safe / max(1e-6, float(nominal_dt)), 0.25, 3.0))
-    cap = float(CONFIG.control.max_output_deg if max_output_deg is None else max_output_deg)
-    pan = min(float(max_step_pan_deg) * scale, cap)
-    tilt = min(float(max_step_tilt_deg) * scale, cap)
+    cap_pan = float(CONFIG.control.max_output_deg if max_output_deg is None else max_output_deg)
+    cap_tilt = float(CONFIG.actuator.max_step_tilt_deg if max_output_deg is None else min(float(max_output_deg), CONFIG.actuator.max_step_tilt_deg))
+    pan = min(float(max_step_pan_deg) * scale, cap_pan)
+    tilt = min(float(max_step_tilt_deg) * scale, cap_tilt)
     return float(pan), float(tilt), scale
 
 
@@ -136,6 +137,8 @@ class RLController:
         self._in_deadband = False
         self.soft_deadband_enabled = bool(soft_deadband_enabled)
         self.reversal_damping = float(np.clip(float(reversal_damping), 0.0, 1.0))
+        self.reversal_hold_frames = int(getattr(CONFIG.rl, 'reversal_hold_frames', 2))
+        self._reversal_timer = np.zeros(self.ACT_DIM, dtype=int)
 
         self.deadband_pan_deg = (
             float(deadband_pan_deg) if deadband_pan_deg is not None
@@ -204,6 +207,7 @@ class RLController:
         self.last_action = np.zeros(2, dtype=np.float32)
         self.prev_policy_action = np.zeros(2, dtype=np.float32)
         self._in_deadband = False
+        self._reversal_timer = np.zeros(self.ACT_DIM, dtype=int)
         self.prev_cmd_pan = 0.0
         self.prev_cmd_tilt = 0.0
 
@@ -274,12 +278,15 @@ class RLController:
             self.max_step_pan_deg, self.max_step_tilt_deg, dt_safe
         )
 
-        # Yon degistiren aksiyonu yumusat: ayni yondeki takibi geciktirmeden
-        # mikro salinimi (ileri-geri titreme) azaltir.
+        # Yon degistiren aksiyonu yumusat: 2 kare (~66ms, gecikme+backlash) boyunca
+        # sonum uygulayarak mikro salinimi ve limit cycle rezonansini sonumler.
         damped = action.copy()
         for axis in range(self.ACT_DIM):
             if action[axis] * self.prev_policy_action[axis] < 0.0:
+                self._reversal_timer[axis] = self.reversal_hold_frames
+            if self._reversal_timer[axis] > 0:
                 damped[axis] *= self.reversal_damping
+                self._reversal_timer[axis] -= 1
 
         d_pan_deg = float(damped[0] * max_pan_step)
         d_tilt_deg = float(damped[1] * max_tilt_step)

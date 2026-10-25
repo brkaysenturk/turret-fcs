@@ -102,8 +102,9 @@ class RLConfig:
     """RL cikarim ve egitim ortaminin ortak sabitleri (tek kaynak)."""
     soft_deadband_enabled: bool = True   # Acisal yumusak olu bolge + taper anahtari
     reversal_damping: float = 0.2889        # Yon degistiren aksiyonun sonum orani (Optuna TPE optimal)
+    reversal_hold_frames: int = 2        # Yon degisim sonumunu 2 kare (~66ms, gecikme+backlash) koru
     taper_pan_deg: float = 1.60           # Soft deadband gecis genisligi (pan - 1.61 deg backlash uyumlu)
-    taper_tilt_deg: float = 1.60          # Soft deadband gecis genisligi (tilt)
+    taper_tilt_deg: float = 1.60          # Soft deadband gecis genisligi (tilt - 1.61 deg backlash ile simetrik)
     nominal_dt_s: float = 0.03333        # Egitim kare periyodu (adim limiti olcekleme referansi)
     d_err_scale: float = 0.05            # Hata turevi gozlem olcegi (egitimle ayni)
     d_err_ema_alpha: float = 0.4386        # Hata turevi EMA katsayisi (Optuna TPE optimal)
@@ -116,8 +117,8 @@ class RLConfig:
     servo_tau_min_s: float = 0.035       # Domain randomization servo zaman sabiti
     servo_tau_max_s: float = 0.065
     episode_steps: int = 300             # Egitim bolumu uzunlugu
-    lambda_u: float = 0.02               # Kontrol eforu ceza katsayisi
-    mu_du: float = 0.08                  # Komut degisimi (jerk) ceza katsayisi
+    lambda_u: float = 0.0104             # Kontrol eforu ceza katsayisi (Optuna TPE 14x150k optimal)
+    mu_du: float = 0.0055                # Komut degisimi (jerk) ceza katsayisi (Optuna TPE 14x150k optimal)
     progress_gain: float = 2.0           # Hata azalma ilerleme odulu katsayisi
     error_gain: float = 0.05             # Kalici karesel hata ceza katsayisi
     bullseye_reward: float = 0.50        # Tam merkez (bullseye) arti odulu

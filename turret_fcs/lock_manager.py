@@ -70,25 +70,30 @@ class LockManager:
         fx=None,
         fy=None,
         box_dim=None,
+        stability_progress=1.0,
+        dynamic_threshold=None,
     ):
         """
-        Tam 2B Dairesel Gauss Integrali (Non-Central Chi-Squared CDF / Marcum Q):
-        Hedef geometrisi (Bounding Box optik boyutu veya mesafe kokenli acisal cap),
-        gercek mermi ucus suresi (t_flight), sistem gecikmesi ve kalibre edilmis namlu sacilmasini
-        birlestiren tam analitik balistik model (%0.0 - %100.0).
+        Tam 2B Dairesel Gauss Integrali (Non-Central Chi-Squared CDF / Marcum Q) + Takip Kararliligi:
+        Hedefin olumcul etkin cekirdegi (lethal core), ucus suresi (t_flight), sistem gecikmesi,
+        kalibre edilmis namlu sacilmasi ve taretin anlik kilitlenme oturma seviyesini
+        birlestiren operasyonel atis kontrol isabet olasiligi (%0.0 - %100.0).
         """
         d = max(0.5, float(dist_m)) if dist_m is not None else CONFIG.ballistics.default_distance_m
         effective_fx = float(fx) if (fx is not None and fx > 100.0) else self.fx
         effective_fy = float(fy) if (fy is not None and fy > 100.0) else self.fy
 
-        # 1. Hedef Acisal Yaricapi: Varsa dogrudan YOLO kutu boyutundan, yoksa mesafeden cikar
+        # 1. Hedef Acisal Yaricapi: Etkin olumcul cekirdek (kutu alaninin %60'i,
+        # cunku balonun/hedefin en dis kenarina temas eden dartlar seker veya patlatmaz).
+        # Fiziksel hedef yaricapi (target_radius_m) ile ustten sinirlanir.
+        theta_max_geom = float(np.degrees(np.arctan(target_radius_m / d)))
         if box_dim is not None and len(box_dim) >= 2 and box_dim[0] > 0 and box_dim[1] > 0:
             bw, bh = float(box_dim[0]), float(box_dim[1])
-            theta_pan = float(np.degrees(np.arctan((bw / 2.0) / effective_fx)))
-            theta_tilt = float(np.degrees(np.arctan((bh / 2.0) / effective_fy)))
-            theta_target = float(0.5 * (theta_pan + theta_tilt))
+            theta_pan = float(np.degrees(np.arctan((bw * 0.60 / 2.0) / effective_fx)))
+            theta_tilt = float(np.degrees(np.arctan((bh * 0.60 / 2.0) / effective_fy)))
+            theta_target = float(min(theta_max_geom, 0.5 * (theta_pan + theta_tilt)))
         else:
-            theta_target = float(np.degrees(np.arctan(target_radius_m / d)))
+            theta_target = theta_max_geom
 
         theta_target = max(0.10, theta_target)
 
@@ -104,18 +109,31 @@ class LockManager:
         speed_deg_s = float(np.hypot(vx_deg_s, vy_deg_s))
 
         # 4. Saçılma Bileşenleri
-        sigma_motion = 0.25 * speed_deg_s * total_lead_time
+        sigma_motion = 0.35 * speed_deg_s * total_lead_time
         sigma_weapon = CONFIG.lock.sigma_weapon_deg
         sigma_total = float(np.sqrt(sigma_weapon**2 + sigma_motion**2))
         sigma_safe = max(0.01, sigma_total)
 
         # 5. Tam 2B Gauss Integrali: Merkezi Olmayan Ki-Kare (ncx2) CDF
-        # Serbestlik derecesi: df = 2, Merkezsizlik: nc = (hata / sigma)^2, Ust Sinir: x = (theta_target / sigma)^2
         err_mag = max(0.0, float(angular_error_deg))
         nc_param = float((err_mag / sigma_safe) ** 2)
         x_cutoff = float((theta_target / sigma_safe) ** 2)
 
-        p_hit_ratio = float(ncx2.cdf(x_cutoff, df=2, nc=nc_param))
+        p_ballistic = float(ncx2.cdf(x_cutoff, df=2, nc=nc_param))
+
+        # 6. Takip ve Kilit Kararliligi Modulasyonu (FCS Operasyonel Doktrini):
+        # Kilit henuz oturmamissa (stability_counter < 10) veya taret hedefe yakinsiyorsa,
+        # anlik hata kucuk olsa bile isabet olasiligi sahte sekilde %99 gosterilmez.
+        s_track = float(np.clip(stability_progress, 0.15, 1.0))
+
+        # Dinamik kapi disina tasildiginda isabet olasiligi hizla sonumlenir
+        s_gate = 1.0
+        if dynamic_threshold is not None and dynamic_threshold > 0.0:
+            if err_mag > dynamic_threshold:
+                gate_ratio = (err_mag - dynamic_threshold) / max(0.5, dynamic_threshold * 0.5)
+                s_gate = float(np.exp(-2.0 * (gate_ratio ** 2)))
+
+        p_hit_ratio = p_ballistic * s_track * s_gate
         return float(np.clip(p_hit_ratio * 100.0, 0.0, 100.0))
 
     def update(self, angular_error_deg, target_velocity, is_firing=False, dist_m=2.0, fx=None, fy=None, box_dim=None):
@@ -132,11 +150,6 @@ class LockManager:
         in_grace_period = self._post_fire_grace_frames > 0
         if in_grace_period:
             self._post_fire_grace_frames -= 1
-
-        self.hit_probability = self.compute_hit_probability(
-            angular_error_deg, target_velocity, dist_m=dist_m, fx=fx, fy=fy, box_dim=box_dim
-        )
-        self.lock_quality = self.hit_probability / 100.0
 
         dynamic_threshold = self.compute_dynamic_threshold(target_velocity)
         dynamic_exit_threshold = dynamic_threshold + self.lock_exit_margin_deg
@@ -162,6 +175,17 @@ class LockManager:
                     self.is_locked = False
                     if angular_error_deg > dynamic_exit_threshold:
                         self.stability_counter = 0
+
+        # Kilit oturmus ise s_track = 1.0, kilitlenme asamasindaysa ilerleme orani
+        stability_progress = 1.0 if self.is_locked else (
+            0.15 + 0.85 * ((self.stability_counter / max(1, self.lock_threshold_frames)) ** 1.5)
+        )
+
+        self.hit_probability = self.compute_hit_probability(
+            angular_error_deg, target_velocity, dist_m=dist_m, fx=fx, fy=fy, box_dim=box_dim,
+            stability_progress=stability_progress, dynamic_threshold=dynamic_threshold
+        )
+        self.lock_quality = self.hit_probability / 100.0
 
         return self.is_locked, self.stability_counter, self.hit_probability
 
