@@ -48,7 +48,10 @@ COLOR_ACCEL = "#8E44AD"   # Mor
 
 
 def find_latest_log():
+    repo_root = Path(__file__).resolve().parents[2]
     patterns = [
+        str(repo_root / "logs" / "telemetry_test_*.csv"),
+        str(repo_root / "logs" / "*.csv"),
         "logs/telemetry_test_*.csv",
         "../logs/telemetry_test_*.csv",
         "logs/*.csv",

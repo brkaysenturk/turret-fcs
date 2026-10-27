@@ -21,8 +21,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 BASE_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = BASE_DIR.parent
-FIG_DIR = BASE_DIR / "figures"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+FIG_DIR = PROJECT_ROOT / "analysis" / "figures" / "python"
 FIG_DIR.mkdir(parents=True, exist_ok=True)
 
 plt.rcParams["font.sans-serif"] = "DejaVu Sans"
@@ -140,7 +140,7 @@ def run_monte_carlo_ballistics(n_sims=50000):
     ax2.set_ylabel("Gecerli Vurus Orani (True Hit Rate %)", fontsize=10)
     ax2.grid(True)
 
-    out_png = FIG_DIR / "ballistics_roc_optimization.png"
+    out_png = FIG_DIR / "python_fig14_ballistics_roc_optimization.png"
     plt.tight_layout()
     plt.savefig(out_png, dpi=300, bbox_inches="tight")
     plt.close()

@@ -30,7 +30,7 @@ from pathlib import Path
 import numpy as np
 import optuna
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 if str(PROJECT_ROOT / "turret_fcs" / "rl_sim") not in sys.path:
@@ -249,7 +249,7 @@ def main():
     print(f"   - Tilt Jerk (deg)   : {cur['tilt_jerk_deg']:.4f}   ->  {bm['tilt_jerk_deg']:.4f}")
     print("=" * 76)
 
-    out_path = PROJECT_ROOT / "analysis" / "p_optuna_results.json"
+    out_path = Path(__file__).resolve().parent / "p_optuna_results.json"
     result_data = {
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
         "plant": {

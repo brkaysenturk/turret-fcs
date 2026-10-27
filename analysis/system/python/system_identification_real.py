@@ -22,8 +22,8 @@ import numpy as np
 from scipy.optimize import minimize
 
 BASE_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = BASE_DIR.parent
-FIG_DIR = BASE_DIR / "figures"
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+FIG_DIR = PROJECT_ROOT / "analysis" / "figures" / "python"
 FIG_DIR.mkdir(parents=True, exist_ok=True)
 
 plt.rcParams["font.sans-serif"] = "DejaVu Sans"
@@ -294,7 +294,7 @@ def run_system_identification(log_path: Path):
     print(f"    - Kestirilen Kazanc (K)           : {fopdt['gain_K']:.3f}")
     print(f"    - Model Uydurma RMSE              : {fopdt['rmse_deg']:.3f} derece")
 
-    out_png = FIG_DIR / "fig13_system_id_real_hardware.png"
+    out_png = FIG_DIR / "python_fig13_system_id_real_hardware.png"
     plot_system_identification_results(fopdt, reversal, noise, out_png)
 
     summary = {

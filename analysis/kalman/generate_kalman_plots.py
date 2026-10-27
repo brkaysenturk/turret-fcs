@@ -20,14 +20,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 BASE_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = BASE_DIR.parent
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from turret_fcs.config import CONFIG
 from turret_fcs.kalman_filter import KalmanFilter
 
-FIG_DIR = BASE_DIR / "figures"
+FIG_DIR = PROJECT_ROOT / "analysis" / "figures" / "python"
 FIG_DIR.mkdir(parents=True, exist_ok=True)
 
 plt.rcParams["font.sans-serif"] = "DejaVu Sans"
@@ -184,7 +184,7 @@ def generate_kalman_plots():
             else:
                 cell.set_facecolor("#ffffff")
 
-    out_file = FIG_DIR / "fig10_kalman_tracking_performance.png"
+    out_file = FIG_DIR / "python_fig10_kalman_tracking_performance.png"
     plt.savefig(out_file, bbox_inches="tight")
     plt.close()
     print(f"[+] Kalman basarim grafigi olusturuldu: {out_file}")

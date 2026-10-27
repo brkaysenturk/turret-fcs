@@ -524,54 +524,77 @@ Aşağıdaki değerler, aynı oturumda operatörün P ve RL modları arasında g
 
 ### 9.3 P ve PPO RL benzetim karşılaştırması
 
-![P Kontrolcü vs PPO RL Benchmark](analysis/figures/fig11_p_vs_rl_final_benchmark.png)
+![P Kontrolcü vs PPO RL Benchmark](analysis/figures/python/python_fig11_p_vs_rl_final_benchmark.png)
 
 Benzetim, 80 ms taşıma gecikmesi ve dinamik eyleyici lag'i altında dört tohumla çalıştırılır. P kontrolcü düşük komut yön değişimiyle hassas kilit sağlar; PPO RL özellikle hızlı manevralarda daha düşük pan RMS hatası ve daha yüksek kilit oranı üretir. Bu figür, iki modun birbirinin yerine değil, farklı tehdit dinamikleri için tasarlandığını gösterir.
 
-### 9.4 Kontrol ve kararlılık figürleri
+### 9.4 Kontrol ve kararlılık figürleri (Python & MATLAB)
+
+Tüm analiz grafikleri `analysis/figures/` altında `python/` ve `matlab/` olarak gruplanmıştır:
+
+#### Python Doğrulama Figürleri (`analysis/figures/python/`)
 
 | Figür | Gösterdiği |
 | :--- | :--- |
-| `fig1_tuned_step_and_control_effort.png` | 20° basamak yanıtı; pan/tilt kontrol eforu ve ivme sınırlı kalkış |
-| `fig2_tuned_phase_plane_portrait.png` | Faz düzlemi; yumuşak ölü bölgeye asimptotik yakınlaşma |
-| `fig3_tuned_bode_stability.png` | Açık çevrim Bode; kazanç ve faz kararlılık marjları |
-| `fig4_tuned_dynamic_tracking.png` | Sinüzoidal hedefte pan/tilt dinamik takip ve hata |
-| `fig5_tuned_lissajous_coverage.png` | Figure-8 devriye yörüngesi ve 3B tarama hacmi |
-| `fig6_tuned_ballistic_characteristics.png` | Mesafeye göre uçuş süresi ve süper-elevasyon |
-| `fig7_sim_still_lock.png` | Sabit hedefte kapalı çevrim kilit ve motor sessizliği |
-| `fig8_sim_moving_tracking.png` | Manevralı hedefte takip ve kilit kararlılığı |
-| `fig9_system_identification.png` | Sentetik FOPDT/SOPDT sistem tanımlama ve kök-yer eğrisi |
-| `fig10_kalman_tracking_performance.png` | Kalman konum/hız doğruluğu, inovasyon dağılımı ve KPI tablosu |
-| `fig11_p_vs_rl_final_benchmark.png` | Kapalı çevrim TurretEnv üzerinde P ve PPO RL karşılaştırma paneli |
-| `fig12_selector_evt_optimization.png` | Aşırı Değer Teorisi (EVT) ile hedef güven skoru analizi ve eşik tespiti |
-| `fig13_system_id_real_hardware.png` | Gerçek donanım telemetrisinden dişli boşluğu (1.61°) ve gecikme kestirimi |
-| `ballistics_roc_optimization.png` | Balistik vuruş olasılığı ROC eğrisi ve Youden J optimal kesme noktası |
+| `python_fig1_tuned_step_and_control_effort.png` | 20° basamak yanıtı; pan/tilt kontrol eforu ve ivme sınırlı kalkış |
+| `python_fig2_tuned_phase_plane_portrait.png` | Faz düzlemi; yumuşak ölü bölgeye asimptotik yakınlaşma |
+| `python_fig3_tuned_bode_stability.png` | Açık çevrim Bode; kazanç ve faz kararlılık marjları |
+| `python_fig4_tuned_dynamic_tracking.png` | Sinüzoidal hedefte pan/tilt dinamik takip ve hata |
+| `python_fig5_tuned_lissajous_coverage.png` | Figure-8 devriye yörüngesi ve 3B tarama hacmi |
+| `python_fig6_tuned_ballistic_characteristics.png` | Mesafeye göre uçuş süresi ve süper-elevasyon |
+| `python_fig7_sim_still_lock.png` | Sabit hedefte kapalı çevrim kilit ve motor sessizliği |
+| `python_fig8_sim_moving_tracking.png` | Manevralı hedefte takip ve kilit kararlılığı |
+| `python_fig9_system_identification.png` | Sentetik FOPDT/SOPDT sistem tanımlama ve kök-yer eğrisi |
+| `python_fig10_kalman_tracking_performance.png` | Kalman konum/hız doğruluğu, inovasyon dağılımı ve KPI tablosu |
+| `python_fig11_p_vs_rl_final_benchmark.png` | Kapalı çevrim TurretEnv üzerinde P ve PPO RL karşılaştırma paneli |
+| `python_fig12_selector_evt_optimization.png` | Aşırı Değer Teorisi (EVT) ile hedef güven skoru analizi ve eşik tespiti |
+| `python_fig13_system_id_real_hardware.png` | Gerçek donanım telemetrisinden dişli boşluğu (1.61°) ve gecikme kestirimi |
+| `python_fig14_ballistics_roc_optimization.png` | Balistik vuruş olasılığı ROC eğrisi ve Youden J optimal kesme noktası |
 
-![20 Derece Basamak Yanıtı](analysis/figures/fig1_tuned_step_and_control_effort.png)
+#### MATLAB & Simulink Kararlılık ve HIL Figürleri (`analysis/figures/matlab/`)
 
-![Faz Düzlemi Portresi](analysis/figures/fig2_tuned_phase_plane_portrait.png)
+| Figür | Gösterdiği |
+| :--- | :--- |
+| `matlab_fig1_system_id_result.png` | FOPDT/SOPDT uydurma (Fit %91.7), 50.1 ms gecikme ve 0.88° mekanik histerezis |
+| `matlab_fig2_stability_root_locus.png` | S-düzlemi Kök-Yer Eğrisi (Root Locus); K_crit ve 89.2° faz payı |
+| `matlab_fig3_stability_bode_nyquist.png` | Bode (GM=41.9 dB, PM=89.2°) ve Nyquist (-1, j0) kritik nokta analizi |
+| `matlab_fig4_stability_step_response.png` | Kapalı çevrim dinamik adım tepkisi ve yumuşak ölü bölgenin avlanmayı sıfırlaması |
+| `matlab_fig5_simulink_simulation_result.png` | Simulink dijital ikiz kapalı çevrim benzetim doğrulaması |
+| `matlab_fig6_hil_test_result.png` | Hardware-in-the-Loop (HIL) canlı STM32 donanım döngüde takip testi |
 
-![Bode Kararlılık Analizi](analysis/figures/fig3_tuned_bode_stability.png)
+![20 Derece Basamak Yanıtı](analysis/figures/python/python_fig1_tuned_step_and_control_effort.png)
 
-![Dinamik Takip](analysis/figures/fig4_tuned_dynamic_tracking.png)
+![Faz Düzlemi Portresi](analysis/figures/python/python_fig2_tuned_phase_plane_portrait.png)
 
-![Lissajous Devriye](analysis/figures/fig5_tuned_lissajous_coverage.png)
+![Bode Kararlılık Analizi](analysis/figures/python/python_fig3_tuned_bode_stability.png)
 
-![Balistik Karakteristik](analysis/figures/fig6_tuned_ballistic_characteristics.png)
+![Dinamik Takip](analysis/figures/python/python_fig4_tuned_dynamic_tracking.png)
 
-![Sabit Hedef Kilit Kararlılığı](analysis/figures/fig7_sim_still_lock.png)
+![Lissajous Devriye](analysis/figures/python/python_fig5_tuned_lissajous_coverage.png)
 
-![Manevralı Hedef Takibi](analysis/figures/fig8_sim_moving_tracking.png)
+![Balistik Karakteristik](analysis/figures/python/python_fig6_tuned_ballistic_characteristics.png)
 
-![Sistem Tanımlama](analysis/figures/fig9_system_identification.png)
+![Sabit Hedef Kilit Kararlılığı](analysis/figures/python/python_fig7_sim_still_lock.png)
 
-![Kalman Doğrulama](analysis/figures/fig10_kalman_tracking_performance.png)
+![Manevralı Hedef Takibi](analysis/figures/python/python_fig8_sim_moving_tracking.png)
 
-![Hedef Güven Eşiği EVT Optimizasyonu](analysis/figures/fig12_selector_evt_optimization.png)
+![Sistem Tanımlama](analysis/figures/python/python_fig9_system_identification.png)
 
-![Gerçek Donanım Sistem Tanılaması](analysis/figures/fig13_system_id_real_hardware.png)
+![Kalman Doğrulama](analysis/figures/python/python_fig10_kalman_tracking_performance.png)
 
-![Balistik ROC Eğrisi](analysis/figures/ballistics_roc_optimization.png)
+![Hedef Güven Eşiği EVT Optimizasyonu](analysis/figures/python/python_fig12_selector_evt_optimization.png)
+
+![Gerçek Donanım Sistem Tanılaması](analysis/figures/python/python_fig13_system_id_real_hardware.png)
+
+![Balistik ROC Eğrisi](analysis/figures/python/python_fig14_ballistics_roc_optimization.png)
+
+![MATLAB Sistem Tanımlama](analysis/figures/matlab/matlab_fig1_system_id_result.png)
+
+![MATLAB Bode ve Nyquist Analizi](analysis/figures/matlab/matlab_fig3_stability_bode_nyquist.png)
+
+![MATLAB Simulink Dijital İkiz Doğrulaması](analysis/figures/matlab/matlab_fig5_simulink_simulation_result.png)
+
+![MATLAB HIL Testi](analysis/figures/matlab/matlab_fig6_hil_test_result.png)
 
 ---
 

@@ -30,14 +30,14 @@ import numpy as np
 
 # Proje ana dizinini sys.path'e ekle ve CONFIG'i import et
 BASE_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = BASE_DIR.parent
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from turret_fcs.config import CONFIG
 
 # Dizin yapilandirmasi
-FIG_DIR = BASE_DIR / "figures"
+FIG_DIR = PROJECT_ROOT / "analysis" / "figures" / "python"
 FIG_DIR.mkdir(parents=True, exist_ok=True)
 
 # Grafik gorsel ayarlari (Akademik format)
@@ -214,7 +214,7 @@ ax2.legend(loc="upper right", framealpha=0.92, fontsize=8.5)
 ax2.set_ylim(-8, 52)
 
 plt.tight_layout()
-safe_savefig(fig1, FIG_DIR / "fig1_tuned_step_and_control_effort.png")
+safe_savefig(fig1, FIG_DIR / "python_fig1_tuned_step_and_control_effort.png")
 plt.close(fig1)
 
 
@@ -267,7 +267,7 @@ ax_phase.set_xlim(-24, 24)
 ax_phase.set_ylim(-55, 55)
 
 plt.tight_layout()
-safe_savefig(fig2, FIG_DIR / "fig2_tuned_phase_plane_portrait.png")
+safe_savefig(fig2, FIG_DIR / "python_fig2_tuned_phase_plane_portrait.png")
 plt.close(fig2)
 
 
@@ -325,7 +325,7 @@ ax_bode_p.legend(loc="lower left", framealpha=0.92, fontsize=8.8)
 ax_bode_p.set_ylim(-260, -30)
 
 plt.tight_layout()
-safe_savefig(fig3, FIG_DIR / "fig3_tuned_bode_stability.png")
+safe_savefig(fig3, FIG_DIR / "python_fig3_tuned_bode_stability.png")
 plt.close(fig3)
 
 
@@ -416,7 +416,7 @@ ax_d2.legend(loc="upper right", framealpha=0.92, fontsize=8.8)
 ax_d2.set_ylim(-3.5, 3.5)
 
 plt.tight_layout()
-safe_savefig(fig4, FIG_DIR / "fig4_tuned_dynamic_tracking.png")
+safe_savefig(fig4, FIG_DIR / "python_fig4_tuned_dynamic_tracking.png")
 plt.close(fig4)
 
 
@@ -470,7 +470,7 @@ ax_pat2.view_init(elev=24, azim=42)
 ax_pat2.legend(loc="upper left", fontsize=8.2)
 
 plt.tight_layout(pad=2.2)
-safe_savefig(fig5, FIG_DIR / "fig5_tuned_lissajous_coverage.png")
+safe_savefig(fig5, FIG_DIR / "python_fig5_tuned_lissajous_coverage.png")
 plt.close(fig5)
 
 
@@ -517,7 +517,7 @@ ax_b1.set_ylim(0, 18)
 ax_b2.set_ylim(0, 600)
 
 plt.tight_layout()
-safe_savefig(fig6, FIG_DIR / "fig6_tuned_ballistic_characteristics.png")
+safe_savefig(fig6, FIG_DIR / "python_fig6_tuned_ballistic_characteristics.png")
 plt.close(fig6)
 
 
@@ -603,7 +603,7 @@ ax_s2.legend(loc="upper right", framealpha=0.92, fontsize=8.8)
 ax_s2.set_ylim(-1.5, 1.8)
 
 plt.tight_layout()
-safe_savefig(fig7, FIG_DIR / "fig7_sim_still_lock.png")
+safe_savefig(fig7, FIG_DIR / "python_fig7_sim_still_lock.png")
 plt.close(fig7)
 
 
@@ -683,7 +683,7 @@ ax_m2.legend(loc="upper right", framealpha=0.92, fontsize=8.8)
 ax_m2.set_ylim(-3.5, 3.5)
 
 plt.tight_layout()
-safe_savefig(fig8, FIG_DIR / "fig8_sim_moving_tracking.png")
+safe_savefig(fig8, FIG_DIR / "python_fig8_sim_moving_tracking.png")
 plt.close(fig8)
 
 
@@ -743,6 +743,6 @@ with open(metrics_path, "w", encoding="utf-8") as f:
 print(f"\n[+] Sayisal analiz kaniti olusturuldu: {metrics_path}")
 print("========================================================")
 print("[+] Tum grafikler basariyla uretildi ve figures/ klasorune kaydedildi:")
-for p in sorted(FIG_DIR.glob("fig*.png")):
+for p in sorted(FIG_DIR.glob("python_fig*.png")):
     print(f"    -> {p.name}")
 print("========================================================")

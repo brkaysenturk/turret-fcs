@@ -88,10 +88,16 @@ class VirtualBallisticsEvaluator:
         fy_dir = head_rot[4]
         fz_dir = head_rot[7]
 
+        # Namlu cikis konumu (Namlu ucu ve LiDAR sensoru +0.065 m onde)
+        muzzle_offset = 0.065
+        muzzle_x = head_pos[0] + fx_dir * muzzle_offset
+        muzzle_y = head_pos[1] + fy_dir * muzzle_offset
+        muzzle_z = head_pos[2] + fz_dir * muzzle_offset
+
         # 3B dunya carpisma koordinati (merkez mesafesiyle)
-        impact_x = head_pos[0] + fx_dir * dist
-        impact_y = head_pos[1] + fy_dir * dist
-        impact_z = head_pos[2] + fz_dir * dist - gravity_drop_m
+        impact_x = muzzle_x + fx_dir * dist
+        impact_y = muzzle_y + fy_dir * dist
+        impact_z = muzzle_z + fz_dir * dist - gravity_drop_m
 
         shot = {
             "fire_sim_time": sim_time,

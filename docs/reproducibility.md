@@ -77,10 +77,10 @@ python analysis/export_rl_policy.py
 
 ## 5. P Kontrolcü vs PPO RL Benchmark Karşılaştırması
 
-İki kontrolcünün dinamik hedef yörüngesi üzerindeki başarımını karşılaştırmak ve 5 panelli akademik benchmark grafiğini (`analysis/figures/fig11_p_vs_rl_final_benchmark.png`) üretmek için:
+İki kontrolcünün dinamik hedef yörüngesi üzerindeki başarımını karşılaştırmak ve 5 panelli akademik benchmark grafiğini (`analysis/figures/python/python_fig11_p_vs_rl_final_benchmark.png`) üretmek için:
 
 ```bash
-python analysis/generate_benchmark_plots.py
+python analysis/comparison/generate_benchmark_plots.py
 ```
 
 Bu betik; TurretEnv üzerinde Zikzak, Kaçış ve Doğrusal Kaçış senaryolarında her iki kontrolcüyü aynı tohumlarla koşturur; pan/tilt hata zaman serilerini, kontrol eforunu, hata CDF dağılımını ve akademik metrik tablosunu üretir.
@@ -92,18 +92,18 @@ Bu betik; TurretEnv üzerinde Zikzak, Kaçış ve Doğrusal Kaçış senaryolar�
 Tüm analitik modelleri, sistem tanıma modellerini, Kalman kestirim doğrulamalarını ve faz uzayı grafiklerini üretmek için:
 
 ```bash
-# 1. 8 Panelli Dinamik Kararlılık Figürleri (fig1 - fig8)
-python analysis/plot_tuned_system.py
+# 1. 8 Panelli Dinamik Kararlılık Figürleri (python_fig1 - python_fig8)
+python analysis/comparison/plot_tuned_system.py
 
-# 2. Sistem Tanıma ve Kök-Yer Eğrisi Figürü (fig9)
-python analysis/system_identification.py
+# 2. Sistem Tanıma ve Kök-Yer Eğrisi Figürü (python_fig9)
+python analysis/system/python/system_identification.py
 
-# 3. Kalman Filtresi Hız ve Zemin Gerçeği Karşılaştırma Figürü
-python analysis/generate_kalman_plots.py
+# 3. Kalman Filtresi Hız ve Zemin Gerçeği Karşılaştırma Figürü (python_fig10)
+python analysis/kalman/generate_kalman_plots.py
 
-# 4. P vs RL Benchmark Görseli
-python analysis/generate_benchmark_plots.py
+# 4. P vs RL Benchmark Görseli (python_fig11)
+python analysis/comparison/generate_benchmark_plots.py
 
 # 5. Mimari, Akış ve Donanım SVG Şemaları
-python analysis/generate_readme_diagrams.py
+python analysis/comparison/generate_readme_diagrams.py
 ```

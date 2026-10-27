@@ -27,6 +27,7 @@ import glob
 import math
 import os
 import sys
+from pathlib import Path
 
 
 def mean(lst):
@@ -48,7 +49,10 @@ def safe_float(val, default=0.0):
 
 
 def find_latest_log():
+    repo_root = Path(__file__).resolve().parents[2]
     patterns = [
+        str(repo_root / "logs" / "telemetry_test_*.csv"),
+        str(repo_root / "logs" / "*.csv"),
         "logs/telemetry_test_*.csv",
         "../logs/telemetry_test_*.csv",
         "logs/*.csv",

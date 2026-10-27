@@ -21,8 +21,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 BASE_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = BASE_DIR.parent
-FIG_DIR = BASE_DIR / "figures"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+FIG_DIR = PROJECT_ROOT / "analysis" / "figures" / "python"
 FIG_DIR.mkdir(parents=True, exist_ok=True)
 
 plt.rcParams["font.sans-serif"] = "DejaVu Sans"
@@ -88,7 +88,7 @@ def run_selector_optimization(csv_path: Path):
     ax2.grid(True)
     ax2.legend(loc="upper right")
 
-    out_png = FIG_DIR / "fig12_selector_evt_optimization.png"
+    out_png = FIG_DIR / "python_fig12_selector_evt_optimization.png"
     plt.tight_layout()
     plt.savefig(out_png, dpi=300, bbox_inches="tight")
     plt.close()

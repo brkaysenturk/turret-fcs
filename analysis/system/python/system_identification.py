@@ -27,13 +27,13 @@ from scipy.optimize import curve_fit
 
 # Dizin yapilandirmasi
 BASE_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = BASE_DIR.parent
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from turret_fcs.config import CONFIG
 
-FIG_DIR = BASE_DIR / "figures"
+FIG_DIR = PROJECT_ROOT / "analysis" / "figures" / "python"
 FIG_DIR.mkdir(parents=True, exist_ok=True)
 
 # Grafik gorsel ayarlari
@@ -367,7 +367,7 @@ def run_system_identification():
     plt.tight_layout()
 
     # Rapor gorselini kaydet (fig9: fig1-fig8 cakismasini onler)
-    report_path = FIG_DIR / "fig9_system_identification.png"
+    report_path = FIG_DIR / "python_fig9_system_identification.png"
     plt.savefig(str(report_path), dpi=300)
     plt.close()
 

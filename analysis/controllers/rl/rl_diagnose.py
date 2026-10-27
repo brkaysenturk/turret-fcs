@@ -17,7 +17,7 @@ from pathlib import Path
 import numpy as np
 from stable_baselines3 import PPO
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT))
 
 from turret_fcs.rl_controller import RLController

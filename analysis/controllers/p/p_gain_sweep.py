@@ -12,7 +12,7 @@ from pathlib import Path
 
 import numpy as np
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT))
 
 WEBOTS = r"C:\Program Files\Webots\msys64\mingw64\bin\webots.exe"

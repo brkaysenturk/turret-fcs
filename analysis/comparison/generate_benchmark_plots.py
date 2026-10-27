@@ -23,7 +23,7 @@ plt.rcParams['axes.edgecolor'] = '#333333'
 plt.rcParams['axes.linewidth'] = 0.8
 
 BASE_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = BASE_DIR.parent
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
@@ -31,7 +31,7 @@ from stable_baselines3 import PPO
 from turret_fcs.p_controller import PController
 from turret_fcs.rl_sim.turret_env import TurretEnv
 
-FIG_DIR = BASE_DIR / "figures"
+FIG_DIR = PROJECT_ROOT / "analysis" / "figures" / "python"
 FIG_DIR.mkdir(parents=True, exist_ok=True)
 
 
@@ -285,7 +285,7 @@ def generate_plots():
             else:
                 cell.set_facecolor('#ffffff')
 
-    out_file = FIG_DIR / "fig11_p_vs_rl_final_benchmark.png"
+    out_file = FIG_DIR / "python_fig11_p_vs_rl_final_benchmark.png"
     plt.savefig(out_file, bbox_inches="tight")
     plt.close()
     print(f"[+] P vs RL benchmark grafigi olusturuldu: {out_file}")
