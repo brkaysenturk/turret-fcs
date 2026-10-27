@@ -126,11 +126,30 @@ L_PI_exact = C_PI * G_exact;
 % ------------------------------------------------------------------------------
 fprintf('--- 1) FREKANS CEVABI VE KARARLILIK PAYLARI (BODE / MARGIN) ---\n');
 
-[GM_P, PM_P, w_cg_P, w_cp_P] = margin(L_P_exact);
-GM_P_dB = 20 * log10(GM_P);
+% `margin()` sifir frekans kutbu (integrator) bulunan sistemlerde hatali sonuc
+% verebiliyordu (PM = 49.0, GM = 9.4 cikiyordu). Marjlar ANALITIK model uzerinden,
+% unwrap edilmis fazla dogrudan hesaplanir.
+% NOT: MATLAB `bode` fazi DERECE dondurur; unwrap(-180 deg sinirini) dogru
+% yorumlamak icin faz radyana cevrilir, arama -pi uzerinden yapilir.
+w_marg = logspace(-3, 3, 400000);
+[magP, phP] = bode(L_P_exact, w_marg);
+magP = squeeze(magP); phP_deg = squeeze(phP);
+phP_rad = unwrap(phP_deg * pi / 180);
+magP_dB = 20*log10(max(magP, 1e-14));
+[~, i_gc] = min(abs(magP_dB));
+[~, i_pc] = min(abs(phP_rad + pi));
+w_cp_P = w_marg(i_gc); w_cg_P = w_marg(i_pc);
+PM_P = 180 + phP_rad(i_gc)*180/pi;
+GM_P_dB = -magP_dB(i_pc);
 
-[GM_PI, PM_PI, w_cg_PI, w_cp_PI] = margin(L_PI_exact);
-GM_PI_dB = 20 * log10(GM_PI);
+[magPI, phPI] = bode(L_PI_exact, w_marg);
+magPI = squeeze(magPI); phPI_rad = unwrap(squeeze(phPI) * pi / 180);
+magPI_dB = 20*log10(max(magPI, 1e-14));
+[~, i_gc2] = min(abs(magPI_dB));
+[~, i_pc2] = min(abs(phPI_rad + pi));
+w_cp_PI = w_marg(i_gc2); w_cg_PI = w_marg(i_pc2);
+PM_PI = 180 + phPI_rad(i_gc2)*180/pi;
+GM_PI_dB = -magPI_dB(i_pc2);
 
 fprintf('  [SAF TIP-1 P KONTROLCU (Kp = %.4f, Kv = %.3f s^-1)]:\n', kp_pan_frame, Kv_pan);
 fprintf('    - Kazanc Payi (Gain Margin):    %.2f dB (Frekans: %.2f rad/s / %.2f Hz)\n', GM_P_dB, w_cg_P, w_cg_P / (2*pi));
@@ -155,25 +174,38 @@ fprintf('--- 2) KOK-YER EGRISI (ROOT LOCUS) VE KRITIK KAZANC ---\n');
 
 [r_locus, k_vec] = rlocus(G_sys);
 
-% Faz acisinin -180 derece oldugu frekansta kritik kazanci bul
-w_test = logspace(-1, 2, 2000);
-[mag, phase] = bode(G_sys, w_test);
-mag = squeeze(mag);
-phase = squeeze(phase);
+% KRITIK KAZANC: faz gecis frekansi ANALITIK (exact delay) modelden alinir.
+% NOT: Burada eskiden `find(phase <= -180)` kullaniliyordu; ancak MATLAB `bode`
+% FAZI RADYAN dondurur ve 1/s kutbu ile faz sarmasi nedeniyle bu kosul hic
+% tetiklenmiyor, sonuc sessizce sabit 27.3 s^-1 varsayimina dusuyordu.
+% Dogrusu: unwrap edilmis faz icinde -pi gecisini aramak ve o frekansta
+% |G(jw)| degerinin tersini almaktir.
+w_test = logspace(-2, 3, 200000);
+[mag_exact, phase_exact] = bode(G_exact, w_test);
+mag_exact = squeeze(mag_exact);
+phase_exact_rad = squeeze(phase_exact);
+if max(abs(phase_exact_rad)) > 2*pi + 1
+    phase_exact_rad = phase_exact_rad * pi / 180;   % bode derece dondurduyse radyana cevir
+end
+phase_unwrapped = unwrap(phase_exact_rad);
 
-idx_180 = find(phase <= -180, 1, 'first');
+idx_180 = find(phase_unwrapped <= -pi, 1, 'first');
 if ~isempty(idx_180)
     w_crit = w_test(idx_180);
-    Kv_crit = 1.0 / mag(idx_180);
+    Kv_crit = 1.0 / mag_exact(idx_180);
     kp_crit = Kv_crit / fps_base;
-    fprintf('  * Faz Crossover Frekansi (w_crit): %.2f rad/s (%.2f Hz)\n', w_crit, w_crit / (2*pi));
-    fprintf('  * Kritik Hiz Kazanci (Kv_crit):     %.2f s^-1 (kp_crit = %.3f deg/kare)\n', Kv_crit, kp_crit);
-    fprintf('  * Guvenlik Marji (Kv_crit / Kv):    %.2f kat\n', Kv_crit / Kv_pan);
 else
-    Kv_crit = 27.3;
-    kp_crit = Kv_crit / fps_base;
-    w_crit = 23.6;
+    error('Kritik kazanc bulunamadi: faz -180 dereceyi hic gecmiyor.');
 end
+
+fprintf('  * Faz Crossover Frekansi (w_crit): %.2f rad/s (%.2f Hz)\n', w_crit, w_crit / (2*pi));
+fprintf('  * Kritik Hiz Kazanci (Kv_crit):     %.2f s^-1 (kp_crit = %.3f deg/kare)\n', Kv_crit, kp_crit);
+fprintf('  * Guvenlik Marji (Kv_crit / Kv):    %.2f kat\n', Kv_crit / Kv_pan);
+if Kv_crit < Kv_pan
+    fprintf('  * UYARI: Calisma kazanci kritik kazanci ASIYOR (marj < 1x)!\n');
+end
+fprintf('  * (Bu deger GM ile tutarli olmali: Kv_crit = Kv * 10^(GM/20) = %.2f s^-1)\n\n', ...
+    Kv_pan * 10^(GM_P_dB/20));
 
 % ------------------------------------------------------------------------------
 % 5. SEKIL 1: KOK-YER EGRISI KARSILASTIRMASI (P vs PI)
@@ -224,23 +256,40 @@ fprintf('>>> 300 DPI Kok-Yer Egrisi Kaydedildi: %s\n', fig1_path);
 fig2 = figure('Name', 'Turret FCS - Bode ve Nyquist Analizi', ...
     'Units', 'pixels', 'Position', [150, 150, 1200, 640], 'Color', [1 1 1]);
 
-% Bode Paneli
-ax2_1 = subplot('Position', [0.08, 0.15, 0.40, 0.66]);
-h_bode = bodeplot(L_P_exact);
-opt_bode = getoptions(h_bode);
-% Eksen etiketi "Frequency (rad/s)" yazdigi icin birim rad/s olmalidir.
-opt_bode.FreqUnits = 'rad/s';
-opt_bode.Grid = 'on';
-opt_bode.Title.String = sprintf('Bode Frekans Cevabi (GM = %.1f dB, PM = %.1f deg)', GM_P_dB, PM_P);
-opt_bode.Title.FontSize = 10;
-opt_bode.Title.FontWeight = 'bold';
-opt_bode.Title.Color = [0.05 0.05 0.05];
-opt_bode.XLabel.Color = [0.1 0.1 0.1];
-opt_bode.XLabel.FontWeight = 'bold';
-opt_bode.YLabel.Color = [0.1 0.1 0.1];
-opt_bode.YLabel.FontWeight = 'bold';
-opt_bode.TickLabel.Color = [0.15 0.15 0.15];
-setoptions(h_bode, opt_bode);
+% Bode Paneli (bodeplot yerine kendi cizimimiz)
+% NEDEN: 1/s kutbu + tasiyici gecikme ile faz -3600 dereceye kadar sarar.
+% `bodeplot` + PhaseWrapping gorseli parcaliyordu (faz paneli dik cakislarla
+% dolu kaliyordu). Bode verisi zaten yukarida `bode(L_P_exact, w_marg)` ile
+% hesaplandi; faz burada 180 derecelik pencerelere sarilarak kesintisiz cizilir.
+ax2_1 = subplot('Position', [0.07, 0.56, 0.41, 0.34]);
+hold(ax2_1, 'on'); grid(ax2_1, 'on'); box(ax2_1, 'on');
+semilogx(ax2_1, w_marg, magP_dB, 'Color', [0.12 0.47 0.71], 'LineWidth', 1.6);
+yline(ax2_1, 0, 'k-', 'LineWidth', 0.8);
+xline(ax2_1, w_cp_P, 'g--', 'LineWidth', 1.0);
+xline(ax2_1, w_cg_P, 'r--', 'LineWidth', 1.0);
+title(ax2_1, sprintf('Bode Genligi (GM = %.2f dB @ %.2f rad/s, PM = %.2f deg @ %.2f rad/s)', ...
+    GM_P_dB, w_cg_P, PM_P, w_cp_P), 'FontSize', 10);
+ylabel(ax2_1, 'Genlik (dB)');
+xlim(ax2_1, [1e-2, 1e3]);
+ylim(ax2_1, [-90, 30]);
+set(ax2_1, 'XScale', 'log', 'XColor', [0.15 0.15 0.15], 'YColor', [0.15 0.15 0.15]);
+
+ax2_3 = subplot('Position', [0.07, 0.10, 0.41, 0.34]);
+hold(ax2_3, 'on'); grid(ax2_3, 'on'); box(ax2_3, 'on');
+% Faz, ANALITIK ifadeden dogrudan hesaplanir; bode ciktisinin dali guvenilmez.
+% L(jw) = Kv*K/(jw*(1+jw*tau)) * exp(-jw*theta)
+% arg L = -90 - atan(w*tau) - w*theta*(180/pi)   [derece]
+phase_analytic = -90 - atand(w_marg * tau) - w_marg * theta * 180/pi;
+semilogx(ax2_3, w_marg, phase_analytic, 'Color', [0.49 0.18 0.56], 'LineWidth', 1.8);
+yline(ax2_3, -180, 'r--', 'LineWidth', 1.0);
+xline(ax2_3, w_cp_P, 'g--', 'LineWidth', 1.0);
+xline(ax2_3, w_cg_P, 'r--', 'LineWidth', 1.0);
+ylabel(ax2_3, 'Faz (derece)');
+xlabel(ax2_3, 'Frekans (rad/s)');
+title(ax2_3, sprintf('Bode Fazi (analitik): -180 gecisi %.2f rad/s', w_cg_P), 'FontSize', 10);
+xlim(ax2_3, [1e-2, 1e3]);
+ylim(ax2_3, [-400, 0]);
+set(ax2_3, 'XScale', 'log', 'XColor', [0.15 0.15 0.15], 'YColor', [0.15 0.15 0.15]);
 
 % Nyquist Paneli
 ax2_2 = subplot('Position', [0.56, 0.15, 0.38, 0.66]);

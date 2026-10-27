@@ -107,7 +107,9 @@ print(f"    - Gecikme (Latency) : {LATENCY_SYSTEM * 1000:.0f} ms | Servo Lag: {T
 # =========================================================================
 # ANALITIK FREKANS CEVABI (Bode Analizi Modeli)
 # =========================================================================
-w_bode = np.logspace(-1, 2.5, 1000)
+# Cizim izgarasi yayin kalitesi icin ince tutulur (onceki 1000 nokta, gecis
+# frekanslarini ~0.15 derece / ~0.04 dB yanilta biliyordu).
+w_bode = np.logspace(-1, 2.5, 40_000)
 s_bode = 1j * w_bode
 L_bode = (KV_PAN_CONTINUOUS / s_bode) * np.exp(-s_bode * LATENCY_SYSTEM) / (1.0 + TAU_SERVO * s_bode)
 mag_db = 20.0 * np.log10(np.abs(L_bode))
@@ -261,7 +263,8 @@ for idx_init, e_init in enumerate(initial_errors):
 ax_phase.axvspan(-DEADBAND_PAN, DEADBAND_PAN, color="#D5F5E3", alpha=0.55, label=f"Soft Deadband Alani (±{DEADBAND_PAN}°)")
 ax_phase.axvline(0, color="k", linestyle="-", linewidth=0.8, alpha=0.6)
 ax_phase.axhline(0, color="k", linestyle="-", linewidth=0.8, alpha=0.6)
-ax_phase.axhline(MAX_SLEW_VELOCITY, color=COLOR_ACCENT, linestyle="--", linewidth=1.2, label=f"Slew Doyma Limiti (±{MAX_SLEW_VELOCITY:.1f}°/s)")
+ax_phase.axhline(MAX_SLEW_VELOCITY, color=COLOR_ACCENT, linestyle="--", linewidth=1.2,
+                 label=f"Hiz Komutu Siniri (±{MAX_SLEW_VELOCITY:.1f}°/s, asimptotik)")
 ax_phase.axhline(-MAX_SLEW_VELOCITY, color=COLOR_ACCENT, linestyle="--", linewidth=1.2)
 
 ax_phase.plot(0, 0, "k*", markersize=14, label="Denge Noktasi (Orjin)")
@@ -272,6 +275,12 @@ ax_phase.grid(True)
 ax_phase.legend(loc="upper right", framealpha=0.92, fontsize=8.8)
 ax_phase.set_xlim(-24, 24)
 ax_phase.set_ylim(-55, 55)
+# Kirmizi noktalar gercek baslangic durumudur: yorungeler (e0, 0) durgun halinden
+# baslar, ilk ms'de servo ivmesiyle dikey acilir (u = cmd/DT, dde = -u/tau).
+ax_phase.text(0.01, 0.03,
+              "Yorungeler (e0, 0) durgun halinden baslar; de/dt ilk ms'de servo ivmesiyle acilir.\n"
+              "Hiz komutu doyma siniri |cmd| = 1.50 derece/kare -> 45 derece/s (asimptotik).",
+              transform=ax_phase.transAxes, fontsize=7.2, color="0.35")
 
 plt.tight_layout()
 safe_savefig(fig2, FIG_DIR / "python_fig2_tuned_phase_plane_portrait.png")
@@ -426,7 +435,12 @@ ax_d2.set_ylabel("Takip Hatasi (derece)", fontsize=11)
 ax_d2.set_title("Eksenel Aci Takip Hatalari ve Kilit Esigi Uyumu", fontsize=11, fontweight="semibold")
 ax_d2.grid(True)
 ax_d2.legend(loc="upper right", framealpha=0.92, fontsize=8.8)
-ax_d2.set_ylim(-3.5, 3.5)
+# Eksen sinirlari VERIDEN turetilir: sabit -3.5..3.5 siniri, hatanin gercek
+# tepesini (~5.3 derece) kirpip grafigi gercekte oldugundan daha iyi gosteriyordu.
+_err_peak = float(max(np.max(np.abs(err_p_dyn)), np.max(np.abs(err_t_dyn))))
+ax_d2.set_ylim(-1.25 * _err_peak, 1.25 * _err_peak)
+ax_d2.text(0.01, 0.03, f"Tepe |hata| = {_err_peak:.2f} derece (eksen veriden olceklendi)",
+           transform=ax_d2.transAxes, fontsize=7.4, color="0.35")
 
 plt.tight_layout()
 safe_savefig(fig4, FIG_DIR / "python_fig4_tuned_dynamic_tracking.png")
@@ -654,8 +668,12 @@ from turret_fcs.kalman_filter import KalmanFilter  # noqa: E402
 
 _kf = KalmanFilter(dt=DT_FRAME)
 cur_target_x = 0.0
-cur_turret_pan = 0.0
+cur_turret_pan_deg = 0.0
+cur_turret_pan_px = 0.0
 lock_cnt_dyn = 0
+
+# Optik olcek: piksel -> derece (C270 odak uzakligi ile tutarli ~0.04 derece/px)
+DEG_PER_PX = 0.05
 
 for i in range(N_dyn):
     dt = DT_FRAME
@@ -667,24 +685,25 @@ for i in range(N_dyn):
     _kf_px, _kf_py, kf_vx, _kf_vy = _kf.update((meas_x, 360.0), dt=dt)
     kalman_vx[i] = kf_vx
 
-    # Taret takip hatasi (pikselden dereceye)
-    err_deg = (cur_target_x - cur_turret_pan) * 0.05
-    meas_err_deg = err_deg + np.random.normal(0, 0.15)
+    # Ayni eksende hata: hedef (px) ile taretin ACIK KONUMU (px karsiligi).
+    # Taret komutu derece/karedir; konumu derecede biriktirip geri ceviriyoruz.
+    err_deg = (cur_target_x - cur_turret_pan_px) * DEG_PER_PX + np.random.normal(0, 0.15)
 
-    abs_e = abs(meas_err_deg)
+    abs_e = abs(err_deg)
     if abs_e <= DEADBAND_PAN:
         cmd = 0.0
     else:
-        cmd = np.clip(KP_PAN_FRAME * np.sign(meas_err_deg) * (abs_e - DEADBAND_PAN), -MAX_OUTPUT_FRAME, MAX_OUTPUT_FRAME)
+        cmd = np.clip(KP_PAN_FRAME * np.sign(err_deg) * (abs_e - DEADBAND_PAN), -MAX_OUTPUT_FRAME, MAX_OUTPUT_FRAME)
 
     # Saf oransal P kontrol komutu (Kalman yalnizca lead/telemetri icindir, motoru surmez)
     total_cmd = np.clip(cmd, -MAX_OUTPUT_FRAME, MAX_OUTPUT_FRAME)
 
-    # P komutu derece/karedir; taret konumu ayni birimde ilerler.
-    cur_turret_pan += total_cmd
-    pan_err_dyn[i] = meas_err_deg
+    # P komutu derece/karedir: aci durumu biriktirilir, piksel karsiligi guncellenir.
+    cur_turret_pan_deg += total_cmd
+    cur_turret_pan_px = cur_turret_pan_deg / DEG_PER_PX
+    pan_err_dyn[i] = err_deg
 
-    if abs(meas_err_deg) <= 1.60:
+    if abs(err_deg) <= 1.60:
         lock_cnt_dyn += 1
     else:
         lock_cnt_dyn = max(0, lock_cnt_dyn - 1)
@@ -711,7 +730,14 @@ ax_m2.set_ylabel("Pan Hatasi (derece)", fontsize=11)
 ax_m2.set_title("Dinamik Manevra Altinda Takip Dogrulugu ve Kilit Kararliligi", fontsize=11, fontweight="semibold")
 ax_m2.grid(True)
 ax_m2.legend(loc="upper right", framealpha=0.92, fontsize=8.8)
-ax_m2.set_ylim(-3.5, 3.5)
+# Eksen veriden olceklenir: sabit ±3.5 siniri hatayi (±38.5 derece) kirpip
+# grafigi gercekte oldugundan cok daha iyi gosteriyordu.
+_peak8 = float(np.max(np.abs(pan_err_dyn)))
+ax_m2.set_ylim(-1.15 * _peak8, 1.15 * _peak8)
+ax_m2.text(0.01, 0.03,
+           f"Tepe |pan hatasi| = {_peak8:.1f} derece (eksen veriden olceklendi); "
+           f"RMS = {np.sqrt(np.mean(pan_err_dyn ** 2)):.1f} derece",
+           transform=ax_m2.transAxes, fontsize=7.4, color="0.35")
 
 plt.tight_layout()
 safe_savefig(fig8, FIG_DIR / "python_fig8_sim_moving_tracking.png")
@@ -742,7 +768,9 @@ metrics_dict = {
         "phase_crossover_w_pc_rad_s": round(float(w_pc), 2),
         "gain_margin_gm_db": round(float(gm_val), 1),
         "bode_theoretical_exact_model": {
-            "model_description": "Analitik L(s) transfer fonksiyonu: exact pure delay (80 ms) + 1st order servo lag (tau = 45 ms)",
+            "model_description": f"Analitik L(s): exact pure delay ({LATENCY_SYSTEM*1000:.1f} ms) + "
+                                 f"1. derece servo lag (tau = {TAU_SERVO*1000:.1f} ms); "
+                                 f"1000 yerine {len(w_bode)} nokta ile cozuldu",
             "crossover_freq_w_gc_rad_s": round(float(w_gc), 2),
             "phase_margin_pm_deg": round(float(pm_val), 1),
             "phase_crossover_w_pc_rad_s": round(float(w_pc), 2),

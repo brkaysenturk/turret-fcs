@@ -1,5 +1,6 @@
 """FCSManager duman ve entegrasyon testleri."""
 import pytest
+import numpy as np
 
 from turret_fcs.config import CONFIG
 from turret_fcs.fcs_manager import FCSManager
@@ -61,7 +62,12 @@ def test_fcs_ballistic_slew_and_lead():
         target_box = [bx - 20, 340, bx + 20, 380]
         fcs.update(target_box, 640, 360, 1411.0, 1411.0, 0.033, dist_cm=200)
 
-    lead_time = min(0.25, max(0.03, fcs.last_valid_target_dist_m / CONFIG.ballistics.projectile_speed_mps + 0.015))
+    lead_time = float(np.clip(
+        fcs.last_valid_target_dist_m / CONFIG.ballistics.projectile_speed_mps
+        + CONFIG.control.lead_time_offset_s,
+        CONFIG.control.lead_time_min_s,
+        CONFIG.control.lead_time_max_s,
+    ))
     measured_x = (target_box[0] + target_box[2]) // 2
     measured_y = (target_box[1] + target_box[3]) // 2
     assert fcs.pred_center == pytest.approx(

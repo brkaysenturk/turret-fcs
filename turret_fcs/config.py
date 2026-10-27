@@ -167,11 +167,9 @@ class LockConfig:
     sigma_weapon_deg: float = 1.25   # DIY cift volan ve sunger dart gercekci ic balistik sacilmasi (derece)
     min_hit_probability_pct: float = 25.0  # Atis izni icin gereken minimum analitik isabet olasiligi (%)
     post_fire_grace_duration_frames: int = 22  # 0.75 saniye @ 30 FPS kilit muafiyeti (grace period)
-    threshold_low_speed_px_s: float = 150.0
-    threshold_high_speed_px_s: float = 350.0
     gate_slow_deg: float = 1.70
-    gate_medium_deg: float = 2.25
     gate_fast_deg: float = 2.95
+    dynamic_gate_margin_deg: float = 0.40  # Hata yasasi uzerine eklenen guvenlik marji (derece)
 
 
 @dataclass(frozen=True)

@@ -27,23 +27,130 @@ from .config import CONFIG
 class CameraThread:
     """
     OpenCV VideoCapture nesnesini arka planda bagimsiz bir thread ile sarmalayan sinif.
-    Kamera tamponundaki gecikmeyi sifirlar ve DirectShow ile Logitech C270'i otomatik secer.
+    Kamera tamponundaki gecikmeyi sifirlar, MSMF ve DirectShow ile Logitech C270'i
+    otonom olarak dogru backend indeksiyle eslestirir.
     """
 
     @staticmethod
-    def detect_camera(preferred_name="C270"):
-        """Sistemdeki kameralari listeler ve tercihen Logitech C270'i otomatik secer."""
+    def _list_msmf_devices():
+        """Windows Media Foundation (MSMF) uzerinden bagli video giris aygitlarini listeler."""
+        devices = []
         try:
-            from pygrabber.dshow_graph import FilterGraph
-            devices = FilterGraph().get_input_devices()
-            if devices:
-                for idx, dev in enumerate(devices):
-                    if preferred_name.lower() in dev.lower():
-                        return idx, dev
-                return 0, devices[0]
+            import ctypes
+            from ctypes import wintypes, POINTER, c_void_p, c_uint32, byref, cast
+
+            class _GUID(ctypes.Structure):
+                _fields_ = [
+                    ("Data1", wintypes.DWORD),
+                    ("Data2", wintypes.WORD),
+                    ("Data3", wintypes.WORD),
+                    ("Data4", wintypes.BYTE * 8),
+                ]
+
+            MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE = _GUID(
+                0xC60AC5FE, 0x252A, 0x478F,
+                (wintypes.BYTE * 8)(0xA0, 0xEF, 0xBC, 0x8F, 0xA5, 0xF7, 0xCA, 0xD3)
+            )
+            MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID = _GUID(
+                0x8AC35BA3, 0x4BE7, 0x4228,
+                (wintypes.BYTE * 8)(0xAA, 0x6A, 0x51, 0x6B, 0x1A, 0xAB, 0x7E, 0x64)
+            )
+            MF_DEVSOURCE_ATTRIBUTE_FRIENDLY_NAME = _GUID(
+                0x60D0E557, 0x52AC, 0x4FA8,
+                (wintypes.BYTE * 8)(0xB2, 0x49, 0x43, 0x4B, 0xDA, 0x5F, 0x69, 0x90)
+            )
+            MF_VERSION = 0x00020070
+
+            ole32 = ctypes.windll.ole32
+            mfplat = ctypes.windll.mfplat
+            mf = ctypes.windll.mf
+
+            ole32.CoInitializeEx(None, 0x2)
+            if mfplat.MFStartup(MF_VERSION, 0) != 0:
+                return devices
+
+            pAttributes = c_void_p()
+            if mfplat.MFCreateAttributes(byref(pAttributes), 1) != 0 or not pAttributes:
+                mfplat.MFShutdown()
+                return devices
+
+            vtbl = cast(cast(pAttributes, POINTER(c_void_p))[0], POINTER(c_void_p))
+            SetGUID = ctypes.WINFUNCTYPE(ctypes.c_long, c_void_p, POINTER(_GUID), POINTER(_GUID))(vtbl[24])
+            Release_proto = ctypes.WINFUNCTYPE(ctypes.c_ulong, c_void_p)
+            Release = Release_proto(vtbl[2])
+
+            if SetGUID(pAttributes, byref(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE),
+                       byref(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID)) != 0:
+                Release(pAttributes)
+                mfplat.MFShutdown()
+                return devices
+
+            pppSourceActivate = POINTER(c_void_p)()
+            count = c_uint32(0)
+            hr = mf.MFEnumDeviceSources(pAttributes, byref(pppSourceActivate), byref(count))
+            Release(pAttributes)
+
+            if hr == 0 and count.value > 0 and pppSourceActivate:
+                GetAllocatedString_proto = ctypes.WINFUNCTYPE(
+                    ctypes.c_long, c_void_p, POINTER(_GUID), POINTER(wintypes.LPWSTR), POINTER(c_uint32)
+                )
+                for i in range(count.value):
+                    pActivate = pppSourceActivate[i]
+                    if not pActivate:
+                        continue
+                    act_vtbl = cast(cast(pActivate, POINTER(c_void_p))[0], POINTER(c_void_p))
+                    GetAllocatedString = GetAllocatedString_proto(act_vtbl[13])
+                    ActRelease = Release_proto(act_vtbl[2])
+
+                    pwsz = wintypes.LPWSTR()
+                    cch = c_uint32()
+                    name = f"MSMF Camera {i}"
+                    if GetAllocatedString(pActivate, byref(MF_DEVSOURCE_ATTRIBUTE_FRIENDLY_NAME), byref(pwsz), byref(cch)) == 0:
+                        if pwsz and pwsz.value:
+                            name = str(pwsz.value)
+                            ole32.CoTaskMemFree(pwsz)
+                    devices.append(name)
+                    ActRelease(pActivate)
+
+                ole32.CoTaskMemFree(pppSourceActivate)
+
+            mfplat.MFShutdown()
         except Exception:
             pass
-        return 0, "Default Camera"
+        return devices
+
+    @staticmethod
+    def _list_dshow_devices():
+        """DirectShow (pygrabber) uzerinden bagli video giris aygitlarini listeler."""
+        try:
+            from pygrabber.dshow_graph import FilterGraph
+            return FilterGraph().get_input_devices() or []
+        except Exception:
+            return []
+
+    @classmethod
+    def detect_camera(cls, preferred_name="C270", backend="msmf"):
+        """Sistemdeki kameralari belirtilen backend'e gore listeler ve tercihen C270'i secer."""
+        preferred_patterns = [preferred_name.lower(), "c270", "logi"]
+        if backend.lower() == "msmf":
+            devices = cls._list_msmf_devices()
+            if devices:
+                for idx, dev in enumerate(devices):
+                    dev_lower = dev.lower()
+                    if any(p in dev_lower for p in preferred_patterns):
+                        return idx, dev
+                return 0, devices[0]
+            return 0, "Default Camera (MSMF)"
+
+        # DirectShow
+        devices = cls._list_dshow_devices()
+        if devices:
+            for idx, dev in enumerate(devices):
+                dev_lower = dev.lower()
+                if any(p in dev_lower for p in preferred_patterns):
+                    return idx, dev
+            return 0, devices[0]
+        return 0, "Default Camera (DSHOW)"
 
     def __init__(
         self,
@@ -53,25 +160,40 @@ class CameraThread:
         fps=CONFIG.optics.default_fps,
     ):
         if src is None:
-            self.src, self.cam_name = self.detect_camera()
+            msmf_src, msmf_name = self.detect_camera(backend="msmf")
+            dshow_src, dshow_name = self.detect_camera(backend="dshow")
+            self.src, self.cam_name = msmf_src, msmf_name
         else:
+            msmf_src = dshow_src = src
             self.src = src
             self.cam_name = f"Index {src}"
 
-        # Windows'ta MSMF, C270'in 720p MJPG akisini 30 FPS'te acar.
-        # DSHOW bazi sistemlerde ayni kamerada 7 FPS'e dusuyor; guvenli fallback birak.
-        self.cap = cv2.VideoCapture(self.src, cv2.CAP_MSMF)
+        # Windows'ta MSMF ve DSHOW farkli aygit indeks siralamasi kullanir.
+        # MSMF kendi indeksini (msmf_src), DSHOW fallback ise kendi indeksini (dshow_src) kullanir.
+        fourcc_mjpg = cv2.VideoWriter.fourcc(*"MJPG")
+        self.cap = cv2.VideoCapture(msmf_src, cv2.CAP_MSMF)
+        if self.cap.isOpened():
+            self.cap.set(cv2.CAP_PROP_FOURCC, fourcc_mjpg)
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+            self.cap.set(cv2.CAP_PROP_FPS, fps)
+            self.cap.set(cv2.CAP_PROP_FOURCC, fourcc_mjpg)
+            self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+
         if not self.cap.isOpened():
             try:
                 self.cap.release()
             except Exception:
                 pass
+            if src is None:
+                self.src, self.cam_name = dshow_src, dshow_name
             self.cap = cv2.VideoCapture(self.src, cv2.CAP_DSHOW)
-        self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter.fourcc(*"MJPG"))
-        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
-        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
-        self.cap.set(cv2.CAP_PROP_FPS, fps)
-        self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+            self.cap.set(cv2.CAP_PROP_FOURCC, fourcc_mjpg)
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+            self.cap.set(cv2.CAP_PROP_FPS, fps)
+            self.cap.set(cv2.CAP_PROP_FOURCC, fourcc_mjpg)
+            self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
         self.grabbed, self.frame = self.cap.read()
         self.last_frame_time = time.time()

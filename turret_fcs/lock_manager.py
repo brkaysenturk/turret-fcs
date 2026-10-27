@@ -53,13 +53,28 @@ class LockManager:
         self._post_fire_grace_frames = 0
         self.post_fire_grace_duration_frames = CONFIG.lock.post_fire_grace_duration_frames  # 0.75 saniye @ 30 FPS kilit muafiyeti (grace period)
 
-    def compute_dynamic_threshold(self, target_velocity):
-        speed_mag = float(np.hypot(target_velocity[0], target_velocity[1]))
-        if speed_mag < CONFIG.lock.threshold_low_speed_px_s:
-            return CONFIG.lock.gate_slow_deg
-        if speed_mag < CONFIG.lock.threshold_high_speed_px_s:
-            return CONFIG.lock.gate_medium_deg
-        return CONFIG.lock.gate_fast_deg
+    def compute_dynamic_threshold(self, target_velocity, fx=None, fy=None):
+        """
+        Tip-1 P kontrolcunun teorik takip hatasi yasasina bagli pruzsuz kilit kapisi:
+        e_ss = deadband + (omega / Kv)
+        Burada Kv = Kp_pan * 30.0 = 5.859 s^-1, deadband = 0.85 derece.
+        Dinamik kapi, ayrik basamak sicramalari yerine hedef acisal hizina gore
+        pruzsuzce genisler; yapay kor noktalari ve kilit kopmalarini tamamen onler.
+        """
+        effective_fx = float(fx) if (fx is not None and fx > 100.0) else self.fx
+        effective_fy = float(fy) if (fy is not None and fy > 100.0) else self.fy
+
+        vx_deg_s = float(np.degrees(target_velocity[0] / effective_fx))
+        vy_deg_s = float(np.degrees(target_velocity[1] / effective_fy))
+        speed_deg_s = float(np.hypot(vx_deg_s, vy_deg_s))
+
+        kv = max(0.1, float(CONFIG.control.kp_pan * 30.0))
+        deadband = float(CONFIG.control.deadband_pan_deg)
+        margin = float(CONFIG.lock.dynamic_gate_margin_deg)
+
+        expected_error_deg = deadband + (speed_deg_s / kv)
+        gate = expected_error_deg + margin
+        return float(np.clip(gate, CONFIG.lock.gate_slow_deg, CONFIG.lock.gate_fast_deg))
 
     def compute_hit_probability(
         self,
@@ -151,7 +166,7 @@ class LockManager:
         if in_grace_period:
             self._post_fire_grace_frames -= 1
 
-        dynamic_threshold = self.compute_dynamic_threshold(target_velocity)
+        dynamic_threshold = self.compute_dynamic_threshold(target_velocity, fx=fx, fy=fy)
         dynamic_exit_threshold = dynamic_threshold + self.lock_exit_margin_deg
 
         # Hedef tolerans icindeyse sayaci artir, ciktiysa her kare 1 azalt 

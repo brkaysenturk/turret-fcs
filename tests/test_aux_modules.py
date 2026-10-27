@@ -7,6 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from turret_fcs.camera_thread import CameraThread
 from turret_fcs.config import FCSState
 from turret_fcs.fcs_manager import FCSManager
 from turret_fcs.lock_manager import LockManager
@@ -77,3 +78,35 @@ def test_telemetry_writes_columns(tmp_path):
     assert rows
     assert int(rows[-1]["box_w"]) == 20
     assert int(rows[-1]["box_h"]) == 20
+
+
+def test_camera_thread_device_detection(monkeypatch):
+    """CameraThread MSMF ve DirectShow bagimsiz indeksleme ve C270 secimini dogrular."""
+    # 1. API fonksiyonlari hata vermeden liste donmeli
+    msmf_devs = CameraThread._list_msmf_devices()
+    dshow_devs = CameraThread._list_dshow_devices()
+    assert isinstance(msmf_devs, list)
+    assert isinstance(dshow_devs, list)
+
+    # 2. Varsayilan tarama calismali
+    idx_msmf, name_msmf = CameraThread.detect_camera(backend="msmf")
+    idx_dshow, name_dshow = CameraThread.detect_camera(backend="dshow")
+    assert isinstance(idx_msmf, int) and isinstance(name_msmf, str)
+    assert isinstance(idx_dshow, int) and isinstance(name_dshow, str)
+
+    # 3. Coklu kamera durumunda (laptop kamerasi 0, C270 1) C270'i secmeli
+    mock_devices = ["HD User Facing Camera", "Logi C270 HD WebCam"]
+    monkeypatch.setattr(CameraThread, "_list_msmf_devices", staticmethod(lambda: mock_devices))
+    monkeypatch.setattr(CameraThread, "_list_dshow_devices", staticmethod(lambda: mock_devices))
+
+    idx, name = CameraThread.detect_camera(preferred_name="C270", backend="msmf")
+    assert idx == 1
+    assert "c270" in name.lower()
+
+    # Ters sira (C270 0, Laptop kamerasi 1) durumunda C270 index 0 olmali
+    mock_reversed = ["Logitech HD Webcam C270", "Integrated Camera"]
+    monkeypatch.setattr(CameraThread, "_list_msmf_devices", staticmethod(lambda: mock_reversed))
+    idx_rev, name_rev = CameraThread.detect_camera(preferred_name="C270", backend="msmf")
+    assert idx_rev == 0
+    assert "c270" in name_rev.lower()
+

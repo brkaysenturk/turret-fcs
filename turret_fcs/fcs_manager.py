@@ -19,8 +19,8 @@ GOREVLER VE ALGORITMALAR:
 ================================================================================
 """
 
-import numpy as np
 from collections import deque
+import numpy as np
 
 from .target_selector import TargetSelector
 from .kalman_filter import KalmanFilter

@@ -584,7 +584,7 @@ Tüm analiz grafikleri `analysis/figures/` altında `python/` ve `matlab/` olara
 | :--- | :--- |
 | `python_fig1_tuned_step_and_control_effort.png` | 20° basamak yanıtı; 0.54 s yerleşme, %9.3 aşım, ivme sınırlı kalkış |
 | `python_fig2_tuned_phase_plane_portrait.png` | Faz düzlemi; yumuşak ölü bölgeye asimptotik yakınlaşma |
-| `python_fig3_tuned_bode_stability.png` | Açık çevrim Bode; 5.47 rad/s geçiş, 48.7° faz marjı, 9.2 dB kazanç marjı |
+| `python_fig3_tuned_bode_stability.png` | Açık çevrim Bode; 5.49 rad/s geçiş, 48.5° faz marjı, 9.2 dB kazanç marjı |
 | `python_fig4_tuned_dynamic_tracking.png` | Sinüzoidal hedefte pan/tilt dinamik takip ve hata |
 | `python_fig5_tuned_lissajous_coverage.png` | Figure-8 devriye yörüngesi ve 3B tarama hacmi |
 | `python_fig6_tuned_ballistic_characteristics.png` | Mesafeye göre uçuş süresi ve süper-elevasyon |

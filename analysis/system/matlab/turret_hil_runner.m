@@ -145,11 +145,11 @@ title('Panel 2: Anlik Takip Hatasi ve Kilitlenme Durumu', 'FontSize', 11, 'FontW
 xlim([0, duration_sec]); ylim([-10, 10]);
 
 if is_hardware_connected
-    mode_str = sprintf('FIZIKSEL STM32 DONANIM DONGUDE (Port: %s, 115200 Baud)', selected_port);
+    mode_str = sprintf('Port %s acildi (STM32 yaniti dogrulaniyor...)', selected_port);
 else
-    mode_str = 'SANAL DONANIM (MOCK HIL) MODU [Fiziksel baglanti beklenmeden calisiyor]';
+    mode_str = 'SANAL DONANIM (MOCK HIL) MODU [Fiziksel baglanti yok]';
 end
-sgtitle(sprintf('Turret FCS // Hardware-in-the-Loop (HIL) Testi\n[%s]', mode_str), ...
+h_sg = sgtitle(sprintf('Turret FCS // Hardware-in-the-Loop (HIL) Testi\n[%s]', mode_str), ...
     'FontSize', 12, 'FontWeight', 'bold', 'Color', [0.05 0.05 0.05]);
 
 % ------------------------------------------------------------------------------
@@ -158,6 +158,8 @@ sgtitle(sprintf('Turret FCS // Hardware-in-the-Loop (HIL) Testi\n[%s]', mode_str
 fprintf('>>> HIL Gercek Zamanli Takip Testi Baslatiliyor (Sure: %.1f saniye)...\n', duration_sec);
 t_start = tic;
 actual_angle = 90.0;
+real_rx_count = 0;    % STM32'den GERCEKTEN gelen telemetri paketi sayisi
+mock_eval_count = 0;  % yanit yoksa uretilen mock yaniti sayisi
 
 for k = 1:total_steps
     t_now = (k - 1) * dt;
@@ -200,7 +202,7 @@ for k = 1:total_steps
     if is_hardware_connected
         % Paketi gonder
         write(sp, cmd_packet, "uint8");
-        
+
         % STM32 Telemetri Paketi Oku (10 Bayt: [0x55] [dist:2B] [str:2B] [pan*10:2B] [tilt*10:2B] [csum:1B])
         if sp.NumBytesAvailable >= 10
             rx = read(sp, 10, "uint8");
@@ -208,10 +210,18 @@ for k = 1:total_steps
                 % Potansiyometre pan acisini cozumle
                 pan_read_raw = typecast(rx(6:7), 'int16');
                 actual_angle = double(pan_read_raw) / 10.0;
+                real_rx_count = real_rx_count + 1;   % gercek paket sayaci
             end
         else
-            % Yeni paket yoksa son durumu koru
-            actual_angle = actual_angle + cmd_step * 0.8;
+            % KRITIK: Paket gelmiyorsa GERCEK olcum YOKTUR. Burada eskiden
+            % `actual_angle = actual_angle + cmd_step*0.8` yapiliyordu; bu, kare
+            % basina komutu %80 oraninda entegre eden bir MOCK yanitidir ve
+            % "FIZIKSEL STM32" etiketiyle raporlaninca yaniltci oluyordu.
+            % Artik mock yaniti kullanilirken sayilir ve mod etiketi degisir.
+            sim_v = alpha_sim * sim_v + (1 - alpha_sim) * cmd_step;
+            sim_pan_angle = sim_pan_angle + sim_v;
+            actual_angle = sim_pan_angle + 0.04 * randn();
+            mock_eval_count = mock_eval_count + 1;
         end
     else
         % Sanal Donanim Yaniti (Lag + Backlash + Entegrasyon)
@@ -219,6 +229,7 @@ for k = 1:total_steps
         sim_pan_angle = sim_pan_angle + sim_v;
         % Kucuk olcum gurultusu ekle (0.04 deg)
         actual_angle = sim_pan_angle + 0.04 * randn();
+        mock_eval_count = mock_eval_count + 1;
     end
     
     % Kayit
@@ -253,13 +264,33 @@ end
 % ------------------------------------------------------------------------------
 % 5. HIL SONUCLARI VE METRIKLER
 % ------------------------------------------------------------------------------
+% MOD ETIKETI, gercekte kac paket geldigine gore SONRADAN belirlenir.
+% Bu, "COM1 acildi ama STM32 yanit vermedi" durumunun sahte sekilde
+% "FIZIKSEL STM32" diye raporlanmasini engeller.
+total_evals = real_rx_count + mock_eval_count;
+if real_rx_count > 0 && real_rx_count >= 0.5 * total_evals
+    mode_str = sprintf('FIZIKSEL STM32 DONANIM DONGUDE (Port: %s, %d/%d gercek paket)', ...
+        selected_port, real_rx_count, total_evals);
+    mode_is_real = true;
+else
+    mode_str = sprintf('SANAL DONANIM (MOCK) — gercek telemetri YOK (%d/%d gercek paket)', ...
+        real_rx_count, total_evals);
+    mode_is_real = false;
+end
+set(h_sg, 'String', sprintf('Turret FCS // Hardware-in-the-Loop (HIL) Testi\n[%s]', mode_str));
+
 rmse_hil = sqrt(mean(log_err(log_t >= 1.0).^2));
 lock_pct = sum(abs(log_err(log_t >= 1.0)) <= deadband_pan) / sum(log_t >= 1.0) * 100;
 
 fprintf('\n--- HIL TEST PERFORMANS METRIKLERI ---\n');
 fprintf('  * Test Edilen Mod:              %s\n', mode_str);
 fprintf('  * Kararli Durum RMS Hatasi:     %.3f derece\n', rmse_hil);
-fprintf('  * Kilitlenme Orani (%% Lock):     %% %.2f (Deadband: +/- %.2f deg)\n\n', lock_pct, deadband_pan);
+fprintf('  * Kilitlenme Orani (%% Lock):     %% %.2f (Deadband: +/- %.2f deg)\n', lock_pct, deadband_pan);
+if ~mode_is_real
+    fprintf(2, '\n  [UYARI] Bu kosum FIZIKSEL DONANIM OLCUMU DEGILDIR!\n');
+    fprintf(2, '  Baslikta da "SANAL DONANIM (MOCK)" yazar; tezde HIL kaniti olarak kullanilamaz.\n');
+end
+fprintf('\n');
 
 % Grafigi kaydet
 fig_path = fullfile(fig_dir, 'matlab_fig6_hil_test_result.png');
@@ -269,7 +300,8 @@ fprintf('>>> 300 DPI HIL Test Grafigi Kaydedildi: %s\n', fig_path);
 
 % Verileri MAT olarak sakla
 mat_path = fullfile(script_dir, 'hil_test_result.mat');
-save(mat_path, 'log_t', 'log_ref', 'log_actual', 'log_err', 'log_cmd', 'rmse_hil', 'lock_pct');
+save(mat_path, 'log_t', 'log_ref', 'log_actual', 'log_err', 'log_cmd', 'rmse_hil', 'lock_pct', ...
+     'real_rx_count', 'mock_eval_count', 'mode_is_real');
 fprintf('>>> HIL Test Telemetrisi Kaydedildi: %s\n\n', mat_path);
 
 fprintf('====================================================================\n');
