@@ -7,7 +7,7 @@ import pytest
 
 from turret_fcs.fcs_comm import FCSCommunicator
 from turret_fcs.protocol import ANGLE_SCALE, STM_TO_PC_HEADER, TLM_FORMAT
-from turret_fcs.rl_sim.turret_env import TurretEnv
+from turret_fcs.rl.turret_env import TurretEnv
 from turret_fcs.target_selector import TargetSelector
 
 

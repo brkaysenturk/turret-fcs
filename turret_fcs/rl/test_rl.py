@@ -7,7 +7,7 @@ from turret_env import TurretEnv
 
 def run_interactive_test():
     current_dir = Path(__file__).resolve().parent
-    model_path = current_dir / "models" / "turret_ppo_v14.zip"
+    model_path = current_dir / "models" / "rl_v2-1.zip"
 
     if not model_path.exists():
         print(f"[HATA] Model bulunamadi: {model_path}")

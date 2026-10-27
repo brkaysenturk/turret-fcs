@@ -97,11 +97,25 @@ class TurretEnv(gym.Env):
         # 3. Bryson Kurali ile Normalizasyon Olcekleri (RL cikarimi ile ayni kaynak)
         self.d_err_scale = CONFIG.rl.d_err_scale
         self.d_err_ema_alpha = CONFIG.rl.d_err_ema_alpha
-        self.d_err_scale = CONFIG.rl.d_err_scale
-        self.d_err_ema_alpha = CONFIG.rl.d_err_ema_alpha
         self.v_max_px_s = CONFIG.rl.v_max_px_s
         self.dist_min_m = CONFIG.rl.dist_min_m
         self.dist_max_m = CONFIG.rl.dist_max_m
+
+        # 4. RL Sarmalayici / Cikis Katmani Parametreleri (SSOT)
+        self.apply_rl_wrapper = True
+        self.soft_deadband_enabled = CONFIG.rl.soft_deadband_enabled
+        self.deadband_pan_deg = CONFIG.control.deadband_pan_deg
+        self.deadband_tilt_deg = CONFIG.control.deadband_tilt_deg
+        self.taper_pan_deg = CONFIG.rl.taper_pan_deg
+        self.taper_tilt_deg = CONFIG.rl.taper_tilt_deg
+        self.reversal_damping = CONFIG.rl.reversal_damping
+        self.reversal_hold_frames = getattr(CONFIG.rl, "reversal_hold_frames", 2)
+        self.cmd_accel_pan_deg_s2 = CONFIG.control.cmd_accel_pan_deg_s2
+        self.cmd_accel_tilt_deg_s2 = CONFIG.control.cmd_accel_tilt_deg_s2
+        self.prev_policy_action = np.zeros(2, dtype=np.float32)
+        self._reversal_timer = np.zeros(2, dtype=int)
+        self.prev_cmd_pan = 0.0
+        self.prev_cmd_tilt = 0.0
 
         # Eylem Uzayı: [-1.0, 1.0] araliginda normalize motor adimi
         self.action_space = spaces.Box(
@@ -247,6 +261,10 @@ class TurretEnv(gym.Env):
         self.last_action = np.zeros(2, dtype=np.float32)
         self.act_hist_1 = np.zeros(2, dtype=np.float32)
         self.act_hist_2 = np.zeros(2, dtype=np.float32)
+        self.prev_policy_action = np.zeros(2, dtype=np.float32)
+        self._reversal_timer = np.zeros(2, dtype=int)
+        self.prev_cmd_pan = 0.0
+        self.prev_cmd_tilt = 0.0
 
         # Domain Randomization: Bolum basi fiziksel parametre dagilimi
         if self.enable_randomization:
@@ -259,8 +277,8 @@ class TurretEnv(gym.Env):
         else:
             self.latency_steps = self.base_latency_steps
             self.obs_queue = deque(maxlen=self.latency_steps + 1)
-            self.servo_tau = 0.045
-            self.servo_deadband = 0.10
+            self.servo_tau = float(CONFIG.mount.servo_tau)  # 0.0682 s (SSOT olculen zaman sabiti)
+            self.servo_deadband = float(CONFIG.actuator.servo_deadband_deg)  # 0.10 deg
             self.dt = self.base_dt
             self.yolo_noise_std = 0.0
 
@@ -269,7 +287,8 @@ class TurretEnv(gym.Env):
 
         start_x = float(self.np_random.uniform(-0.8, 0.8))
         start_y = float(self.np_random.uniform(-0.3, 0.3))
-        start_z = float(self.np_random.uniform(1.8, 3.2))
+        # Yakin mesafe (0.8 m) avlanma bolgesi dahil 0.8 - 3.2 m genisletilmis dagilim
+        start_z = float(self.np_random.uniform(0.8, 3.2))
         self.target_pos_3d = np.array([start_x, start_y, start_z], dtype=np.float32)
 
         if self.trajectory_type == "static":
@@ -306,24 +325,83 @@ class TurretEnv(gym.Env):
 
     def step(self, action):
         self.step_count += 1
-        action = np.clip(action, -1.0, 1.0).astype(np.float32)
+        # =====================================================================
+        # 1. RL SARMALAYICI (Cikis Filtresi: Reversal Damping + Soft Deadband Taper + Slew Limiter)
+        # Sahada RLController ne uyguluyorsa, egitimde de ayni post-processing uygulanir.
+        # =====================================================================
+        policy_raw_action = action.copy()
+        if self.apply_rl_wrapper:
+            # A) Yon degisim sonumlemesi
+            damped = action.copy()
+            for axis in range(2):
+                if action[axis] * self.prev_policy_action[axis] < 0.0:
+                    self._reversal_timer[axis] = self.reversal_hold_frames
+                if self._reversal_timer[axis] > 0:
+                    damped[axis] *= self.reversal_damping
+                    self._reversal_timer[axis] -= 1
+
+            d_pan_deg = float(damped[0] * self.max_step_pan_deg)
+            d_tilt_deg = float(damped[1] * self.max_step_tilt_deg)
+
+            # B) Acisal yumusak olu bolge (Soft Deadband Taper)
+            if self.soft_deadband_enabled:
+                err_pan = math.degrees(math.atan((self.last_pixel_pos[0] - self.center_x) / self.fx))
+                err_tilt = math.degrees(math.atan(-(self.last_pixel_pos[1] - self.center_y) / self.fy))
+                abs_pan = abs(err_pan)
+                abs_tilt = abs(err_tilt)
+
+                def _calc_taper(err_abs, db_deg, taper_deg):
+                    if err_abs <= db_deg:
+                        return 0.0
+                    if err_abs >= (db_deg + taper_deg):
+                        return 1.0
+                    x = (err_abs - db_deg) / max(1e-4, taper_deg)
+                    return float(x * x * (3.0 - 2.0 * x))
+
+                taper_pan = _calc_taper(abs_pan, self.deadband_pan_deg, self.taper_pan_deg)
+                taper_tilt = _calc_taper(abs_tilt, self.deadband_tilt_deg, self.taper_tilt_deg)
+                d_pan_deg *= taper_pan
+                d_tilt_deg *= taper_tilt
+
+                if abs_pan <= self.deadband_pan_deg and abs_tilt <= self.deadband_tilt_deg:
+                    d_pan_deg = 0.0
+                    d_tilt_deg = 0.0
+
+            # C) Komut ivme sinirlama (Slew Rate Limiter)
+            max_delta_pan = self.cmd_accel_pan_deg_s2 * (self.dt ** 2)
+            d_pan_deg = float(np.clip(
+                d_pan_deg, self.prev_cmd_pan - max_delta_pan, self.prev_cmd_pan + max_delta_pan
+            ))
+            max_delta_tilt = self.cmd_accel_tilt_deg_s2 * (self.dt ** 2)
+            d_tilt_deg = float(np.clip(
+                d_tilt_deg, self.prev_cmd_tilt - max_delta_tilt, self.prev_cmd_tilt + max_delta_tilt
+            ))
+
+            d_pan_deg = float(np.clip(d_pan_deg, -self.max_step_pan_deg, self.max_step_pan_deg))
+            d_tilt_deg = float(np.clip(d_tilt_deg, -self.max_step_tilt_deg, self.max_step_tilt_deg))
+            self.prev_cmd_pan = d_pan_deg
+            self.prev_cmd_tilt = d_tilt_deg
+
+            cmd_pan_step = d_pan_deg
+            cmd_tilt_step = d_tilt_deg
+            applied_action = np.array([
+                d_pan_deg / max(1e-6, self.max_step_pan_deg),
+                d_tilt_deg / max(1e-6, self.max_step_tilt_deg)
+            ], dtype=np.float32)
+        else:
+            cmd_pan_step = float(action[0]) * self.max_step_pan_deg
+            cmd_tilt_step = float(action[1]) * self.max_step_tilt_deg
+            applied_action = action.copy()
+
+        self.prev_policy_action = policy_raw_action.copy()
 
         # =====================================================================
-        # 1. GERCEK SERVO AKTÜATÖR FİZİĞİ (Deadband + Asimetrik Eylemsizlik + Motor Lag)
+        # 2. GERCEK SERVO AKTÜATÖR FİZİĞİ (Deadband + Asimetrik Eylemsizlik + Motor Lag)
         # =====================================================================
-        cmd_pan_step = float(action[0]) * self.max_step_pan_deg
-        cmd_tilt_step = float(action[1]) * self.max_step_tilt_deg
-
-        # A) STM32 Kuantalama ve Servo Olu Bolge Modeli (Yumusak Gecisli - Zero Jerk)
-        if not self.enable_randomization and abs(cmd_pan_step) < self.servo_deadband:
-            eff_pan_step = 0.0
-        else:
-            eff_pan_step = cmd_pan_step if self.enable_randomization else math.copysign(abs(cmd_pan_step) - self.servo_deadband * 0.5, cmd_pan_step)
-
-        if not self.enable_randomization and abs(cmd_tilt_step) < self.servo_deadband:
-            eff_tilt_step = 0.0
-        else:
-            eff_tilt_step = cmd_tilt_step if self.enable_randomization else math.copysign(abs(cmd_tilt_step) - self.servo_deadband * 0.5, cmd_tilt_step)
+        # A) STM32 Kuantalama ve Servo Olu Bolge Modeli (Donanim gercegi: her iki modda da aktif)
+        db_half = self.servo_deadband * 0.5
+        eff_pan_step = math.copysign(max(0.0, abs(cmd_pan_step) - db_half), cmd_pan_step) if abs(cmd_pan_step) > 1e-5 else 0.0
+        eff_tilt_step = math.copysign(max(0.0, abs(cmd_tilt_step) - db_half), cmd_tilt_step) if abs(cmd_tilt_step) > 1e-5 else 0.0
 
         # B) 1. Derece Viskoz Motor Dinamigi (Lag Filtresi)
         alpha_m = self.dt / (self.servo_tau + self.dt)
@@ -331,21 +409,17 @@ class TurretEnv(gym.Env):
         self.actual_tilt_step = (1.0 - alpha_m) * self.actual_tilt_step + alpha_m * eff_tilt_step
 
         # C) Komut biriktirici, mekanik limitler, disli boslugu ve pozisyon
-        # Webots gibi: motor komutu ayri biriktirilir, sonra bosluk uygulanir.
         self.cmd_pan_deg += self.actual_pan_step
         self.cmd_tilt_deg += self.actual_tilt_step
         self.cmd_pan_deg = float(np.clip(self.cmd_pan_deg, -self.max_pan_deg, self.max_pan_deg))
         self.cmd_tilt_deg = float(np.clip(self.cmd_tilt_deg, -self.max_tilt_deg, self.max_tilt_deg))
+
+        # Donanim ayrık kuantalama (STM32 UART 0.1 deg cozunurluk)
         q_step = max(0.05, float(self.servo_deadband))
-        q_pan = round(self.cmd_pan_deg / q_step) * q_step if self.enable_randomization else self.cmd_pan_deg
-        q_tilt = round(self.cmd_tilt_deg / q_step) * q_step if self.enable_randomization else self.cmd_tilt_deg
+        q_pan = round(self.cmd_pan_deg / q_step) * q_step
+        q_tilt = round(self.cmd_tilt_deg / q_step) * q_step
         self.turret_pan = float(np.clip(self._apply_backlash(q_pan, self.backlash_pan_out), -self.max_pan_deg, self.max_pan_deg))
-
-
-
-
         self.turret_tilt = float(np.clip(self._apply_backlash(q_tilt, self.backlash_tilt_out), -self.max_tilt_deg, self.max_tilt_deg))
-
 
         if self.enable_randomization:
             gear_step_pan = self.turret_pan - self.backlash_pan_out
@@ -357,9 +431,9 @@ class TurretEnv(gym.Env):
         self.backlash_pan_out = self.turret_pan
         self.backlash_tilt_out = self.turret_tilt
 
-        # D) Eylem Gecmisi Kaydi (Son 2 adimlik pipeline hafizasi)
+        # D) Eylem Gecmisi Kaydi (Sahadaki gibi: gercek uygulanan komut saklanir)
         self.act_hist_2 = self.act_hist_1.copy()
-        self.act_hist_1 = action.copy()
+        self.act_hist_1 = applied_action.copy()
 
         # =====================================================================
         # 2. HEDEF KİNEMATİĞİ

@@ -1,6 +1,6 @@
 {
-    "model_name": "turret_ppo_v14.zip",
-    "version": "2.0",
+    "model_name": "rl_v2-1.zip",
+    "version": "2.1",
     "training_timesteps": 250000,
     "algorithm": "PPO (Stable-Baselines3)",
     "policy": "MlpPolicy [64, 64]",
@@ -50,5 +50,5 @@
     },
     "benchmark_note": "Regenerated for the v2.0 model on high-fidelity TurretEnv (deterministic policy, zero runtime velocity observation).",
     "regenerated_date": "2026-10-25",
-    "policy_artifact": "turret_ppo_v14_policy.npz"
+    "policy_artifact": "rl_v2-1_policy.npz"
 }

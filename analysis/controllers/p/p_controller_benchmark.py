@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT))
 
 from turret_fcs.p_controller import PController
-from turret_fcs.rl_sim.turret_env import TurretEnv
+from turret_fcs.rl.turret_env import TurretEnv
 
 
 def make_controller(name):

@@ -115,7 +115,7 @@ def train(timesteps=250_000):
     start = time.time()
     model.learn(total_timesteps=timesteps, progress_bar=False)
     elapsed = time.time() - start
-    output = models_dir / "turret_ppo_v14.zip"
+    output = models_dir / "rl_v2-1.zip"
     model.save(str(output))
     print(f"[OK] {timesteps:,} adim, {elapsed:.1f} s -> {output}", flush=True)
     npz_out = export(output)
@@ -137,9 +137,9 @@ def train(timesteps=250_000):
         metrics = {}
     metrics.update(
         {
-            "model_name": "turret_ppo_v14.zip",
+            "model_name": "rl_v2-1.zip",
             "policy_artifact": npz_out.name,
-            "version": "2.0",
+            "version": "2.1",
             "training_timesteps": int(timesteps),
             "algorithm": "PPO (Stable-Baselines3)",
             "policy": "MlpPolicy [64, 64]",

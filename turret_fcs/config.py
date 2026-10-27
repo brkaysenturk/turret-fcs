@@ -90,7 +90,7 @@ class BallisticsConfig:
     gravity_accel: float = 9.80665
     default_distance_m: float = 2.0
     # Atis sekansi zamanlamalari (saniye; spin-up sureleri FlywheelConfig icindedir)
-    settle_time_s: float = 0.12     # Slew sonrasi servo oturma (Monte Carlo optimal: 66.7ms tasiyici + 1.61 deg backlash)
+    settle_time_s: float = 0.15     # Slew sonrasi servo oturma (tau=68.2ms + 66.7ms tasiyici + 1.61 deg backlash tam sonumlenmesi)
     firing_pulse_s: float = 0.08    # Solenoid itici darbe suresi (80 ms - STM32 firmware ile uyumlu)
     recovery_time_s: float = 0.35   # Mekanik geri toplama suresi
     eval_display_time_s: float = 1.50  # Atis sonrasi EVAL gosterim suresi
@@ -114,8 +114,8 @@ class RLConfig:
     yolo_noise_std: float = 3.5          # Ortam varsayilan YOLO kutu gurultusu (px)
     yolo_noise_std_min: float = 2.0      # Domain randomization alt siniri
     yolo_noise_std_max: float = 5.0      # Domain randomization ust siniri
-    servo_tau_min_s: float = 0.035       # Domain randomization servo zaman sabiti
-    servo_tau_max_s: float = 0.065
+    servo_tau_min_s: float = 0.045       # Domain randomization servo zaman sabiti (olculen tau=0.0682 s kapsanir)
+    servo_tau_max_s: float = 0.085
     episode_steps: int = 300             # Egitim bolumu uzunlugu
     lambda_u: float = 0.0104             # Kontrol eforu ceza katsayisi (Optuna TPE 14x150k optimal)
     mu_du: float = 0.0055                # Komut degisimi (jerk) ceza katsayisi (Optuna TPE 14x150k optimal)

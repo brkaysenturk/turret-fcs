@@ -30,7 +30,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from turret_fcs.config import CONFIG
 from turret_fcs.p_controller import PController
 from turret_fcs.rl_controller import RLController
-from turret_fcs.rl_sim.turret_env import TurretEnv
+from turret_fcs.rl.turret_env import TurretEnv
 
 FIG_DIR = PROJECT_ROOT / "analysis" / "figures" / "python"
 FIG_DIR.mkdir(parents=True, exist_ok=True)
@@ -44,7 +44,7 @@ def simulate_controllers():
     cikis katmani (yumusak olu bolge + ivme siniri + ters yon sonumlemesi) dahil
     RLController uzerinden yurur; boylece bench, sahada calisan davranisi olcer.
     """
-    model_path = PROJECT_ROOT / "turret_fcs" / "rl_sim" / "models" / "turret_ppo_v14.zip"
+    model_path = PROJECT_ROOT / "turret_fcs" / "rl" / "models" / "rl_v2-1.zip"
     has_model = model_path.exists()
     # Politika, uretim cikis katmanini da iceren RLController uzerinden (npz) yuklenir.
     rl_out = RLController() if has_model else None

@@ -34,7 +34,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from turret_fcs.rl_controller import RLController
-from turret_fcs.rl_sim.turret_env import TurretEnv
+from turret_fcs.rl.turret_env import TurretEnv
 from turret_fcs.config import CONFIG
 
 SEEDS = [11, 23, 42, 77, 88, 99, 105, 123, 202, 333]

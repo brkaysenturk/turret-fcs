@@ -24,7 +24,8 @@ def _no_ambient_profile(monkeypatch):
     monkeypatch.delenv("WEBOTS_BALLOON_PROFILE", raising=False)
 
 
-def test_tuning_application_and_clamping(tmp_path, monkeypatch, capsys):
+def test_webots_tuning_application_clamping_and_profiles(tmp_path, monkeypatch, capsys):
+    """Canli kazanc guncellemesi, profil tavan kirpmalari ve uyari mesajlarini dogrular."""
     # 1. Kontrolcü kazançlarının canlı güncellenmesi
     fcs = FCSManager("P")
     apply_tuning(
@@ -49,10 +50,9 @@ def test_tuning_application_and_clamping(tmp_path, monkeypatch, capsys):
     monkeypatch.setenv("WEBOTS_BALLOON_PROFILE", "0")
     assert load_tuning()["kp_pan"] == pytest.approx(LIMITS["kp_pan"][1])
 
-
-def test_profile_limits(tmp_path, monkeypatch):
-    path = _write_tuning(tmp_path, {"kp_pan": 0.30, "kp_tilt": 0.13})
-    monkeypatch.setenv("WEBOTS_TUNING_JSON", str(path))
+    # 4. Tum profillerin tavan sinirlama haritasi
+    path_prof = _write_tuning(tmp_path, {"kp_pan": 0.30, "kp_tilt": 0.13})
+    monkeypatch.setenv("WEBOTS_TUNING_JSON", str(path_prof))
     expected = {"0": 0.30, "2": 0.30, "3": 0.25, "4": 0.15, "5": 0.27, "7": 0.30}
     for profile, value in expected.items():
         monkeypatch.setenv("WEBOTS_BALLOON_PROFILE", profile)

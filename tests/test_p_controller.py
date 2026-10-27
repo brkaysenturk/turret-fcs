@@ -13,29 +13,26 @@ from turret_fcs.fcs_manager import FCSManager
 from turret_fcs.p_controller import PController
 
 
-def test_p_controller_wiring_and_kinematics():
-    """FCSManager baglantisi, piksel-aci donusumu ve sifirlama durumunu dogrular."""
+def test_p_controller_kinematics_deadband_and_limits():
+    """FCSManager baglantisi, piksel-aci donusumu, olu bolge, doyum sinirlari ve oransal tepkiyi dogrular."""
+    # 1. FCSManager baglantisi ve kazanc tutarliligi
     manager = FCSManager()
     assert isinstance(manager.p_controller, PController)
     assert math.isclose(manager.p_controller.kp_frame_pan, CONFIG.control.kp_pan, abs_tol=1e-6)
     assert math.isclose(manager.p_controller.kp_frame_tilt, CONFIG.control.kp_tilt, abs_tol=1e-6)
 
+    # 2. Piksel-aci donusumu ve reset
     p = PController()
     pan, tilt = p.compute_angles(740.0, 300.0, 640.0, 360.0, 1411.0, 1411.0)
-    assert pan > 0.0
-    assert tilt > 0.0
+    assert pan > 0.0 and tilt > 0.0
     p.compute_p(pan, tilt, dt=0.03333)
     p.reset()
     assert (p.actual_pan, p.actual_tilt, p.smooth_cmd_pan, p.smooth_cmd_tilt) == (0.0, 0.0, 0.0, 0.0)
 
-
-def test_p_controller_deadband_proportional_and_limits():
-    """Yumusak olu bolge, saf oransal komut, doyum siniri ve feedforward yoklugunu dogrular."""
-    p = PController()
-    # 1. Olu bolge ici (0.50 deg): sifir hareket
+    # 3. Olu bolge ici (0.50 deg): sifir hareket
     assert p.compute_p(0.50, 0.50, dt=0.03333) == (0.0, 0.0)
 
-    # 2. Buyuk basamak: doyum sinirina kadar kirpilir (Pan 1.50, Tilt 0.75)
+    # 4. Buyuk basamak: doyum sinirina kadar kirpilir (Pan 1.50, Tilt 0.75)
     limit_pan = p.max_step_for(0.03333, axis="pan")
     limit_tilt = p.max_step_for(0.03333, axis="tilt")
     u_pan, u_tilt = p.compute_p(30.0, 20.0, dt=0.03333)
@@ -43,7 +40,7 @@ def test_p_controller_deadband_proportional_and_limits():
     assert 0.0 < u_tilt <= limit_tilt
     assert limit_tilt == pytest.approx(0.75, abs=0.01)
 
-    # 3. Saf oransal komut: buyuk hata daha yuksek komut uretir (ivme rampasi sonrasi)
+    # 5. Saf oransal komut: buyuk hata daha yuksek komut uretir (ivme rampasi sonrasi)
     p_small = PController()
     p_large = PController()
     for _ in range(15):

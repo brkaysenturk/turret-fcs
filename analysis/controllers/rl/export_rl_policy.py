@@ -1,7 +1,7 @@
 """PPO politika agirliklarini SB3'ten bagimsiz NumPy artifact'ina aktarir.
 
 Kullanim:
-    python analysis/controllers/rl/export_rl_policy.py turret_fcs/rl_sim/models/turret_ppo_v14.zip
+    python analysis/controllers/rl/export_rl_policy.py turret_fcs/rl/models/turret_ppo_v14.zip
 """
 
 from __future__ import annotations
@@ -44,5 +44,5 @@ def export(model_path: Path) -> Path:
 
 
 if __name__ == "__main__":
-    path = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("turret_fcs/rl_sim/models/turret_ppo_v14.zip")
+    path = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("turret_fcs/rl/models/rl_v2-1.zip")
     export(path)

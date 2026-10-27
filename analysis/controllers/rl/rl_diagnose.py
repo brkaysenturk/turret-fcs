@@ -21,11 +21,11 @@ ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT))
 
 from turret_fcs.rl_controller import RLController
-from turret_fcs.rl_sim.turret_env import TurretEnv
+from turret_fcs.rl.turret_env import TurretEnv
 
 MODEL = Path(os.environ.get(
     "RL_MODEL",
-    str(ROOT / "turret_fcs" / "rl_sim" / "models" / "turret_ppo_v14.zip"),
+    str(ROOT / "turret_fcs" / "rl" / "models" / "rl_v2-1.zip"),
 ))
 
 

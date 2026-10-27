@@ -200,7 +200,7 @@
   - Saf RL üç profilde de P'a göre daha düşük pan RMS, piksel hatası ve tilt hatası; kilitli kalma süresi belirgin yüksek. Yön değiştirme %4.4-5.1 ile P'nin üstünde ama limit-cycle eşiği %8'in altında.
 - **Sınır:** Bu sonuçlar Webots'tadır; gerçek taret testi yapılmadı. Yön değiştirme oranı P'den yüksek olduğu için sahada uzun süreli aşınma izlenmelidir.
 - **Kontrolcü sadeleştirmesi:** P MAX üretim `p_controller.py` (`PController`), RL MAX üretim `rl_controller.py` (`RLController`) oldu. Eski kontrolcüler, factory seçicileri, `TURRET_P_CONTROLLER` / `TURRET_RL_CONTROLLER` ortam değişkenleri, `p_controller_impl` / `rl_controller_impl` alanları, `kp_pan_max` / `kp_tilt_max` takma adları ve v1.3 `turret_ppo_final` modeli silindi. Hiç okunmayan FF/EMA config alanları da kaldırıldı.
-- **Kurulum düzeltmesi:** `requirements.txt` çözülemiyordu (SB3 2.3.2 + gymnasium 1.0.0 + numpy 2.1.3 çelişkisi). Yeni pinler: numpy 1.26.4, stable-baselines3 2.4.1, gymnasium 1.0.0. `setup_env.bat` uygun Python'u seçiyor, bozuk venv'i yeniden kuruyor, CPU torch wheel kuruyor ve importları doğruluyor. Temiz klonda 38/38 test ve YOLO çıkarımı doğrulandı.
+- **Kurulum düzeltmesi:** `requirements.txt` çözülemiyordu (SB3 2.3.2 + gymnasium 1.0.0 + numpy 2.1.3 çelişkisi). Yeni pinler: numpy 1.26.4, stable-baselines3 2.4.1, gymnasium 1.0.0. `setup_env.bat` uygun Python'u seçiyor, bozuk venv'i yeniden kuruyor, CPU torch wheel kuruyor ve importları doğruluyor. Temiz klonda 28/28 test ve YOLO çıkarımı doğrulandı.
 - **RL çıkış katmanı düzeltmesi (v2.0):** `rl_controller.py` çıkışında yumuşak ölü bölge ölçeği (taper) ve ivme sınırı zaten vardı, ama `if self.deadband_px > 0.0` kapısı (sonradan `soft_deadband_enabled` bayrağına çevrildi) yüzünden hiç devreye girmiyordu. Ölçek + ivme sınırı (120/80 derece/s^2) devreye alındı, `fcs_manager` ivme sınırını RL'e geçirir, `max_step_tilt_deg` 1.50 -> 0.75 yapıldı. Gerçek log: kilit %1.5 -> %47.4, pan RMS 5.80 -> 4.23, merkezde komut 0.531 -> 0.021, median hata 5.47 -> 2.03.
 - **SSOT sözleşmesi (v2.0):** `RLConfig` eklendi (ölü bölge, taper, hız/mesafe ölçekleri, YOLO gürültüsü, servo tau aralığı, bölüm uzunluğu); `far_gain`, `far_error_deg`, `cmd_accel_*`, `lead_time_*`, `eval_display_time_s` ControlConfig/BallisticsConfig'e taşındı. P, RL, TurretEnv, FCS lead ve Webots EVAL süresi artık bu alanları okur. Kullanılmayan `lidar.gate_angle_deg` ve ölü `DEFAULT_LEAD_TIME` silindi. `tests/test_config_consistency.py` her CONFIG alanının okunduğunu ve varsayılanların bağlı olduğunu doğrular.
 - **Firmware sertlestirme (v2.0):** STM32 tarafinda alti gercek acik kapatildi.
@@ -211,7 +211,7 @@
   5. 2000 ms servo park korumasi: PC kalici olarak yoksa servolar merkeze indirilir; onceden iki MG996R son konumda surekli stall akimi cekiyordu.
   6. Launcher_TriggerFire() volan hazir degilse atisi reddedip false donuyor; LAUNCHER_STATE_SPINUP ve FLYWHEEL_SPINUP_MS kaldirildi. Onceden sessizce 500 ms bekliyor, PC ise FIRING fazini 80 ms tuttugu icin dart gec ve yanlis yonde firlatilabiliyordu.
 - **Dogrulama:** Firmware arm-none-eabi-gcc 14.3 ile sifir uyarida derlendi ve linklendi (Debug text ~18 KB / 18048 B, Release text ~10 KB / 9960 B, data 20 B, bss 1948 B); protokol PC tarafiyla degismedi, test paketi konsolide ve tam kapsamlı.
-- **Sürüm:** Tüm v1.3 sonrasi degisiklikler v2.0'de toplandi; test paketi 36 test.
+- **Sürüm:** Tüm v1.3 sonrasi degisiklikler v2.0'de toplandi; test paketi konsolide 28 test.
 
 ### FAZ 14: Algoritmik Kararlılık, 150 px Robust Tekil-Sıçrama Kapısı ve Dinamik İvme İyileştirmesi
 
@@ -277,8 +277,8 @@
 - [fcs_comm.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/fcs_comm.py): STM32 ile 115200 Baud ikili (binary) UART paketi alışverişi, 0.1° altı kuantalama biriktiricisi.
 - [camera_thread.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/camera_thread.py): Watchdog korumalı, sıfır gecikmeli kamera iş parçacığı.
 - [patrol_generator.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/patrol_generator.py): Lissajous eğrisi parametrik hava sahası tarama devriyesi.
-- [turret_env.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/rl_sim/turret_env.py): 11 boyutlu simülasyon ortamı; 1.20 derece backlash, 1.50 derece/kare adım, progress ödülü, gecikmeli sensör kuyruğu (7D) + taze eylem geçmişi (4D).
-- [train_rl.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/rl_sim/train_rl.py): 250k adımlık saf PPO eğitim motoru; `turret_ppo_v14.zip` üretir.
+- [turret_env.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/rl/turret_env.py): 11 boyutlu simülasyon ortamı; 1.20 derece backlash, 1.50 derece/kare adım, progress ödülü, gecikmeli sensör kuyruğu (7D) + taze eylem geçmişi (4D).
+- [train_rl.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/rl/train_rl.py): 250k adımlık saf PPO eğitim motoru; `turret_ppo_v14.zip` üretir.
 - [webots_main.py](file:///c:/YTU/bitirme_projesi/turret_fcs/webots/controllers/webots_main/webots_main.py): Webots dijital ikiz ana döngüsü; üretim FCS/HUD modüllerini kullanır, kademeli SPINUP/SETTLE/FIRING sekansı içerir. P FF kapalıdır; lead/HUD canlıdır.
 - [webots_tuning.py](file:///c:/YTU/bitirme_projesi/turret_fcs/webots/controllers/webots_main/webots_tuning.py): Webots-only Kp/max_output override, profil tavanı ve telemetri metadata'sı; varsayılan P kazançları `CONFIG.control.kp_pan/kp_tilt` ile aynıdır.
 - [system_identification.py](file:///c:/YTU/bitirme_projesi/turret_fcs/analysis/system_identification.py): Sentetik nominal SOPDT/FOPDT analizi; gerçek telemetriye fit yapmaz, ölçülmüş tau/backlash üretmez.
@@ -296,7 +296,7 @@
 Yeni bir sohbet açıldığında asistan bu dosyayı okur okumaz:
 
 1. Sistemin **v2.1 Production Release** etiketli olduğunu; v2.0 sonrası tüm algoritmik iyileştirmeleri (Kalman aday yörünge geri oynatmalı 150 px kapısı, kısa hedef kaybında ego-telafili `predict_only` takip köprüsü, P kontrolcü FPS-bağımsız EMA ve kazanç planlamasının kaldırılması, Optuna TPE optimal 353.1/213.6 derece/s^2 ivme sınırı, `on_target_lost` bellek temizliği, güven ağırlıklı `TargetSelector`, STM32 UART kayan pencere senkronizasyonu ve SSOT/CI sertleştirmeleri) topladığını; ağırlık varlıklarının `v2.0` release'inden indirildiğini (`DEFAULT_RELEASE_TAG = "v2.0"`),
-2. RL politikasının `turret_ppo_v14.zip` / `turret_ppo_v14_policy.npz` olduğunu; eski `turret_ppo_final` modelinin silindiğini, üretim çıkarımının SB3/torch bağımsız yapıldığını,
+2. RL politikasının `rl_v2-1.zip` / `rl_v2-1_policy.npz` olduğunu; eski modellerin ve ara denemelerin silindiğini, üretim çıkarımının SB3/torch bağımsız yapıldığını,
 3. Varsayılan ve tek kontrolcünün **P** (tek EMA alpha=0.9306, saf oransal, Kp_pan=0.1953 / Kp_tilt=0.1544, Kv_pan=5.859 s^-1, kazanç planlaması kaldırılmış) olduğunu; eski kontrolcü ve seçicilerin silindiğini, v1.3 davranışı için `v1.3` etiketinin kullanıldığını,
 4. Asla LaTeX / dolar işareti (`$`) kullanmaması gerektiğini,
 5. Kodda veya tezde yapılacak her yeni geliştirmenin yukarıdaki mimari ve güvenlik disiplinine bağlı kalması gerektiğini,

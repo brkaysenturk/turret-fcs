@@ -26,7 +26,7 @@ pip install -e .[test]
 
 ## 2. Otomatik Test Paketinin Koşulması
 
-Donanıma (kamera veya STM32) ihtiyaç duymadan çalışan 36 birim, entegrasyon, ağırlık ve SSOT tutarlılık testi:
+Donanıma (kamera veya STM32) ihtiyaç duymadan çalışan 28 birim, entegrasyon, ağırlık ve SSOT tutarlılık testi:
 
 ```bash
 pytest -v
@@ -55,7 +55,7 @@ Dosyalar `weights/` dizini altına kaydedilir.
 
 ```bash
 # 250.000 adımlık PPO eğitimini başlatın
-python turret_fcs/rl_sim/train_rl.py
+python turret_fcs/rl/train_rl.py
 ```
 
 Eğitim parametreleri:
@@ -67,7 +67,7 @@ Eğitim parametreleri:
 - **Clip Range:** 0.2
 - **Adım Sayısı:** 250.000 adım
 
-Eğitim tamamlandığında üretilen model `turret_fcs/rl_sim/models/turret_ppo_v14.zip` olarak kaydedilir. Bu modeli saf NumPy MLP (`.npz`) olarak dışa aktarmak için:
+Eğitim tamamlandığında üretilen model `turret_fcs/rl/models/rl_v2-1.zip` olarak kaydedilir. Bu modeli saf NumPy MLP (`.npz`) olarak dışa aktarmak için:
 
 ```bash
 python analysis/controllers/rl/export_rl_policy.py

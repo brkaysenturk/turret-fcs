@@ -5,10 +5,10 @@ MODUL: BAYESIAN OPTIMIZATION ILE ODUL HIPERPARAMETRE TARAMASI (OPTUNA TPE)
 Bu modul, yuksek sadakatli TurretEnv ortaminda (2. derece eylemsizlik,
 Webots harmonik YOLO salinimi, 0.10 derece kuantalama ve sakinlik sartli odul)
 3 temel parametreyi:
-1. lambda_u: Kontrol cabasi (effort / u^2) agirligi (serbest)
-2. mu_du: Eylem sarsintisi / jerk (du^2) agirligi (serbest: 0.005 - 0.15)
-3. learning_rate: PPO baslangic ogrenme orani (lineer takvim)
-150.000 adim/deneme ufkunda optimize eder ve rezonans kapili (flip_rate + jerk)
+1. lambda_u: Kontrol cabasi (effort / u^2) agirligi (0.005 - 0.08)
+2. mu_du: Eylem sarsintisi / jerk (du^2) agirligi (0.005 - 0.20)
+3. learning_rate: PPO baslangic ogrenme orani (1.5e-4 - 8.0e-4)
+250.000 adim/deneme ufkunda 40 deneme (10 startup) ile optimize eder ve rezonans kapili (flip_rate + jerk)
 hakem fonksiyonuyla degerlendirerek best_params.json dosyasina yazar.
 ================================================================================
 """
@@ -34,8 +34,8 @@ from turret_fcs.config import CONFIG
 # CPU termal korumasi icin 2-thread kisiti
 torch.set_num_threads(2)
 
-EVAL_SEEDS = list(range(100, 120))
-SCREEN_STEPS = 150_000
+EVAL_SEEDS = list(range(100, 150))
+SCREEN_STEPS = 250_000
 
 
 def _sign_flip_rate(actions_1d):
@@ -48,7 +48,7 @@ def _sign_flip_rate(actions_1d):
 
 def evaluate_agent(model, test_seeds=EVAL_SEEDS, max_steps=300):
     """
-    Egitilmis modeli 20 sabit tohumda (calisma zamani gibi use_velocity_obs=False ile)
+    Egitilmis modeli 50 sabit tohumda (calisma zamani gibi use_velocity_obs=False ile)
     degerlendirir: Medyan hata, IQR, Kilit orani, Medyan Jerk ve Yön Degistirme (%).
     """
     total_errors = []
@@ -108,9 +108,9 @@ def evaluate_agent(model, test_seeds=EVAL_SEEDS, max_steps=300):
 
 def objective(trial):
     # mu_du serbest (0.005 - 0.20 araliginda, 1.61 deg backlash sönümü)
-    lambda_u = trial.suggest_float("lambda_u", 0.008, 0.08, log=True)
+    lambda_u = trial.suggest_float("lambda_u", 0.005, 0.08, log=True)
     mu_du = trial.suggest_float("mu_du", 0.005, 0.20, log=True)
-    lr = trial.suggest_float("learning_rate", 1.5e-4, 4.2e-4, log=True)
+    lr = trial.suggest_float("learning_rate", 1.5e-4, 8.0e-4, log=True)
 
     def env_fn():
         return TurretEnv(
@@ -144,6 +144,14 @@ def objective(trial):
 
     t0 = time.time()
     model.learn(total_timesteps=SCREEN_STEPS)
+
+    # Her denemenin egitilmis modelini kaydet (top-3 incelemesi ve guvenlik)
+    trial_dir = current_dir / "models" / "trials"
+    trial_dir.mkdir(parents=True, exist_ok=True)
+    trial_model_path = trial_dir / f"trial_{trial.number:03d}.zip"
+    model.save(str(trial_model_path))
+    trial.set_user_attr("model_path", str(trial_model_path))
+
     median_err_px, iqr_err_px, lock_ratio, median_jerk, mean_flip_pct = evaluate_agent(model)
 
     # Rezonans / Limit-Cycle Hakem Kriteri:
@@ -177,22 +185,22 @@ def objective(trial):
     return cost
 
 
-def run_optimization(n_trials=14):
+def run_optimization(n_trials=40):
     current_dir = Path(__file__).resolve().parent
     db_path = current_dir / "optuna_rl.db"
     storage_url = f"sqlite:///{db_path.as_posix()}"
 
     print("==================================================================", flush=True)
-    print(f" TURRET FCS // REZONANS KORUMALI OPTUNA TPE TARAMASI ({n_trials} x 150K)   ", flush=True)
+    print(f" TURRET FCS // REZONANS KORUMALI OPTUNA TPE TARAMASI ({n_trials} x 250K)   ", flush=True)
     print("==================================================================", flush=True)
     print(f"[Optuna DB] {db_path.name}", flush=True)
-    print(f"[Deneme] {n_trials} deneme x {SCREEN_STEPS:,} adim (mu_du serbest: 0.005..0.15)", flush=True)
-    print(f"[Referans Tohumlar] 20 Tohum: {EVAL_SEEDS[0]}..{EVAL_SEEDS[-1]}", flush=True)
+    print(f"[Deneme] {n_trials} deneme x {SCREEN_STEPS:,} adim (mu_du serbest: 0.005..0.20, n_startup_trials=10)", flush=True)
+    print(f"[Referans Tohumlar] 50 Tohum: {EVAL_SEEDS[0]}..{EVAL_SEEDS[-1]}", flush=True)
     print("------------------------------------------------------------------", flush=True)
 
-    sampler = optuna.samplers.TPESampler(seed=42, n_startup_trials=5, multivariate=True)
+    sampler = optuna.samplers.TPESampler(seed=42, n_startup_trials=10, multivariate=True)
     study = optuna.create_study(
-        study_name="turret_v22_consistent_150k",
+        study_name="turret_v22_unified_plant_250k",
         storage=storage_url,
         direction="minimize",
         sampler=sampler,
@@ -202,15 +210,22 @@ def run_optimization(n_trials=14):
     if len(study.trials) == 0:
         study.enqueue_trial(
             {
-                "lambda_u": 0.02,
-                "mu_du": 0.08,
+                "lambda_u": 0.015,
+                "mu_du": 0.05,
                 "learning_rate": 0.0003,
             }
         )
 
-    start_t = time.time()
-    study.optimize(objective, n_trials=n_trials, show_progress_bar=False)
-    elapsed = time.time() - start_t
+    completed_count = len([t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE])
+    trials_to_run = max(0, n_trials - completed_count)
+    print(f"[Durum] Hedef toplam: {n_trials}, Onceden tamamlanan: {completed_count}, Simdi kosulacak: {trials_to_run}", flush=True)
+
+    if trials_to_run > 0:
+        start_t = time.time()
+        study.optimize(objective, n_trials=trials_to_run, show_progress_bar=False)
+        elapsed = time.time() - start_t
+    else:
+        elapsed = 0.0
 
     best = study.best_trial
     print("\n==================================================================", flush=True)
@@ -223,7 +238,7 @@ def run_optimization(n_trials=14):
     for k, v in best.params.items():
         print(f"   - {k:15s}: {v:.6f}" if isinstance(v, float) else f"   - {k:15s}: {v}", flush=True)
     print("------------------------------------------------------------------", flush=True)
-    print(" PERFORMANS METRIKLERI (20 SEED MEDYAN & IQR):", flush=True)
+    print(" PERFORMANS METRIKLERI (50 SEED MEDYAN & IQR):", flush=True)
     print(f"   - Medyan Piksel Hatasi   : {best.user_attrs['median_err_px']:.2f} px", flush=True)
     print(f"   - Piksel Hata IQR        : {best.user_attrs['iqr_err_px']:.2f} px", flush=True)
     print(f"   - Vizor Kilitlenme Orani : %{best.user_attrs['lock_ratio'] * 100:.2f}", flush=True)
@@ -234,10 +249,12 @@ def run_optimization(n_trials=14):
     out_path = current_dir / "best_params.json"
     result_data = {
         "_comment": f"Optuna TPE optimization result ({SCREEN_STEPS:,} timesteps per trial, high-fidelity TurretEnv with resonance guard). Automatically consumed by train_rl.py.",
-        "version": "2.0",
+        "version": "2.1",
+        "study_name": study.study_name,
         "timesteps_per_trial": SCREEN_STEPS,
         "best_trial_number": best.number,
         "best_score": float(best.value),
+        "best_model_path": best.user_attrs.get("model_path"),
         "params": best.params,
         "metrics": {
             "median_err_px": float(best.user_attrs["median_err_px"]),
@@ -252,9 +269,16 @@ def run_optimization(n_trials=14):
         json.dump(result_data, f, indent=4)
     print(f"[Kaydedildi] {out_path.name}", flush=True)
 
+    best_model_file = best.user_attrs.get("model_path")
+    if best_model_file and Path(best_model_file).exists():
+        import shutil
+        target_best = current_dir / "models" / "turret_ppo_best_optuna.zip"
+        shutil.copyfile(best_model_file, target_best)
+        print(f"[Model Kopyalandi] En iyi model -> {target_best.name}", flush=True)
+
     return best.params
 
 
 if __name__ == "__main__":
-    trials = int(sys.argv[1]) if len(sys.argv) > 1 else 14
+    trials = int(sys.argv[1]) if len(sys.argv) > 1 else 40
     run_optimization(n_trials=trials)

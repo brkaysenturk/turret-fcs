@@ -8,7 +8,7 @@ Bitirme Çalışması ve Tasarım Projesi
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10-3.12](https://img.shields.io/badge/Python-3.10--3.12-blue.svg)](https://www.python.org/)
 [![CI](https://github.com/brkaysenturk/turret-fcs/actions/workflows/ci.yml/badge.svg)](https://github.com/brkaysenturk/turret-fcs/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/Tests-36%20passed-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-28%20passed-brightgreen.svg)](tests/)
 [![Hardware](https://img.shields.io/badge/Hardware-STM32F401RE-002B49.svg)](https://www.st.com/)
 [![Simulation](https://img.shields.io/badge/Simulation-Webots%20R2025a-red.svg)](https://cyberbotics.com/)
 [![Detection](https://img.shields.io/badge/Detection-YOLOv8n%20%2B%20ByteTrack-00AEEF.svg)](https://ultralytics.com/)
@@ -214,8 +214,8 @@ Bu bölüm, her modülün **ne olduğunu ve sistem içinde hangi işi yaptığı
 | **Arayüz** | `presenter.py` | HUD çizim sırasını ve durum metinlerini yönetir | Tam kare |
 | **Arayüz** | `telemetry.py` | 35 kolonlu CSV, meta.json ve olay günlüğü yazar | Oturum kaydı |
 | **Davranış** | `patrol_generator.py` | Hedef yokken bekleme, merkeze dönüş ve figure-8 tarama | Devriye adımı |
-| **RL eğitimi** | `rl_sim/turret_env.py` | Gerçek plant kısıtlarıyla Gymnasium ortamı | 11-D gözlem |
-| **RL eğitimi** | `rl_sim/train_rl.py` | PPO politikasını eğitir | `.zip` + `.npz` model |
+| **RL eğitimi** | `rl/turret_env.py` | Gerçek plant kısıtlarıyla Gymnasium ortamı | 11-D gözlem |
+| **RL eğitimi** | `rl/train_rl.py` | PPO politikasını eğitir | `.zip` + `.npz` model |
 | **Webots** | `webots/controllers/webots_main/` | Üretim kodunu dijital ikizde çalıştırır | Simülasyon oturumu |
 | **Gömülü** | `stm32/turret_main/` | Servo, LiDAR, volan ve solenoidin gerçek zamanlı denetimi | PWM / UART / GPIO |
 
@@ -351,13 +351,13 @@ Optik, kontrol, aktüatör, Kalman, balistik, RL, LiDAR, volan, montaj, kilit, h
 
 ### 6.6 RL eğitimi ve analiz araçları
 
-#### `turret_fcs/rl_sim/turret_env.py` — Gymnasium ortamı
+#### `turret_fcs/rl/turret_env.py` — Gymnasium ortamı
 
 Gerçek plant kısıtlarını modeller: 1.61° ölçülmüş dişli boşluğu, 0.10° servo ölü bölgesi, pan 1.50° / tilt 0.75° adım sınırları, 35-65 ms servo zaman sabiti, 1-3 kare taşıma gecikmesi, 25-45 ms FPS dalgalanması, C270 optik modeli, YOLO kutu gürültüsü ve harmonik jitter. Hedef yörüngeleri statik, doğrusal, zigzag, kaçış ve dairesel olarak rastgeleleştirilir. Gözlem 7 boyutlu gecikmeli sensör verisi + 4 boyutlu taze eylem geçmişi = 11 boyuttur.
 
 **Ne sağlar:** Politikayı gerçek donanıma yakın bir plant üzerinde, gecikme ve gürültüye dayanıklı olarak eğitir.
 
-#### `turret_fcs/rl_sim/train_rl.py` — PPO eğitimi
+#### `turret_fcs/rl/train_rl.py` — PPO eğitimi
 
 250.000 adımlık PPO eğitimini çalıştırır; `models/` altına SB3 `.zip` modelini ve bağımsız NumPy `.npz` politika dosyasını üretir. `best_params.json` varsa `lambda_u`, `mu_du` ve öğrenme oranı oradan okunur. Ödül; hata azalışını pozitif, hata karesini, kontrol eforunu, eylem değişimini ve yön değiştirmeyi negatif ağırlıklandırır; bullseye ve sakinlik bonusu ekler.
 
@@ -675,7 +675,7 @@ setup_env.bat
 venv\Scripts\python.exe -m pytest -q
 ```
 
-36 test; P kontrolcü, Kalman aday geri oynatma, kilit/vuruş olasılığı, LiDAR kapılama, RL sarmalayıcı, Webots tuning, ağırlık yöneticisi ve `CONFIG` tutarlılığını donanım olmadan doğrular.
+28 test; P kontrolcü, Kalman aday geri oynatma, kilit/vuruş olasılığı, LiDAR kapılama, RL sarmalayıcı, Webots tuning, ağırlık yöneticisi ve `CONFIG` tutarlılığını donanım olmadan doğrular.
 
 ### 10.4 Sistemi başlatma
 
@@ -787,13 +787,13 @@ venv\Scripts\python.exe analysis\comparison\generate_readme_diagrams.py
 
 ```bash
 # 250.000 adımlık PPO eğitimi
-venv\Scripts\python.exe turret_fcs\rl_sim\train_rl.py
+venv\Scripts\python.exe turret_fcs\rl\train_rl.py
 
 # SB3 modelini bağımsız NumPy MLP'ye aktar
 venv\Scripts\python.exe analysis\controllers\rl\export_rl_policy.py
 ```
 
-Eğitim çıktısı `turret_fcs/rl_sim/models/` altına yazılır. Üretim çıkarımı `.npz` dosyasını kullanır; PyTorch veya Stable-Baselines3 kurulu olmasa da RL modu çalışır.
+Eğitim çıktısı `turret_fcs/rl/models/` altına yazılır. Üretim çıkarımı `.npz` dosyasını kullanır; PyTorch veya Stable-Baselines3 kurulu olmasa da RL modu çalışır.
 
 ---
 
@@ -822,7 +822,7 @@ turret_fcs/
 │   └── Core/
 │       ├── Inc/                      # protocol.h, servo_driver.h, fcs_comm.h, luna_read.h, flywheel_solenoid.h
 │       └── Src/                      # main.c, servo_driver.c, fcs_comm.c, luna_read.c, flywheel_solenoid.c
-├── tests/                            # 36 Pytest birim/entegrasyon testi
+├── tests/                            # 28 Pytest birim/entegrasyon testi
 ├── turret_fcs/                       # PC çalışma zamanı
 │   ├── config.py                     # SSOT
 │   ├── protocol.py                   # PC-STM32 protokol sözleşmesi
@@ -842,7 +842,8 @@ turret_fcs/
 │   ├── turret_hud.py                 # HUD ilkelleri
 │   ├── presenter.py                  # HUD sunumu
 │   ├── weights.py                    # Ağırlık indirici
-│   └── rl_sim/                       # Gymnasium ortamı, eğitim ve modeller
+│   ├── rl/                           # Gymnasium ortamı, eğitim ve modeller
+│   └── yolo/                         # YOLO veri toplama, etiketleme ve eğitim
 ├── webots/
 │   ├── worlds/webots_turret_fcs.wbt  # Dijital ikiz dünyası
 │   ├── controllers/webots_main/      # Üretim kodunu çalıştıran HAL

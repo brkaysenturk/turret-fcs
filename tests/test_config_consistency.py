@@ -6,7 +6,7 @@ from turret_fcs.p_controller import PController
 from turret_fcs.lock_manager import LockManager
 from turret_fcs.kalman_filter import KalmanFilter
 from turret_fcs.rl_controller import RLController
-from turret_fcs.rl_sim.turret_env import TurretEnv
+from turret_fcs.rl.turret_env import TurretEnv
 
 
 def test_config_ssot_and_component_defaults():
@@ -69,16 +69,14 @@ def test_config_ssot_and_component_defaults():
     assert math.isclose(env.progress_gain, CONFIG.rl.progress_gain, abs_tol=1e-6)
     assert math.isclose(env.error_gain, CONFIG.rl.error_gain, abs_tol=1e-6)
 
-    # 4. Optik ve Model Yollari
+    # 5. Optik ve Model Yollari
     assert CONFIG.optics.compute_fx(1280) > 1000.0
     assert CONFIG.optics.compute_fy(720) > 1000.0
     assert CONFIG.optics.h_fov_deg > CONFIG.optics.v_fov_deg
     assert CONFIG.paths.yolo_model.endswith(".pt")
     assert CONFIG.paths.fallback_yolo_model.endswith(".pt")
 
-
-def test_eval_display_duration_is_shared():
-    """Webots EVAL gosterim suresi CONFIG'ten okunmali."""
+    # 6. Webots Virtual Ballistics SSOT
     import sys
     from pathlib import Path
 

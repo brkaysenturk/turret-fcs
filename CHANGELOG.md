@@ -17,7 +17,7 @@ v2.1 refines closed-loop tracking robustness, Kalman outlier recovery, short-dro
 - **Ego-compensated dropout prediction bridge (`turret_fcs/fcs_manager.py`):** During momentary target dropouts (`lost_counter <= max_lost_frames`), `FCSManager` continues updating 1st-order servo ego-motion shift (`_compute_ego_pixel_shift`) and advances `tracker.predict_only(dt, ego_dx, ego_dy)`, allowing the active controller (P or RL) to track the predicted trajectory seamlessly across short detection gaps.
 - **Confidence-weighted target selection (`turret_fcs/target_selector.py`):** Spatial gate fallback and reticle-center target acquisition now weight squared pixel distance by detection confidence (`dist_sq / max(conf, 0.1)`).
 - **Continuous-time dt-scaled EMA (`turret_fcs/p_controller.py`):** Angular error EMA filtering in `PController.compute_angles` now scales dynamically with frame `dt` (`alpha_eff = 1.0 - (1.0 - alpha) ** (dt / nominal_dt_s)`).
-- **High-fidelity RL plant & curriculum pipeline (`turret_fcs/rl_sim/`):** Added 2nd-order actuator inertia, 0.10 deg UART quantization residue accumulation, harmonic YOLO bbox jitter, multi-stage curriculum training (`train_rl.py`), and resonance-gated (`flip_rate + jerk`) Optuna TPE evaluation (`optimize_rl.py`).
+- **High-fidelity RL plant & curriculum pipeline (`turret_fcs/rl/`):** Added 2nd-order actuator inertia, 0.10 deg UART quantization residue accumulation, harmonic YOLO bbox jitter, multi-stage curriculum training (`train_rl.py`), and resonance-gated (`flip_rate + jerk`) Optuna TPE evaluation (`optimize_rl.py`).
 
 ### Changed
 

@@ -33,12 +33,12 @@ import optuna
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
-if str(PROJECT_ROOT / "turret_fcs" / "rl_sim") not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT / "turret_fcs" / "rl_sim"))
+if str(PROJECT_ROOT / "turret_fcs" / "rl") not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT / "turret_fcs" / "rl"))
 
 from turret_fcs.config import CONFIG
 from turret_fcs.p_controller import PController
-from turret_fcs.rl_sim.turret_env import TurretEnv
+from turret_fcs.rl.turret_env import TurretEnv
 
 optuna.logging.set_verbosity(optuna.logging.WARNING)
 

@@ -1,6 +1,7 @@
 {
     "_comment": "Optuna TPE optimization result (150,000 timesteps per trial, high-fidelity TurretEnv with resonance guard). Automatically consumed by train_rl.py.",
-    "version": "2.0",
+    "version": "2.1",
+    "model_name": "rl_v2-1",
     "timesteps_per_trial": 150000,
     "best_trial_number": 6,
     "best_score": 70.19743139463722,

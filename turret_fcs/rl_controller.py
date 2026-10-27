@@ -2,8 +2,8 @@
 ================================================================================
 MODUL: RL KONTROLCU (SAF PPO CIKARIM MOTORU)
 ================================================================================
-Sinif adi RLController'dir. v2.0 politikasi `turret_ppo_v14.zip` /
-`turret_ppo_v14_policy.npz` olarak egitilir; cikarim SB3/torch surumune
+Sinif adi RLController'dir. v2.1 politikasi `rl_v2-1.zip` /
+`rl_v2-1_policy.npz` olarak egitilir; cikarim SB3/torch surumune
 bagimli degildir.
 
 TASARIM GEREKCESI:
@@ -112,7 +112,7 @@ class RLController:
         dist_min_m = R.dist_min_m if dist_min_m is None else dist_min_m
         dist_max_m = R.dist_max_m if dist_max_m is None else dist_max_m
         if model_path is None:
-            model_path = Path(__file__).resolve().parent / "rl_sim" / "models" / "turret_ppo_v14.zip"
+            model_path = Path(__file__).resolve().parent / "rl" / "models" / "rl_v2-1.zip"
         self.model_path = Path(model_path)
         self.model = None
         self.is_loaded = False
@@ -157,23 +157,24 @@ class RLController:
 
     def load_model(self):
         """NumPy politikasini (varsa) veya SB3 zip modelini yukler."""
-        npz_path = (
-            self.model_path
-            if self.model_path.suffix == ".npz"
-            else self.model_path.with_name(self.model_path.stem + "_policy.npz")
-        )
-        if npz_path.exists():
-            try:
-                model = _NumpyPolicy(npz_path)
-                if model.obs_dim != self.OBS_DIM or model.act_dim != self.ACT_DIM:
-                    raise ValueError(f"npz boyutu uyumsuz: obs={model.obs_dim}, action={model.act_dim}")
-                self.model = model
-                self.is_loaded = True
-                self.policy_format = "numpy"
-                self.load_error = None
-                return True
-            except Exception as exc:
-                self.load_error = f"npz yuklenemedi: {exc}"
+        npz_candidates = [
+            self.model_path if self.model_path.suffix == ".npz" else self.model_path.with_name(self.model_path.stem + "_policy.npz"),
+            self.model_path.with_suffix(".npz"),
+        ]
+        for npz_path in npz_candidates:
+            if npz_path.exists():
+                try:
+                    model = _NumpyPolicy(npz_path)
+                    if model.obs_dim != self.OBS_DIM or model.act_dim != self.ACT_DIM:
+                        raise ValueError(f"npz boyutu uyumsuz: obs={model.obs_dim}, action={model.act_dim}")
+                    self.model = model
+                    self.is_loaded = True
+                    self.policy_format = "numpy"
+                    self.load_error = None
+                    return True
+                except Exception as exc:
+                    self.load_error = f"npz yuklenemedi: {exc}"
+                    break
 
         try:
             from stable_baselines3 import PPO

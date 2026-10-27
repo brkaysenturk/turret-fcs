@@ -13,8 +13,8 @@ for p in (str(current_dir), str(project_root)):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from turret_fcs.rl_sim.optimize_rl import run_optimization
-from turret_fcs.rl_sim.train_rl import train
+from turret_fcs.rl.optimize_rl import run_optimization
+from turret_fcs.rl.train_rl import train
 from analysis.comparison.generate_benchmark_plots import generate_plots
 
 

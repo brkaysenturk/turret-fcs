@@ -23,17 +23,17 @@ set /p choice="Seciminiz (1/2/3/4): "
 if "%choice%"=="1" (
     echo.
     echo [INFO] PPO Egitimi Baslatiliyor...
-    "%PY%" turret_fcs\rl_sim\train_rl.py
+    "%PY%" turret_fcs\rl\train_rl.py
     pause
 ) else if "%choice%"=="2" (
     echo.
     echo [INFO] Canli Simulasyon Aciliyor ^('q' ile cikabilirsiniz^)...
-    "%PY%" turret_fcs\rl_sim\test_rl.py
+    "%PY%" turret_fcs\rl\test_rl.py
     pause
 ) else if "%choice%"=="3" (
     echo.
     echo [INFO] P vs RL Karsilastirma Testi Calistiriliyor...
-    "%PY%" analysis\generate_benchmark_plots.py
+    "%PY%" analysis\comparison\generate_benchmark_plots.py
     pause
 ) else (
     exit /b
