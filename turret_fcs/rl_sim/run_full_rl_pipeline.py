@@ -15,7 +15,7 @@ for p in (str(current_dir), str(project_root)):
 
 from turret_fcs.rl_sim.optimize_rl import run_optimization
 from turret_fcs.rl_sim.train_rl import train
-from analysis.generate_benchmark_plots import generate_plots
+from analysis.comparison.generate_benchmark_plots import generate_plots
 
 
 def main():

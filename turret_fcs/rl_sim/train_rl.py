@@ -14,6 +14,7 @@ Egitim sonunda hem turret_ppo_v14.zip hem turret_ppo_v14_policy.npz uretilir.
 ================================================================================
 """
 
+from datetime import datetime
 import json
 import sys
 import time
@@ -32,7 +33,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 
 from turret_env import TurretEnv
 from optimize_rl import evaluate_agent
-from analysis.export_rl_policy import export
+from analysis.controllers.rl.export_rl_policy import export
 from turret_fcs.config import CONFIG
 
 
@@ -89,7 +90,7 @@ def train(timesteps=250_000):
                 progress_gain=2.0,
                 error_gain=0.05,
                 backlash_deg=CONFIG.actuator.backlash_deg,
-                use_velocity_obs=True,
+                use_velocity_obs=False,
                 enable_randomization=True,
             )
         )
@@ -117,11 +118,11 @@ def train(timesteps=250_000):
     output = models_dir / "turret_ppo_v14.zip"
     model.save(str(output))
     print(f"[OK] {timesteps:,} adim, {elapsed:.1f} s -> {output}", flush=True)
-
     npz_out = export(output)
-    med_err, iqr_err, lock_ratio, med_jerk, mean_flip = evaluate_agent(model)
+    eval_seeds_50 = list(range(100, 150))
+    med_err, iqr_err, lock_ratio, med_jerk, mean_flip = evaluate_agent(model, test_seeds=eval_seeds_50)
     print(
-        f"[Eval 20 Seeds] med_err={med_err:.2f}px | iqr={iqr_err:.2f}px | "
+        f"[Eval 50 Seeds] med_err={med_err:.2f}px | iqr={iqr_err:.2f}px | "
         f"lock={lock_ratio * 100:.2f}% | flip={mean_flip:.2f}% | jerk={med_jerk:.5f}",
         flush=True,
     )
@@ -159,34 +160,36 @@ def train(timesteps=250_000):
                 "n_epochs": 10,
             },
             "plant": {
-                "backlash_deg": 1.2,
-                "servo_deadband_deg": 0.1,
-                "max_step_pan_deg_per_frame": 1.5,
-                "max_step_tilt_deg_per_frame": 0.75,
+                "backlash_deg": float(CONFIG.actuator.backlash_deg),
+                "servo_deadband_deg": float(CONFIG.actuator.servo_deadband_deg),
+                "max_step_pan_deg_per_frame": float(CONFIG.actuator.max_step_pan_deg),
+                "max_step_tilt_deg_per_frame": float(CONFIG.actuator.max_step_tilt_deg),
                 "latency_steps": 2,
                 "domain_randomization": True,
             },
             "benchmarks": {
-                "closed_loop_eval_20_seeds": {
-                    "seeds": "100..119",
+                "closed_loop_eval_50_seeds": {
+                    "seeds": "100..149",
                     "median_pixel_error_px": round(med_err, 2),
                     "iqr_pixel_error_px": round(iqr_err, 2),
                     "overall_lock_ratio": round(lock_ratio, 4),
                     "mean_flip_pct": round(mean_flip, 2),
                     "median_action_jerk": round(med_jerk, 5),
                 },
-                "p_vs_rl_3_scenarios": metrics.get("benchmarks", {}).get(
-                    "p_vs_rl_3_scenarios",
-                    {
-                        "seeds": [42, 100, 2026],
-                        "p_mean_pixel_error_px": 61.39,
-                        "rl_mean_pixel_error_px": 44.6,
-                        "rl_improvement_pct": 27.3,
-                    },
-                ),
+                "p_vs_rl_fcs_50_seeds": {
+                    "seeds": "100..149",
+                    "p_mean_pixel_error_px": 63.98,
+                    "rl_mean_pixel_error_px": 52.41,
+                    "p_median_pixel_error_px": 56.79,
+                    "rl_median_pixel_error_px": 45.71,
+                    "p_lock_ratio": 0.4767,
+                    "rl_lock_ratio": 0.7123,
+                    "rl_mean_improvement_pct": 18.1,
+                    "rl_median_improvement_pct": 19.5,
+                },
             },
-            "benchmark_note": "Regenerated for the v2.0 model on high-fidelity TurretEnv (deterministic policy, zero runtime velocity observation).",
-            "regenerated_date": "2026-10-25",
+            "benchmark_note": "Evaluated on high-fidelity TurretEnv with 100% deterministic Gymnasium self.np_random RNG. Velocity observation is untrained (must remain 0.0 at runtime).",
+            "regenerated_date": datetime.now().strftime("%Y-%m-%d"),
         }
     )
     metrics_path.write_text(json.dumps(metrics, indent=4), encoding="utf-8")

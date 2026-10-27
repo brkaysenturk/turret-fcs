@@ -56,7 +56,7 @@ class TurretEnv(gym.Env):
         progress_gain=CONFIG.rl.progress_gain,
         error_gain=CONFIG.rl.error_gain,
         backlash_deg=CONFIG.actuator.backlash_deg,
-        use_velocity_obs=True,
+        use_velocity_obs=False,
         enable_randomization=True,
     ):
         super().__init__()
@@ -75,6 +75,7 @@ class TurretEnv(gym.Env):
         self.error_gain = float(error_gain)
         self.backlash_deg = max(0.0, float(backlash_deg))
         self.use_velocity_obs = bool(use_velocity_obs)
+        self.lock_streak = 0
 
         # 1. Logitech C270 Gercek Donanim Optik Parametreleri (SSOT)
         self.screen_w = float(CONFIG.optics.default_width)
@@ -159,8 +160,8 @@ class TurretEnv(gym.Env):
             sim_t = self.step_count * self.dt
             jx = 3.0 * (0.65 * math.sin(7.3 * sim_t) + 0.35 * math.sin(17.1 * sim_t))
             jy = 3.0 * (0.60 * math.sin(9.7 * sim_t + 0.7) + 0.40 * math.sin(21.3 * sim_t))
-            noise_x = float(np.random.normal(0.0, self.yolo_noise_std * 0.6)) + jx
-            noise_y = float(np.random.normal(0.0, self.yolo_noise_std * 0.6)) + jy
+            noise_x = float(self.np_random.normal(0.0, self.yolo_noise_std * 0.6)) + jx
+            noise_y = float(self.np_random.normal(0.0, self.yolo_noise_std * 0.6)) + jy
         else:
             noise_x, noise_y = 0.0, 0.0
 
@@ -229,6 +230,7 @@ class TurretEnv(gym.Env):
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
         self.step_count = 0
+        self.lock_streak = 0
         self.turret_pan = 0.0
         self.turret_tilt = 0.0
         self.actual_pan_step = 0.0
@@ -248,12 +250,12 @@ class TurretEnv(gym.Env):
 
         # Domain Randomization: Bolum basi fiziksel parametre dagilimi
         if self.enable_randomization:
-            self.latency_steps = int(np.random.choice([1, 2, 3]))  # 33 ms - 100 ms degisken donanim gecikmesi
+            self.latency_steps = int(self.np_random.choice([1, 2, 3]))  # 33 ms - 100 ms degisken donanim gecikmesi
             self.obs_queue = deque(maxlen=self.latency_steps + 1)
-            self.servo_tau = float(np.random.uniform(CONFIG.rl.servo_tau_min_s, CONFIG.rl.servo_tau_max_s))
-            self.servo_deadband = float(np.random.uniform(0.08, 0.14)) # STM32 0.1 deg kuantalamasi
-            self.dt = float(np.random.uniform(0.025, 0.045))         # 22 - 40 FPS dalgalanmasi
-            self.yolo_noise_std = float(np.random.uniform(CONFIG.rl.yolo_noise_std_min, CONFIG.rl.yolo_noise_std_max))
+            self.servo_tau = float(self.np_random.uniform(CONFIG.rl.servo_tau_min_s, CONFIG.rl.servo_tau_max_s))
+            self.servo_deadband = float(self.np_random.uniform(0.08, 0.14)) # STM32 0.1 deg kuantalamasi
+            self.dt = float(self.np_random.uniform(0.025, 0.045))         # 22 - 40 FPS dalgalanmasi
+            self.yolo_noise_std = float(self.np_random.uniform(CONFIG.rl.yolo_noise_std_min, CONFIG.rl.yolo_noise_std_max))
         else:
             self.latency_steps = self.base_latency_steps
             self.obs_queue = deque(maxlen=self.latency_steps + 1)
@@ -263,23 +265,23 @@ class TurretEnv(gym.Env):
             self.yolo_noise_std = 0.0
 
         scenarios = ["static", "linear", "zigzag", "evasive", "circular"]
-        self.trajectory_type = np.random.choice(scenarios, p=[0.20, 0.25, 0.25, 0.15, 0.15])
+        self.trajectory_type = str(self.np_random.choice(scenarios, p=[0.20, 0.25, 0.25, 0.15, 0.15]))
 
-        start_x = np.random.uniform(-0.8, 0.8)
-        start_y = np.random.uniform(-0.3, 0.3)
-        start_z = np.random.uniform(1.8, 3.2)
+        start_x = float(self.np_random.uniform(-0.8, 0.8))
+        start_y = float(self.np_random.uniform(-0.3, 0.3))
+        start_z = float(self.np_random.uniform(1.8, 3.2))
         self.target_pos_3d = np.array([start_x, start_y, start_z], dtype=np.float32)
 
         if self.trajectory_type == "static":
             self.target_vel_3d = np.zeros(3, dtype=np.float32)
         elif self.trajectory_type == "linear":
-            vx = np.random.uniform(-0.6, 0.6)
-            vy = np.random.uniform(-0.2, 0.2)
+            vx = float(self.np_random.uniform(-0.6, 0.6))
+            vy = float(self.np_random.uniform(-0.2, 0.2))
             self.target_vel_3d = np.array([vx, vy, 0.0], dtype=np.float32)
         else:
-            self.target_vel_3d = np.array([0.5 * np.random.choice([-1, 1]), 0.0, 0.0], dtype=np.float32)
+            self.target_vel_3d = np.array([0.5 * float(self.np_random.choice([-1, 1])), 0.0, 0.0], dtype=np.float32)
 
-        self.phase = np.random.uniform(0, 2 * math.pi)
+        self.phase = float(self.np_random.uniform(0, 2 * math.pi))
 
         sensor_obs = self._get_sensor_obs()
         self.last_err = np.array(sensor_obs[:2], dtype=np.float32)
@@ -371,8 +373,8 @@ class TurretEnv(gym.Env):
             self.target_vel_3d[1] = 0.3 * math.sin(1.8 * t + self.phase)
         elif self.trajectory_type == "evasive":
             if self.step_count % 35 == 0:
-                self.target_vel_3d[0] = np.random.uniform(-0.7, 0.7)
-                self.target_vel_3d[1] = np.random.uniform(-0.3, 0.3)
+                self.target_vel_3d[0] = float(self.np_random.uniform(-0.7, 0.7))
+                self.target_vel_3d[1] = float(self.np_random.uniform(-0.3, 0.3))
 
         self.target_pos_3d += self.target_vel_3d * self.dt
 
@@ -413,7 +415,15 @@ class TurretEnv(gym.Env):
         r_alive = 0.15 * float(math.exp(-2.5 * e_norm_sq))
         r_bullseye = (CONFIG.rl.bullseye_reward * calm_factor if current_dist < CONFIG.rl.bullseye_threshold_norm else 0.0) + r_alive
 
-        reward = float(r_tracking + r_error + r_effort + r_jerk + r_bullseye)
+        # Kilit serisi (Lock Streak) toplamsal odul: 0.85 deg olu bolge esigi (~0.030 norm)
+        seri_esik = 0.030
+        if current_dist < seri_esik:
+            self.lock_streak += 1
+        else:
+            self.lock_streak = 0
+        r_streak = 0.05 * min((self.lock_streak - 9) / 10.0, 3.0) if self.lock_streak >= 10 else 0.0
+
+        reward = float(r_tracking + r_error + r_effort + r_jerk + r_bullseye + r_streak)
 
         terminated = False
         truncated = self.step_count >= self.max_steps
@@ -423,7 +433,7 @@ class TurretEnv(gym.Env):
             terminated = False
             reward -= 0.50
 
-        return obs, reward, terminated, truncated, {"pixel_dist": current_dist}
+        return obs, reward, terminated, truncated, {"pixel_dist": current_dist, "lock_streak": self.lock_streak}
 
     def render(self):
         """Gorsel test modu (human veya rgb_array) icin 2B taktiksel kadraj cizer."""

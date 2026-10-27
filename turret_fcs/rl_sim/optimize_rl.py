@@ -78,7 +78,7 @@ def evaluate_agent(model, test_seeds=EVAL_SEEDS, max_steps=300):
             err_px = err_norm * (eval_env.screen_w / 2.0)
             total_errors.append(err_px)
 
-            if err_norm < 0.05:
+            if err_norm < 0.030:
                 lock_steps += 1
             total_steps += 1
 
@@ -121,7 +121,7 @@ def objective(trial):
             progress_gain=2.0,
             error_gain=0.05,
             backlash_deg=CONFIG.actuator.backlash_deg,
-            use_velocity_obs=True,
+            use_velocity_obs=False,
             enable_randomization=True,
         )
 
@@ -192,7 +192,7 @@ def run_optimization(n_trials=14):
 
     sampler = optuna.samplers.TPESampler(seed=42, n_startup_trials=5, multivariate=True)
     study = optuna.create_study(
-        study_name="turret_v21_resonance_guarded_150k",
+        study_name="turret_v22_consistent_150k",
         storage=storage_url,
         direction="minimize",
         sampler=sampler,

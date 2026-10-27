@@ -1,0 +1,54 @@
+{
+    "model_name": "turret_ppo_v14.zip",
+    "version": "2.0",
+    "training_timesteps": 250000,
+    "algorithm": "PPO (Stable-Baselines3)",
+    "policy": "MlpPolicy [64, 64]",
+    "observation_dimension": 11,
+    "action_dimension": 2,
+    "hyperparameters": {
+        "lambda_u": 0.010414,
+        "mu_du": 0.00546,
+        "progress_gain": 2.0,
+        "error_gain": 0.05,
+        "learning_rate": "linear schedule, 0.000263 to 5e-5 floor",
+        "gamma": 0.99,
+        "gae_lambda": 0.95,
+        "clip_range": 0.2,
+        "ent_coef": 0.003,
+        "batch_size": 64,
+        "n_steps": 2048,
+        "n_epochs": 10
+    },
+    "plant": {
+        "backlash_deg": 1.2,
+        "servo_deadband_deg": 0.1,
+        "max_step_pan_deg_per_frame": 1.5,
+        "max_step_tilt_deg_per_frame": 0.75,
+        "latency_steps": 2,
+        "domain_randomization": true
+    },
+    "benchmarks": {
+        "closed_loop_eval_20_seeds": {
+            "seeds": "100..119",
+            "median_pixel_error_px": 41.53,
+            "iqr_pixel_error_px": 40.06,
+            "overall_lock_ratio": 0.355,
+            "mean_flip_pct": 1.81,
+            "median_action_jerk": 0.00781
+        },
+        "p_vs_rl_3_scenarios": {
+            "seeds": [
+                42,
+                100,
+                2026
+            ],
+            "p_mean_pixel_error_px": 61.39,
+            "rl_mean_pixel_error_px": 44.6,
+            "rl_improvement_pct": 27.3
+        }
+    },
+    "benchmark_note": "Regenerated for the v2.0 model on high-fidelity TurretEnv (deterministic policy, zero runtime velocity observation).",
+    "regenerated_date": "2026-10-25",
+    "policy_artifact": "turret_ppo_v14_policy.npz"
+}
