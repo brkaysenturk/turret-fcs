@@ -62,39 +62,31 @@ end
 % ------------------------------------------------------------------------------
 % 1. SISTEM MODELI VE PARAMETRELERININ YUKLENMESI
 % ------------------------------------------------------------------------------
-mat_file = fullfile(script_dir, 'identified_model.mat');
-if exist(mat_file, 'file')
-    data = load(mat_file);
-    K_plant = data.identified_model.K;
-    tau = data.identified_model.tau;
-    theta = data.identified_model.theta;
-    backlash_deg = data.identified_model.backlash_deg;
-    fprintf('>>> Tanimlanan Model Parametreleri Yuklendi (identified_model.mat)\n');
-else
-    % Varsayilan teorik ve Webots/saha kalibrasyon degerleri
-    K_plant = 0.935;
-    tau = 0.0172;      % 17.2 ms servo zaman sabiti
-    theta = 0.0501;    % 50.1 ms tasiyici gecikme
-    backlash_deg = 0.88;
-    fprintf('>>> Varsayilan Taret Parametreleri Kullaniliyor\n');
-end
+% DEGERLER `turret_fcs/config.py` (SSOT) VE CANLI TELEMETRI SISTEM TANILAMA ILE %100 UYUMLUDUR
+% v2.1 Canli telemetri Sistem Tanilama (system_id_results.json) ve Optuna TPE sonuclari:
+K_plant = 0.985;           % FOPDT kazanci
+tau = 0.0682;              % 68.2 ms servo zaman sabiti (CONFIG.mount.servo_tau)
+theta = 0.0667;            % 66.7 ms tasiyici gecikme (2 tam kare @ 30 FPS)
+backlash_deg = 1.61;       % 1.61 deg mekanik disli boslugu (CONFIG.actuator.backlash_deg)
+cmd_accel_pan = 353.1;     % 353.1 deg/s^2 Pan komut ivme siniri (CONFIG.control.cmd_accel_pan_deg_s2)
 
-% Calisma Noktasi Kontrol Parametreleri (turret_fcs/config.py)
-% Optuna TPE Bayesyen optimizasyon sonucu elde edilen gercek uretim degerleri:
-kp_pan_frame = 0.1953;   % Pan taban kazanci (30 FPS bazinda derece/kare)
-kp_tilt_frame = 0.1544;  % Tilt taban kazanci (derece/kare)
-fps_base = 30.0;         % FCS ornekleme frekansi (Hz)
+% Calisma Noktasi Kontrol Parametreleri (turret_fcs/config.py SSOT)
+kp_pan_frame = 0.1953;     % Pan taban kazanci (30 FPS bazinda derece/kare)
+kp_tilt_frame = 0.1544;    % Tilt taban kazanci (derece/kare)
+fps_base = 30.0;           % FCS ornekleme frekansi (Hz)
 Kv_pan = kp_pan_frame * fps_base;    % Surekli zaman hiz kazanci: 0.1953 * 30 = 5.859 s^-1
 Kv_tilt = kp_tilt_frame * fps_base;  % 0.1544 * 30 = 4.632 s^-1
-deadband_pan = 0.85;     % Pan yumusak olu bolgesi (derece)
-deadband_tilt = 0.95;    % Tilt yumusak olu bolgesi (derece)
+deadband_pan = 0.85;       % Pan yumusak olu bolgesi (derece)
+deadband_tilt = 0.95;      % Tilt yumusak olu bolgesi (derece)
+max_vel = 45.0;            % derece/s = 1.50 derece/kare * 30 FPS (Servo_ApplyCorrection adim tavani)
 
+fprintf('>>> Model Parametreleri (Uretim CONFIG.py ve Canli Telemetri ile %100 Uyumlu):\n');
 fprintf('  * Acik Cevrim Kazanc (K):        %.3f\n', K_plant);
 fprintf('  * Servo Zaman Sabiti (tau):      %.1f ms\n', tau * 1000);
 fprintf('  * Tasiyici Gecikme (theta):      %.1f ms (yaklasik %.1f kare @ 30 FPS)\n', theta * 1000, theta * fps_base);
-fprintf('  * Pan Calisma Kazanci (Kp):      %.4f deg/kare (Kv = %.2f s^-1, Deadband: +/- %.2f deg)\n', ...
+fprintf('  * Pan Calisma Kazanci (Kp):      %.4f deg/kare (Kv = %.3f s^-1, Deadband: +/- %.2f deg)\n', ...
     kp_pan_frame, Kv_pan, deadband_pan);
-fprintf('  * Tilt Calisma Kazanci (Kp):     %.4f deg/kare (Kv = %.2f s^-1, Deadband: +/- %.2f deg)\n\n', ...
+fprintf('  * Tilt Calisma Kazanci (Kp):     %.4f deg/kare (Kv = %.3f s^-1, Deadband: +/- %.2f deg)\n\n', ...
     kp_tilt_frame, Kv_tilt, deadband_tilt);
 
 % ------------------------------------------------------------------------------
@@ -106,12 +98,14 @@ s = tf('s');
 % G_plant(s) = K / (s * (tau*s + 1)) * exp(-theta*s)
 G_no_delay = K_plant / (s * (tau * s + 1));
 
-% Gecikme icin 3. Derece Pade Rasyonel Yaklasimi (Faz erozyonunu 25 Hz'e kadar dogru yakalar)
+% Gecikme icin 3. Derece Pade Rasyonel Yaklasimi (Kok-Yer cizimi icin)
 [num_pade, den_pade] = pade(theta, 3);
 H_pade = tf(num_pade, den_pade);
-
-% Gecikmeli Tam Tesis Modeli
 G_sys = G_no_delay * H_pade;
+
+% Frekans cevabi ve kararli marjlar icin gercek analitik gecikme
+G_exact = G_no_delay;
+G_exact.InputDelay = theta;
 
 % Kontrolculer (Surekli Zaman Formulasyonu):
 % 1) Tip-1 Saf P Kontrolcu (Proje Standardi): C_P(s) = Kv
@@ -121,22 +115,24 @@ C_P = Kv_pan;
 Ki_test = 0.85;
 C_PI = Kv_pan + Ki_test / s;
 
-% Acik Cevrim Transfer Fonksiyonlari: L(s) = C(s) * G(s)
-L_P = C_P * G_sys;
+% Acik Cevrim Transfer Fonksiyonlari
+L_P = C_P * G_sys;                  % Pade yaklasimli model (Kok-Yer egrisi icin)
 L_PI = C_PI * G_sys;
+L_P_exact = C_P * G_exact;          % Analitik gecikmeli model (Bode, Nyquist ve Marjlar icin)
+L_PI_exact = C_PI * G_exact;
 
 % ------------------------------------------------------------------------------
 % 3. FREKANS CEVABI (BODE) VE KARARLILIK PAYLARI (GM, PM)
 % ------------------------------------------------------------------------------
 fprintf('--- 1) FREKANS CEVABI VE KARARLILIK PAYLARI (BODE / MARGIN) ---\n');
 
-[GM_P, PM_P, w_cg_P, w_cp_P] = margin(L_P);
+[GM_P, PM_P, w_cg_P, w_cp_P] = margin(L_P_exact);
 GM_P_dB = 20 * log10(GM_P);
 
-[GM_PI, PM_PI, w_cg_PI, w_cp_PI] = margin(L_PI);
+[GM_PI, PM_PI, w_cg_PI, w_cp_PI] = margin(L_PI_exact);
 GM_PI_dB = 20 * log10(GM_PI);
 
-fprintf('  [SAF TIP-1 P KONTROLCU (Kp = %.4f, Kv = %.2f s^-1)]:\n', kp_pan_frame, Kv_pan);
+fprintf('  [SAF TIP-1 P KONTROLCU (Kp = %.4f, Kv = %.3f s^-1)]:\n', kp_pan_frame, Kv_pan);
 fprintf('    - Kazanc Payi (Gain Margin):    %.2f dB (Frekans: %.2f rad/s / %.2f Hz)\n', GM_P_dB, w_cg_P, w_cg_P / (2*pi));
 fprintf('    - Faz Payi (Phase Margin):      %.2f deg (Frekans: %.2f rad/s / %.2f Hz)\n', PM_P, w_cp_P, w_cp_P / (2*pi));
 if PM_P > 40 && GM_P_dB > 6
@@ -213,7 +209,7 @@ title(sprintf('PI Kontrolcu (Kp = %.4f, Ki = %.2f)\n[Cift Kutup 1/s^2 ile Sag Ya
        'FontSize', 10, 'FontWeight', 'bold', 'Color', [0.05 0.05 0.05]);
 xlim([-80, 20]); ylim([-50, 50]);
 
-sgtitle(sprintf('Turret FCS // S-Duzlemi Kok-Yer Egrisi (Root Locus) Karsilastirmasi\n[Kritik Hiz Kazanci: Kv_crit = %.2f s^-1 (kp_crit = %.3f) | Calisma Noktasi: Kp = %.4f (Kv = %.2f s^-1, %.1fx Guvenlik Marji)]', ...
+sgtitle(sprintf('Turret FCS // S-Duzlemi Kok-Yer Egrisi (Root Locus) Karsilastirmasi\n[Kritik Hiz Kazanci: Kv_crit = %.2f s^-1 (kp_crit = %.3f) | Calisma Noktasi: Kp = %.4f (Kv = %.3f s^-1, %.1fx Guvenlik Marji)]', ...
     Kv_crit, kp_crit, kp_pan_frame, Kv_pan, Kv_crit / Kv_pan), ...
     'FontSize', 11, 'FontWeight', 'bold', 'Color', [0.05 0.05 0.05]);
 
@@ -230,9 +226,10 @@ fig2 = figure('Name', 'Turret FCS - Bode ve Nyquist Analizi', ...
 
 % Bode Paneli
 ax2_1 = subplot('Position', [0.08, 0.15, 0.40, 0.66]);
-h_bode = bodeplot(L_P);
+h_bode = bodeplot(L_P_exact);
 opt_bode = getoptions(h_bode);
-opt_bode.FreqUnits = 'Hz';
+% Eksen etiketi "Frequency (rad/s)" yazdigi icin birim rad/s olmalidir.
+opt_bode.FreqUnits = 'rad/s';
 opt_bode.Grid = 'on';
 opt_bode.Title.String = sprintf('Bode Frekans Cevabi (GM = %.1f dB, PM = %.1f deg)', GM_P_dB, PM_P);
 opt_bode.Title.FontSize = 10;
@@ -247,7 +244,7 @@ setoptions(h_bode, opt_bode);
 
 % Nyquist Paneli
 ax2_2 = subplot('Position', [0.56, 0.15, 0.38, 0.66]);
-h_nyq = nyquistplot(L_P);
+h_nyq = nyquistplot(L_P_exact);
 opt_nyq = getoptions(h_nyq);
 opt_nyq.Grid = 'on';
 opt_nyq.Title.String = 'Nyquist Diyagrami ve (-1, j0) Kritik Noktasi';
@@ -266,7 +263,7 @@ text(-1.15, 0.25, '(-1, j0) Kritik Noktasi', 'Color', 'r', 'FontSize', 9, 'FontW
 grid on; box on;
 xlim([-2, 1]); ylim([-1.5, 1.5]);
 
-sgtitle(sprintf('Turret FCS // Frekans Duzlemi Kararlilik Analizi (Bode & Nyquist)\n[Pan Calisma Kazanci: Kp = %.4f deg/kare (Kv = %.2f s^-1) | GM = %.1f dB, PM = %.1f deg (Kararli)]', ...
+sgtitle(sprintf('Turret FCS // Frekans Duzlemi Kararlilik Analizi (Bode & Nyquist)\n[Pan Calisma Kazanci: Kp = %.4f deg/kare (Kv = %.3f s^-1) | GM = %.1f dB, PM = %.1f deg (Kararli)]', ...
     kp_pan_frame, Kv_pan, GM_P_dB, PM_P), ...
     'FontSize', 11, 'FontWeight', 'bold', 'Color', [0.05 0.05 0.05]);
 
@@ -305,15 +302,43 @@ fprintf('>>> 300 DPI Bode ve Nyquist Grafigi Kaydedildi: %s\n', fig2_path);
 fig3 = figure('Name', 'Turret FCS - Basamak Tepkisi ve Yumusak Olu Bolge', ...
     'Units', 'pixels', 'Position', [200, 200, 1150, 620], 'Color', [1 1 1]);
 
-T_P = feedback(L_P, 1);
-T_PI = feedback(L_PI, 1);
+% Gercek tasiyici gecikmeli kapali cevrim basamak tepkisi (Pade Gibbs salinimini onleyen puruzsuz simülasyon)
+dt_step = 0.001;
+t_out = 0:dt_step:1.2;
+delay_k = round(theta / dt_step);
+alpha_servo = dt_step / (tau + dt_step);
 
-t_sim = linspace(0, 1.2, 1200);
+% Saf Tip-1 P
+y_step_P = zeros(size(t_out));
+v_p = 0; pos_p = 0;
+cmd_q = zeros(1, delay_k + 1);
 
-[y_step_P, t_out] = step(T_P, t_sim);
-[y_step_PI, ~] = step(T_PI, t_sim);
-y_step_P = squeeze(y_step_P);
-y_step_PI = squeeze(y_step_PI);
+for it = 1:length(t_out)
+    err = 1.0 - pos_p;
+    cmd = Kv_pan * err;
+    cmd_q = [cmd, cmd_q(1:end-1)];
+    u_delayed = cmd_q(end);
+    v_p = (1 - alpha_servo) * v_p + alpha_servo * K_plant * u_delayed;
+    pos_p = pos_p + v_p * dt_step;
+    y_step_P(it) = pos_p;
+end
+
+% PI
+y_step_PI = zeros(size(t_out));
+v_pi = 0; pos_pi = 0; int_e = 0;
+cmd_q_pi = zeros(1, delay_k + 1);
+for it = 1:length(t_out)
+    err = 1.0 - pos_pi;
+    int_e = int_e + err * dt_step;
+    cmd = Kv_pan * err + Ki_test * int_e;
+    cmd_q_pi = [cmd, cmd_q_pi(1:end-1)];
+    u_delayed = cmd_q_pi(end);
+    v_pi = (1 - alpha_servo) * v_pi + alpha_servo * K_plant * u_delayed;
+    pos_pi = pos_pi + v_pi * dt_step;
+    y_step_PI(it) = pos_pi;
+end
+
+t_sim = t_out;
 
 ax3_1 = subplot('Position', [0.08, 0.15, 0.40, 0.66]);
 set(ax3_1, 'Color', [1 1 1], 'XColor', [0.15 0.15 0.15], 'YColor', [0.15 0.15 0.15]);
@@ -327,7 +352,7 @@ yline(1.0 - deadband_pan/10, 'Color', [0.1 0.55 0.1], 'LineStyle', ':', ...
 grid on; box on;
 xlabel('Zaman (saniye)', 'FontSize', 10, 'FontWeight', 'bold', 'Color', [0.1 0.1 0.1]);
 ylabel('Normalize Konum', 'FontSize', 10, 'FontWeight', 'bold', 'Color', [0.1 0.1 0.1]);
-title(sprintf('Panel 1: Kapali Cevrim Basamak Tepkisi (P vs PI)\n[Tip-1 Saf P: Kp = %.4f (Kv = %.2f s^-1) | PI: Ki = %.2f]', kp_pan_frame, Kv_pan, Ki_test), ...
+title(sprintf('Panel 1: Kapali Cevrim Basamak Tepkisi (P vs PI)\n[Tip-1 Saf P: Kp = %.4f (Kv = %.3f s^-1) | PI: Ki = %.2f]', kp_pan_frame, Kv_pan, Ki_test), ...
        'FontSize', 10, 'FontWeight', 'bold', 'Color', [0.05 0.05 0.05]);
 leg3_1 = legend({sprintf('Tip-1 Saf P (Kp = %.4f, Ki = 0)', kp_pan_frame), ...
                  sprintf('PI (Kp = %.4f, Ki = %.2f, Asiri Asim)', kp_pan_frame, Ki_test)}, ...

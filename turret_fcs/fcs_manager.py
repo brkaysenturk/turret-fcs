@@ -272,7 +272,7 @@ class FCSManager:
         self.patrol_status = "TRACKING"
 
         # 1. Kamera merkezinden hedef acilari ve acisal hata
-        pan_deg, tilt_deg = self.p_controller.compute_angles(bx, by, center_x, center_y, fx, fy)
+        pan_deg, tilt_deg = self.p_controller.compute_angles(bx, by, center_x, center_y, fx, fy, dt=dt)
         # Telemetri icin ham kamera hatasi (kontrolcu ici EMA'dan bagimsiz).
         self.last_pan_err_deg = float(np.degrees(np.arctan((bx - center_x) / max(float(fx), 1e-6))))
         self.last_tilt_err_deg = float(np.degrees(np.arctan(-(by - center_y) / max(float(fy), 1e-6))))

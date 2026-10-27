@@ -81,10 +81,12 @@ def run_monte_carlo_ballistics(n_sims=50000):
             "false_fire_rate": false_fire_rate,
         })
 
-    # Hiza gore ayristirma:
-    # Yavas hedef (v < 150 px/s): nispeten manevrasiz, hedef daha dar kapi ister
-    # Orta hedef (150 <= v <= 350 px/s):
-    # Hizli hedef (v > 350 px/s): kapi cok dar olursa taret hic ates edemez
+    # Isabet penceresi: hedefin acisal yaricapi sinirli oldugu icin her ek kapi
+    # genisligi bosa atis olasiligini artirir (hit-rate gate ile monoton AZALIR).
+    # Bu nedenle "en genis kapi" bir optimizasyon hedefi olamaz; kapi secimi
+    # kullanicinin kabul ettigi bosa atis orani butcesine (risk esigi) gore yapilir.
+    false_fire_budget_pct = 5.0  # Kabul edilen maksimum bosa atis orani (%)
+
     speed_categories = {
         "slow": {"speed_range": (0, 150), "maneuver_std": 4.0},
         "medium": {"speed_range": (150, 350), "maneuver_std": 12.0},
@@ -95,20 +97,22 @@ def run_monte_carlo_ballistics(n_sims=50000):
 
     for cat, cfg in speed_categories.items():
         best_gate = None
-        best_score = -1e9
+        best_hit = -1.0
         for gate in np.linspace(0.8, 3.5, 60):
             aim_err = np.random.normal(0, gate / 2.0, size=n_sims)
             target_maneuver = 0.5 * np.random.normal(0, cfg["maneuver_std"], size=n_sims) * (t_flight ** 2)
             weapon_disp = np.random.normal(0, sigma_weapon, size=n_sims)
             total_miss = np.abs(aim_err + target_maneuver + weapon_disp)
             hits = total_miss <= target_radius_deg
-            hit_prob = np.mean(hits)
-            # F1 skoru tarzi: hem isabet yuksek olsun hem kapi atis yapilamayacak kadar dar olmasin
-            fire_opportunity = 1.0 / (1.0 + np.exp(-2.0 * (gate - 1.0)))
-            score = hit_prob * fire_opportunity
-            if score > best_score:
-                best_score = score
+            hit_prob = float(np.mean(hits) * 100.0)
+            false_fire = 100.0 - hit_prob
+            # Kapi, bosa atis butcesini asmayan en genis degerdir: butceyi asmayan
+            # kapilar arasinda isabet oranini maksimize eder.
+            if false_fire <= false_fire_budget_pct and hit_prob > best_hit:
+                best_hit = hit_prob
                 best_gate = gate
+        if best_gate is None:
+            best_gate = float(candidate_gates[0])
         optimal_gates[cat] = float(np.round(best_gate, 2))
 
     # Settle time hesabi:
@@ -125,19 +129,22 @@ def run_monte_carlo_ballistics(n_sims=50000):
 
     ax1.plot(gates_x, hits_y, "g-", lw=2.0, label="Isabet Olasiligi (Hit Rate %)")
     ax1.plot(gates_x, false_y, "r--", lw=1.8, label="Bosa Atis Orani (Miss %)")
+    ax1.axhline(false_fire_budget_pct, color="0.35", linestyle="-.", lw=1.2,
+                label=f"Bosa Atis Butcesi <= %{false_fire_budget_pct:.0f}")
     ax1.axvline(optimal_gates["slow"], color="#1565C0", linestyle=":", lw=1.5, label=f"Yavas Kapi: {optimal_gates['slow']} deg")
     ax1.axvline(optimal_gates["medium"], color="#E65100", linestyle=":", lw=1.5, label=f"Orta Kapi: {optimal_gates['medium']} deg")
     ax1.axvline(optimal_gates["fast"], color="#6A1B9A", linestyle=":", lw=1.5, label=f"Hizli Kapi: {optimal_gates['fast']} deg")
-    ax1.set_title("1. Kilit Kapisi Acisina Gore Isabet / Iskarta Orani", fontsize=11, fontweight="bold")
+    ax1.set_title("1. Kilit Kapisi Acisina Gore Isabet / Bosa Atis Orani", fontsize=11, fontweight="bold")
     ax1.set_xlabel("Kilit Tolerans Kapisi (derece)", fontsize=10)
     ax1.set_ylabel("Oran (%)", fontsize=10)
     ax1.grid(True)
     ax1.legend(loc="center right", fontsize=9)
 
     ax2.plot(false_y, hits_y, "b-", lw=2.2)
+    ax2.axvline(false_fire_budget_pct, color="0.35", linestyle="-.", lw=1.2)
     ax2.set_title("2. Kilit Kapisi ROC Egrisi (Trade-off)", fontsize=11, fontweight="bold")
-    ax2.set_xlabel("Bosa Atis Orani (False Alarm Rate %)", fontsize=10)
-    ax2.set_ylabel("Gecerli Vurus Orani (True Hit Rate %)", fontsize=10)
+    ax2.set_xlabel("Bosa Atis Orani (Iskalama Orani %)", fontsize=10)
+    ax2.set_ylabel("Isabet Orani (Hit Rate %)", fontsize=10)
     ax2.grid(True)
 
     out_png = FIG_DIR / "python_fig14_ballistics_roc_optimization.png"

@@ -354,7 +354,8 @@ def run_system_identification():
     ax4.plot(t_sim * 1000, y_cohen, color="#D9534F", ls=":", lw=1.8, label="Klasik PID (Gecikmeli Titresim / Windup)")
     ax4.plot(t_sim * 1000, y_hard_p, color="#E67E22", ls="--", lw=1.8, label="Sert P (Olu Bolgesiz Titreme)")
     ax4.plot(t_sim * 1000, y_soft_p, color="#0055A5", lw=2.4, label=f"Yumusak Olu Bolgeli P (Kp={CONFIG.control.kp_pan:.2f})")
-    ax4.fill_between(t_sim * 1000, 1.0 - deadband_norm, 1.0 + deadband_norm, color="#27AE60", alpha=0.20, label=f"Soft Deadband Alani (±{CONFIG.control.deadband_pan_deg}°)")
+    ax4.fill_between(t_sim * 1000, 1.0 - deadband_norm, 1.0 + deadband_norm, color="#27AE60", alpha=0.20,
+                     label=f"Soft Deadband Alani (+/-{deadband_norm * 15.0:.2f} deg = +/-{deadband_norm:.3f} norm)")
 
     ax4.set_title("4. Kapali Cevrim Kontrolcu Performans Karsilastirmasi", fontweight="bold", fontsize=11)
     ax4.set_xlabel("Zaman (ms)")

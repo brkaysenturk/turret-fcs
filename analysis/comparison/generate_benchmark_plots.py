@@ -27,8 +27,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from stable_baselines3 import PPO
+from turret_fcs.config import CONFIG
 from turret_fcs.p_controller import PController
+from turret_fcs.rl_controller import RLController
 from turret_fcs.rl_sim.turret_env import TurretEnv
 
 FIG_DIR = PROJECT_ROOT / "analysis" / "figures" / "python"
@@ -36,104 +37,94 @@ FIG_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def simulate_controllers():
-    """TurretEnv uzerinde P ve PPO RL kontrolculerini ayni tohumlarla calistirir."""
+    """TurretEnv uzerinde P ve PPO RL kontrolculerini ayni hedef tohumlariyla calistirir.
+
+    Esit kosul: Her iki kontrolcu de ayni TurretEnv tohumu ile ayni hedef yorungesini
+    gorur; iki ayri env ayni seed ile tamamen ayni hikayeyi uretir. RL yolu uretim
+    cikis katmani (yumusak olu bolge + ivme siniri + ters yon sonumlemesi) dahil
+    RLController uzerinden yurur; boylece bench, sahada calisan davranisi olcer.
+    """
     model_path = PROJECT_ROOT / "turret_fcs" / "rl_sim" / "models" / "turret_ppo_v14.zip"
     has_model = model_path.exists()
-    model = PPO.load(str(model_path), device="cpu") if has_model else None
+    # Politika, uretim cikis katmanini da iceren RLController uzerinden (npz) yuklenir.
+    rl_out = RLController() if has_model else None
+
+    def run_path(seed, which):
+        env = TurretEnv()
+        _obs, _ = env.reset(seed=seed)
+        p_ctrl = PController() if which == "P" else None
+        if rl_out is not None:
+            rl_out.reset()
+        err_pan, err_tilt, cmd_pan, cmd_tilt, locked, t_acc = [], [], [], [], [], 0.0
+        for _ in range(env.max_steps):
+            px, py = env.last_pixel_pos
+            if which == "P":
+                pan_deg, tilt_deg = p_ctrl.compute_angles(px, py, env.center_x, env.center_y, env.fx, env.fy)
+                u_pan_deg, u_tilt_deg = p_ctrl.compute_p(pan_deg, tilt_deg, dt=env.dt)
+                action = np.array([
+                    np.clip(u_pan_deg / max(1e-4, env.max_step_pan_deg), -1.0, 1.0),
+                    np.clip(u_tilt_deg / max(1e-4, env.max_step_tilt_deg), -1.0, 1.0)
+                ], dtype=np.float32)
+                applied_pan, applied_tilt = u_pan_deg, u_tilt_deg
+            else:
+                # P ile ayni kamera acisi konvansiyonu (tilt isareti dahil)
+                pan_deg = math.degrees(math.atan((px - env.center_x) / env.fx))
+                tilt_deg = math.degrees(math.atan(-(py - env.center_y) / env.fy))
+                if rl_out is not None:
+                    d_pan, d_tilt = rl_out.predict_angles(
+                        px, py, env.center_x, env.center_y, env.screen_w, env.screen_h,
+                        0.0, 0.0, CONFIG.ballistics.default_distance_m, pan_deg, tilt_deg, env.dt,
+                    )
+                    action = np.array([
+                        np.clip(d_pan / max(1e-4, env.max_step_pan_deg), -1.0, 1.0),
+                        np.clip(d_tilt / max(1e-4, env.max_step_tilt_deg), -1.0, 1.0)
+                    ], dtype=np.float32)
+                else:
+                    action = np.array([
+                        np.clip(pan_deg * 0.18 / env.max_step_pan_deg, -1.0, 1.0),
+                        np.clip(tilt_deg * 0.12 / env.max_step_tilt_deg, -1.0, 1.0)
+                    ], dtype=np.float32)
+                applied_pan = float(action[0]) * env.max_step_pan_deg
+                applied_tilt = float(action[1]) * env.max_step_tilt_deg
+
+            env.step(action)
+            err_pan.append(pan_deg)
+            err_tilt.append(tilt_deg)
+            cmd_pan.append(applied_pan)
+            cmd_tilt.append(applied_tilt)
+            # Kilit olcutu CONFIG.control olu bolgeleri (iki eksen birlikte)
+            locked.append(1 if (abs(pan_deg) <= CONFIG.control.deadband_pan_deg
+                                and abs(tilt_deg) <= CONFIG.control.deadband_tilt_deg) else 0)
+            t_acc += env.dt
+            if env.step_count >= env.max_steps:
+                break
+        return {
+            "time": np.arange(len(err_pan)) * env.dt,
+            "err_p": np.array(err_pan),
+            "err_t": np.array(err_tilt),
+            "cmd_p": np.array(cmd_pan),
+            "cmd_t": np.array(cmd_tilt),
+            "locked": np.array(locked),
+            "tot_err": np.sqrt(np.array(err_pan) ** 2 + np.array(err_tilt) ** 2),
+        }
 
     seeds = [42, 101, 2026, 777]
-    
-    times_p, err_p_pan, err_p_tilt, cmd_p_pan, cmd_p_tilt, locked_p = [], [], [], [], [], []
-    times_rl, err_rl_pan, err_rl_tilt, cmd_rl_pan, cmd_rl_tilt, locked_rl = [], [], [], [], [], []
 
-    t_accum_p = 0.0
-    t_accum_rl = 0.0
+    parts_p = [run_path(s, "P") for s in seeds]
+    parts_rl = [run_path(s, "RL") for s in seeds]
 
-    for seed in seeds:
-        # 1. P Kontrolcu Benzetimi
-        env_p = TurretEnv()
-        obs_p, _ = env_p.reset(seed=seed)
-        p_ctrl = PController()
+    def concat(parts, key):
+        out, t_off = [], 0.0
+        for p in parts:
+            seg = p[key].astype(float).copy()
+            if key == "time":
+                seg = seg + t_off
+                t_off += seg.max() + (seg[1] - seg[0] if len(seg) > 1 else 0.0)
+            out.append(seg)
+        return np.concatenate(out)
 
-        for _ in range(env_p.max_steps):
-            px, py = env_p.last_pixel_pos
-            pan_deg, tilt_deg = p_ctrl.compute_angles(px, py, env_p.center_x, env_p.center_y, env_p.fx, env_p.fy)
-            u_pan_deg, u_tilt_deg = p_ctrl.compute_p(pan_deg, tilt_deg, dt=env_p.dt)
-
-            action_p = np.array([
-                np.clip(u_pan_deg / max(1e-4, env_p.max_step_pan_deg), -1.0, 1.0),
-                np.clip(u_tilt_deg / max(1e-4, env_p.max_step_tilt_deg), -1.0, 1.0)
-            ], dtype=np.float32)
-
-            obs_p, _, term, trunc, _ = env_p.step(action_p)
-
-            times_p.append(t_accum_p)
-            err_p_pan.append(pan_deg)
-            err_p_tilt.append(tilt_deg)
-            cmd_p_pan.append(u_pan_deg)
-            cmd_p_tilt.append(u_tilt_deg)
-            is_lck = 1 if (abs(pan_deg) <= 1.60 and abs(tilt_deg) <= 1.60) else 0
-            locked_p.append(is_lck)
-            t_accum_p += env_p.dt
-
-            if term or trunc:
-                break
-
-        # 2. RL Kontrolcu Benzetimi
-        env_rl = TurretEnv()
-        obs_rl, _ = env_rl.reset(seed=seed)
-
-        for _ in range(env_rl.max_steps):
-            px, py = env_rl.last_pixel_pos
-            pan_deg = math.degrees(math.atan((px - env_rl.center_x) / env_rl.fx))
-            tilt_deg = math.degrees(math.atan((py - env_rl.center_y) / env_rl.fy))
-
-            if model is not None:
-                action_rl, _ = model.predict(obs_rl, deterministic=True)
-            else:
-                # Eger model yoksa sentetik optimal cevrim
-                action_rl = np.array([
-                    np.clip(pan_deg * 0.18 / env_rl.max_step_pan_deg, -1.0, 1.0),
-                    np.clip(tilt_deg * 0.12 / env_rl.max_step_tilt_deg, -1.0, 1.0)
-                ], dtype=np.float32)
-
-            obs_rl, _, term, trunc, _ = env_rl.step(action_rl)
-
-            u_pan_deg = float(action_rl[0]) * env_rl.max_step_pan_deg
-            u_tilt_deg = float(action_rl[1]) * env_rl.max_step_tilt_deg
-
-            times_rl.append(t_accum_rl)
-            err_rl_pan.append(pan_deg)
-            err_rl_tilt.append(tilt_deg)
-            cmd_rl_pan.append(u_pan_deg)
-            cmd_rl_tilt.append(u_tilt_deg)
-            is_lck = 1 if (abs(pan_deg) <= 1.60 and abs(tilt_deg) <= 1.60) else 0
-            locked_rl.append(is_lck)
-            t_accum_rl += env_rl.dt
-
-            if term or trunc:
-                break
-
-    data_p = {
-        "time": np.array(times_p),
-        "err_p": np.array(err_p_pan),
-        "err_t": np.array(err_p_tilt),
-        "cmd_p": np.array(cmd_p_pan),
-        "cmd_t": np.array(cmd_p_tilt),
-        "locked": np.array(locked_p),
-        "tot_err": np.sqrt(np.array(err_p_pan)**2 + np.array(err_p_tilt)**2)
-    }
-
-    data_rl = {
-        "time": np.array(times_rl),
-        "err_p": np.array(err_rl_pan),
-        "err_t": np.array(err_rl_tilt),
-        "cmd_p": np.array(cmd_rl_pan),
-        "cmd_t": np.array(cmd_rl_tilt),
-        "locked": np.array(locked_rl),
-        "tot_err": np.sqrt(np.array(err_rl_pan)**2 + np.array(err_rl_tilt)**2)
-    }
-
+    data_p = {k: concat(parts_p, k) for k in parts_p[0]}
+    data_rl = {k: concat(parts_rl, k) for k in parts_rl[0]}
     return data_p, data_rl
 
 
@@ -159,8 +150,10 @@ def generate_plots():
 
     ax1.plot(data_p["time"][idx_p], data_p["tot_err"][idx_p], color=c_p, lw=1.6, alpha=0.85, label="P Kontrolcu (Hassas Kilit)")
     ax1.plot(data_rl["time"][idx_rl], data_rl["tot_err"][idx_rl], color=c_rl, lw=1.6, alpha=0.85, label="RL Kontrolcu (PPO Cevik Takip)")
-    ax1.axhline(1.60, color=c_lock, ls="--", lw=1.2, label="Kilit Tolerans Esigi (1.60 deg)")
-    ax1.axhline(0.85, color="gray", ls=":", lw=1.0, label="Pan Soft Deadband (0.85 deg)")
+    ax1.axhline(1.60, color=c_lock, ls="--", lw=1.2,
+                label="Eski/grafik tolerans bandi (1.60 deg) - kilit olcutu DEGIL")
+    ax1.axhline(0.85, color="gray", ls=":", lw=1.0,
+                label="Pan soft deadband (0.85 deg) - kilit pan esigi")
     ax1.fill_between([0, t_len], 0, 1.60, color=c_lock, alpha=0.08)
 
     ax1.set_title("Zaman Duzleminde Bileske Acisal Takip Hatasi Karsilastirmasi (Benzetim)", fontsize=12, fontweight="bold", pad=8)
@@ -208,7 +201,7 @@ def generate_plots():
 
     # PANEL 4: Temel Basarim Gostergeleri (KPI)
     ax4 = fig.add_subplot(gs[2, 0])
-    kpis = ["Kilit Orani (%)", "Takip Basarisi (%)", "Ort. RMS Iyilesme (%)"]
+    kpis = ["Kilit Orani (%)", "Takip Basarisi (%)", "Pan RMS Kazanci (%)"]
 
     p_lock_pct = float(np.mean(data_p["locked"]) * 100.0)
     rl_lock_pct = float(np.mean(data_rl["locked"]) * 100.0)
@@ -221,7 +214,19 @@ def generate_plots():
     p_success_pct = float(np.mean(data_p["tot_err"] < 2.50) * 100.0)
     rl_success_pct = float(np.mean(data_rl["tot_err"] < 2.50) * 100.0)
 
-    pan_impr = max(0.0, ((p_pan_rms - rl_pan_rms) / p_pan_rms) * 100.0)
+    # Isaretli kazanc: pozitif = RL daha iyi, negatif = P daha iyi (kirpma yok)
+    pan_impr = ((p_pan_rms - rl_pan_rms) / max(1e-9, p_pan_rms)) * 100.0
+    tilt_impr = ((p_tilt_rms - rl_tilt_rms) / max(1e-9, p_tilt_rms)) * 100.0
+    lock_delta = rl_lock_pct - p_lock_pct
+
+    def _verdict(delta, better_pos, better_neg):
+        if abs(delta) < 1.0:
+            return "Esdeger"
+        return better_pos if delta > 0 else better_neg
+
+    table_gain = f"RL %{pan_impr:+.1f}" if pan_impr >= 0 else f"P %{-pan_impr:+.1f} (RL geride)"
+    table_tilt = f"RL %{tilt_impr:+.1f}" if tilt_impr >= 0 else f"P %{-tilt_impr:+.1f} (RL geride)"
+    lock_verdict = _verdict(lock_delta, "RL onde", "P onde")
 
     x = np.arange(len(kpis))
     width = 0.35
@@ -234,13 +239,17 @@ def generate_plots():
     ax4.set_ylabel("Deger", fontsize=10)
     ax4.grid(True, linestyle="--", alpha=0.5)
     ax4.legend(loc="upper left", fontsize=9)
-    ax4.set_ylim(0, 110)
+    ax4.axhline(0.0, color="k", lw=0.8)
+    ax4.set_ylim(min(-10.0, pan_impr - 8.0), 110)
 
     for i in range(len(kpis)):
         v_p = [p_lock_pct, p_success_pct, 0.0][i]
         v_rl = [rl_lock_pct, rl_success_pct, pan_impr][i]
-        ax4.text(i - width/2, v_p + 2.0, f"{v_p:.1f}", ha='center', fontsize=9, fontweight='bold', color=c_p)
-        ax4.text(i + width/2, v_rl + 2.0, f"{v_rl:.1f}", ha='center', fontsize=9, fontweight='bold', color=c_rl)
+        if i == 2:
+            ax4.text(i - width/2, 1.5, "Referans", ha='center', fontsize=8, fontweight='bold', color=c_p)
+        else:
+            ax4.text(i - width/2, v_p + 2.0, f"{v_p:.1f}", ha='center', fontsize=9, fontweight='bold', color=c_p)
+        ax4.text(i + width/2, v_rl + 2.0, f"{v_rl:+.1f}", ha='center', fontsize=9, fontweight='bold', color=c_rl)
 
     # PANEL 5: Akademik Ozet Tablosu
     ax5 = fig.add_subplot(gs[2, 1])
@@ -249,9 +258,9 @@ def generate_plots():
     table_data = [
         ["Metrik", "P Kontrolcu", "PPO RL", "Karsilastirma"],
         ["Mimari Tip", "Tip-1 P (Saf Oransal)", "PPO Derin RL", "Deterministik / Ogrenilmis"],
-        ["Kilit Orani", f"%{p_lock_pct:.1f}", f"%{rl_lock_pct:.1f}", "Dengeli Kararlilik"],
-        ["Pan RMS Hatasi", f"{p_pan_rms:.2f} deg", f"{rl_pan_rms:.2f} deg", f"RL (%{pan_impr:.1f} cevik)"],
-        ["Tilt RMS Hatasi", f"{p_tilt_rms:.2f} deg", f"{rl_tilt_rms:.2f} deg", "Yuksek Hassasiyet"],
+        ["Kilit Orani", f"%{p_lock_pct:.1f}", f"%{rl_lock_pct:.1f}", lock_verdict],
+        ["Pan RMS Hatasi", f"{p_pan_rms:.2f} deg", f"{rl_pan_rms:.2f} deg", table_gain],
+        ["Tilt RMS Hatasi", f"{p_tilt_rms:.2f} deg", f"{rl_tilt_rms:.2f} deg", table_tilt],
         ["Olu Bolge", "Motor Sessiz", "Taper Sonumlu", "Mekanik Koruma"],
         ["Cikarim (CPU)", "< 0.02 ms", "< 0.18 ms", "30 FPS Uyumlu"],
     ]

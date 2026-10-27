@@ -178,8 +178,14 @@ def analyze_and_plot(filepath):
     print(f" Tepe Ivmeler (deg/s^2)  : Pan = {max_ap:.1f}°/s² | Tilt = {max_at:.1f}°/s²")
     print("=" * 78)
 
+    # Koordinat duzeltmesi (eger log mutlak servo acisi 0-180 iceriyorsa 90 merkezli boresight'a cevir)
+    if len(pose_p) > 0 and np.median(pose_p) > 45.0:
+        pose_p = pose_p - 90.0
+    if len(pose_t) > 0 and np.median(pose_t) > 45.0:
+        pose_t = pose_t - 90.0
+
     # 4 Panelli Analiz Grafigi
-    fig = plt.figure(figsize=(14, 9))
+    fig = plt.figure(figsize=(14, 9), dpi=300)
 
     # Panel 1: 2D Hava Sahasi Tarama Yorungesi (Pan vs Tilt)
     ax1 = fig.add_subplot(2, 2, 1)
@@ -189,22 +195,32 @@ def analyze_and_plot(filepath):
         ax1.plot(pose_p[-1], pose_t[-1], "bs", markersize=8, label="Bitis")
     ax1.plot(0, 0, "rx", markersize=10, markeredgewidth=2.2, label="Boresight (0°, 0°)")
 
-    # Emniyet Limitleri
-    ax1.axvline(-45, color="gray", linestyle=":", alpha=0.6)
-    ax1.axvline(45, color="gray", linestyle=":", alpha=0.6)
-    ax1.axhline(-16, color="gray", linestyle=":", alpha=0.6)
-    ax1.axhline(16, color="gray", linestyle=":", alpha=0.6)
+    # 1) CONFIG.patrol Nominal Figure-8 Tarama Zarfi (+/-45° Pan, +/-16° Tilt)
+    ax1.axvline(-45, color="#16A085", linestyle="--", linewidth=1.2, alpha=0.75, label="Tarama Zarfi (±45°, ±16°)")
+    ax1.axvline(45, color="#16A085", linestyle="--", linewidth=1.2, alpha=0.75)
+    ax1.axhline(-16, color="#16A085", linestyle="--", linewidth=1.2, alpha=0.75)
+    ax1.axhline(16, color="#16A085", linestyle="--", linewidth=1.2, alpha=0.75)
 
+    # 2) CONFIG.mount Mekanik Donanim Limitleri (+/-75° Pan, +/-25° Tilt)
+    ax1.axvline(-75, color="#7F8C8D", linestyle=":", linewidth=1.4, alpha=0.7, label="Gimbal Emniyet Limiti (±75°, ±25°)")
+    ax1.axvline(75, color="#7F8C8D", linestyle=":", linewidth=1.4, alpha=0.7)
+    ax1.axhline(-25, color="#7F8C8D", linestyle=":", linewidth=1.4, alpha=0.7)
+    ax1.axhline(25, color="#7F8C8D", linestyle=":", linewidth=1.4, alpha=0.7)
+
+    ax1.set_xlim([-85, 85])
+    ax1.set_ylim([-30, 30])
     ax1.set_xlabel("Pan Acisi (deg)", fontweight="bold")
     ax1.set_ylabel("Tilt Acisi (deg)", fontweight="bold")
     ax1.set_title(f"2D Hava Sahasi Kapsama Alani (Span: {span_p:.0f}° x {span_t:.0f}°)", fontweight="bold")
     ax1.grid(True)
-    ax1.legend(loc="upper right", framealpha=0.9)
+    ax1.legend(loc="upper right", framealpha=0.9, fontsize=7.5)
 
     # Panel 2: Zaman Boyunca Acisal Yonelim
     ax2 = fig.add_subplot(2, 2, 2)
     ax2.plot(t, pose_p, color=COLOR_PAN, linewidth=1.8, label="Pan Pose (deg)")
     ax2.plot(t, pose_t, color=COLOR_TILT, linewidth=1.8, label="Tilt Pose (deg)")
+    ax2.axhline(45, color="#16A085", linestyle="--", linewidth=0.9, alpha=0.5)
+    ax2.axhline(-45, color="#16A085", linestyle="--", linewidth=0.9, alpha=0.5)
     ax2.set_xlabel("Zaman (s)", fontweight="bold")
     ax2.set_ylabel("Yonelim Acisi (deg)", fontweight="bold")
     ax2.set_title("Zaman Serisi Acisal Yonelim (Pan & Tilt)", fontweight="bold")
@@ -235,9 +251,10 @@ def analyze_and_plot(filepath):
 
     plt.tight_layout()
 
-    out_dir = Path(filepath).parent.parent / "analysis" / "figures"
+    # Ortak grafik dizinine kaydet
+    out_dir = Path(__file__).resolve().parents[1] / "figures" / "python"
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / "patrol_kinematic_telemetry_analysis.png"
+    out_path = out_dir / "python_fig15_patrol_kinematic_telemetry.png"
     plt.savefig(out_path, dpi=300, bbox_inches="tight")
     print(f"\n[+] Analiz grafigi 300 DPI cozunurlukte kaydedildi: {out_path}")
     plt.close(fig)

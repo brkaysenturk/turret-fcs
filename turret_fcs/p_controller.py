@@ -9,20 +9,20 @@ kaldiran dogrusal Tip-1 P kontrolcusu:
    Eski kontrolcu kameradan gelen aciyi compute_angles icinde EMA ile
    filtreliyor, compute_p icinde tekrar EMA'liyor ve ustune 0.20 derece/kare
    pan slew koyuyordu. 30 FPS'de bu 6 derece/s yapay tavan demektir.
-   Yeni kontrolcu tek EMA (alpha = 0.85) uygular; sabit pan slew yerine komut
-   ivme siniri (pan 400, tilt 267 derece/s^2) kullanarak steady-state hiz
+   Yeni kontrolcu tek EMA (alpha = 0.9306) uygular; sabit pan slew yerine komut
+   ivme siniri (pan 353.1, tilt 213.6 derece/s^2) kullanarak steady-state hiz
    tavanini kaldirir, kalkis ve donuslerde mekanik darbeleri onler.
 
 2. KONTROL STRUKTURU:
-   - Tek EMA (tek filtre katmani), varsayilan alpha = 0.85.
+   - Tek EMA (tek filtre katmani), varsayilan alpha = 0.9306 (Optuna TPE optimal).
    - Yumusak olu bolge korunur (pan 0.85, tilt 0.95 derece).
-   - Sabit oransal kazanc (nominal 30 FPS: pan Kp=0.22, tilt Kp=0.11).
+   - Sabit oransal kazanc (nominal 30 FPS: pan Kp=0.1953, tilt Kp=0.1544).
    - Pan/tilt icin ayri ivme (jerk) siniri; steady-state takip hizi kisitlanmaz.
    - Ki ve Kd yoktur. Hiz feedforward'i yoktur; Kalman hizi P motoruna girmez.
 
 3. DOGRULAMA:
-   Webots profil taramasi ve gercek taret geri bildirimi ile taban kazanc
-   0.22/0.11 olarak belirlenmistir. (0.30 gercek donanimda rezonansa girmistir).
+   Optuna TPE optimizasyonu ve gercek donanim dogrulamasi ile kazanc
+   0.1953/0.1544, ivme sinirlari 353.1/213.6 derece/s^2 olarak sabitlenmistir.
 ================================================================================
 """
 

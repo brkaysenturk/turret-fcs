@@ -229,18 +229,24 @@ def plot_system_identification_results(fopdt, reversal, noise, out_png: Path):
     if events:
         times = [e["time_sec"] for e in events]
         b_vals = [e["backlash_deg"] for e in events]
-        ax3.bar(range(len(b_vals)), b_vals, color="#E65100", alpha=0.85, width=0.55)
-        ax3.axhline(reversal["median_backlash_deg"], color="#B71C1C", linestyle="--", lw=1.8,
-                    label=f"Medyan Disli Boslugu: {reversal['median_backlash_deg']:.2f} derece")
-        ax3.axhline(1.20, color="#1565C0", linestyle=":", lw=1.8,
-                    label="Nominal Webots Boslugu: 1.20 derece")
+        labels = [f"t={t:.1f}s" for t in times]
+        ax3.bar(range(len(b_vals)), b_vals, color="#E65100", alpha=0.85, width=0.55,
+                label="Olay Bazli Yutulan Komut")
+        # Medyan ve ortalama ayrimi kapatilir: medyan yaklasik 3 olayin ortasidir,
+        # yalnizca 5 olayda medyan/ortalama tek tek cubuklarla birebir ortusmez.
+        ax3.axhline(reversal["mean_backlash_deg"], color="#1565C0", linestyle="--", lw=1.8,
+                    label=f"Ortalama Disli Boslugu: {reversal['mean_backlash_deg']:.2f} derece")
+        ax3.axhline(reversal["median_backlash_deg"], color="#B71C1C", linestyle="-.", lw=1.8,
+                    label=f"Medyan Disli Boslugu: {reversal['median_backlash_deg']:.2f} derece (n={len(b_vals)})")
+        ax3.axhline(1.20, color="#555555", linestyle=":", lw=1.8,
+                    label="Webots Referans Boslugu: 1.20 derece (CONFIG.actuator.backlash_deg = 1.61)")
         ax3.set_xticks(range(len(b_vals)))
-        ax3.set_xticklabels([f"t={t:.1f}s" for t in times], rotation=30, ha="right", fontsize=9)
+        ax3.set_xticklabels(labels, rotation=30, ha="right", fontsize=9)
     ax3.set_title("3. Yon Degisimlerinde Olculen Disli Boslugu (Backlash)", fontsize=11, fontweight="bold", pad=8)
     ax3.set_xlabel("Yon Degisimi Olayi", fontsize=10)
     ax3.set_ylabel("Yutulan Komut (derece)", fontsize=10)
     ax3.grid(True, axis="y")
-    ax3.legend(loc="upper right", framealpha=0.9)
+    ax3.legend(loc="upper right", framealpha=0.9, fontsize=8.2)
 
     # PANEL 4: Ozet Tablosu (Nominal vs Kestirilen)
     ax4 = axs[1, 1]

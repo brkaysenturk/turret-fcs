@@ -23,6 +23,7 @@ URETILEN GRAFIKLER (analysis/figures/):
 import json
 import os
 import sys
+from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -167,6 +168,11 @@ y_tilt, u_tilt = sim_step_response(kp_f=KP_TILT_FRAME, max_s_f=MAX_STEP_TILT_FRA
 settled_idx = np.where(np.abs(y_pan - step_deg) <= DEADBAND_PAN)[0]
 t_settle_pan = t_sim[settled_idx[0]] if len(settled_idx) > 0 else 0.51
 overshoot_pan = max(0.0, (np.max(y_pan) - step_deg) / step_deg * 100.0)
+# Yumusak olu bolge ici motor adimi sifir oldugu icin taret son konumunda durur;
+# kalici durum hatasi dogrudan olu bolge bandindan raporlanir.
+ss_error_pan = float(step_deg - y_pan[-1])
+ss_error_tilt = float(step_deg - y_tilt[-1])
+t_settle_tilt = t_sim[np.where(np.abs(y_tilt - step_deg) <= DEADBAND_TILT)[0][0]]
 
 fig1, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 7.5), sharex=True, gridspec_kw={"height_ratios": [1.8, 1.2]})
 
@@ -181,9 +187,10 @@ annot_text = (
     f"Pan Yerlesme Suresi: t = {t_settle_pan:.2f} s\n"
     f"Pan Asim (Overshoot): %{overshoot_pan:.1f} (PM = {pm_val:.1f}°)\n"
     f"Pan Hiz Doyumu: {MAX_SLEW_VELOCITY:.1f}°/s\n"
+    f"Kalici Durum Hatasi: {ss_error_pan:+.2f}° (Olu Bolge Bandi)\n"
     f"Olu Bolgede Motor Komutu: 0.0°/s (Sessiz)"
 )
-ax1.annotate(annot_text, xy=(t_settle_pan, 19.15), xytext=(0.12, 10.5),
+ax1.annotate(annot_text, xy=(t_settle_pan, step_deg - DEADBAND_PAN), xytext=(0.12, 9.5),
              arrowprops=dict(facecolor=COLOR_PRIMARY, shrink=0.08, width=1.5, headwidth=6),
              bbox=dict(boxstyle="round,pad=0.5", facecolor="#EBF5FB", edgecolor=COLOR_PRIMARY, alpha=0.95),
              fontsize=9.5, fontweight="bold")
@@ -306,12 +313,12 @@ ax_bode_p.axvline(w_gc, color="#27AE60", linestyle="--", linewidth=1.5)
 ax_bode_p.plot(w_gc, phase_at_gc, "go", markersize=6)
 
 ax_bode_p.annotate(f"Faz Payi (PM): {pm_val:.1f}°\n(w_gc = {w_gc:.2f} rad/s)",
-                   xy=(w_gc, phase_at_gc), xytext=(w_gc * 0.15, phase_at_gc + 25),
+                   xy=(w_gc, phase_at_gc), xytext=(w_gc * 0.12, phase_at_gc + 30),
                    arrowprops=dict(facecolor="#27AE60", shrink=0.08, width=1.2, headwidth=5),
                    bbox=dict(boxstyle="round,pad=0.4", facecolor="#EAFAF1", edgecolor="#27AE60"),
                    fontsize=9, fontweight="bold")
 
-ax_bode_p.text(0.025, 0.10,
+ax_bode_p.text(0.025, 0.30,
                f"Analitik Gecikme Modeli (Kv = {KV_PAN_CONTINUOUS:.2f} 1/s)\n"
                f"• Tasiyici Gecikme: {LATENCY_SYSTEM*1000:.0f} ms | Eyleyici Lag: {TAU_SERVO*1000:.0f} ms\n"
                f"• Kararlilik Marji: PM = {pm_val:.1f}° (>45° Kararli), GM = {gm_val:.1f} dB (>6 dB Guvenli)",
@@ -403,7 +410,13 @@ ax_d1.set_ylim(-16, 16)
 
 ax_d2.plot(t_dyn, err_p_dyn, color=COLOR_PRIMARY, linewidth=2.0, label=f"Pan Takip Hatasi e_pan(t) [RMS = {rms_p:.2f}°]")
 ax_d2.plot(t_dyn, err_t_dyn, color=COLOR_TILT, linewidth=2.0, label=f"Tilt Takip Hatasi e_tilt(t) [RMS = {rms_t:.2f}°]")
-ax_d2.fill_between(t_dyn, -1.60, 1.60, color="#D5F5E3", alpha=0.45, label="Kilit Tolerans Bolgesi (±1.60°)")
+# Pan soft deadband etiketi CONFIG'ten; kilit toleransi gercek LockConfig cift esigi
+# (Uretim P: ±0.85°/±0.95°, kilit karari ayni anda iki eksende bu esiklerin icinde verilir.)
+from turret_fcs.config import CONFIG as _CFG  # noqa: E402
+
+ax_d2.fill_between(t_dyn, -_CFG.control.deadband_tilt_deg, _CFG.control.deadband_tilt_deg,
+                   color="#D5F5E3", alpha=0.45,
+                   label=f"Lock Tolerance (±{_CFG.control.deadband_pan_deg}° Pan / ±{_CFG.control.deadband_tilt_deg}° Tilt)")
 ax_d2.axhline(DEADBAND_PAN, color="#27AE60", linestyle=":", linewidth=1.2, label=f"Pan Soft Deadband (±{DEADBAND_PAN}°)")
 ax_d2.axhline(-DEADBAND_PAN, color="#27AE60", linestyle=":", linewidth=1.2)
 ax_d2.axhline(0, color="k", linestyle="-", linewidth=0.8, alpha=0.5)
@@ -493,14 +506,20 @@ l2 = ax_b2.plot(d_rng, t_flight_ms, "--", color=COLOR_PRIMARY, linewidth=2.0, la
 ax_b1.plot(2.0, np.degrees(np.arctan((GRAVITY * 2.0) / v0_sq_2)), "ro", markersize=6)
 ax_b1.plot(5.0, np.degrees(np.arctan((GRAVITY * 5.0) / v0_sq_2)), "ro", markersize=6)
 
-ax_b1.annotate("2m: theta = 5.6°\nt_flight = 200 ms",
-               xy=(2.0, 5.6), xytext=(1.0, 8.5),
+# Notlar egri uzerinden degil, ayni formulden hesaplanarak yazilir (etiket-matematik uyumu).
+theta_2m = float(np.degrees(np.arctan((GRAVITY * 2.0) / v0_sq_2)))
+theta_5m = float(np.degrees(np.arctan((GRAVITY * 5.0) / v0_sq_2)))
+t_2m_ms = float((2.0 / V0_PROJECTILE) * 1000.0)
+t_5m_ms = float((5.0 / V0_PROJECTILE) * 1000.0)
+
+ax_b1.annotate(f"2m: theta = {theta_2m:.2f} derece\nt_flight = {t_2m_ms:.0f} ms",
+               xy=(2.0, theta_2m), xytext=(1.0, 8.5),
                arrowprops=dict(facecolor=COLOR_ACTUATOR, shrink=0.08, width=1.2, headwidth=6),
                bbox=dict(boxstyle="round,pad=0.3", facecolor="#FEF9E7", edgecolor=COLOR_ACTUATOR),
                fontsize=9, fontweight="bold")
 
-ax_b1.annotate("5m: theta = 13.8°\nt_flight = 500 ms",
-               xy=(5.0, 13.8), xytext=(3.4, 14.5),
+ax_b1.annotate(f"5m: theta = {theta_5m:.2f} derece\nt_flight = {t_5m_ms:.0f} ms",
+               xy=(5.0, theta_5m), xytext=(3.4, 14.5),
                arrowprops=dict(facecolor=COLOR_ACTUATOR, shrink=0.08, width=1.2, headwidth=6),
                bbox=dict(boxstyle="round,pad=0.3", facecolor="#FEF9E7", edgecolor=COLOR_ACTUATOR),
                fontsize=9, fontweight="bold")
@@ -541,6 +560,10 @@ is_locked_sim = np.zeros(N_still)
 
 cur_pan = 2.8
 cur_tilt = 1.9
+# 1. derece servo modeli: komut adimi ani pozisyon sicramasi degil, sonlu hizdir.
+alpha_servo = DT_FRAME / (TAU_SERVO + DT_FRAME)
+pan_vel = 0.0
+tilt_vel = 0.0
 lock_counter = 0
 
 for i in range(N_still):
@@ -564,8 +587,11 @@ for i in range(N_still):
         eff_t = np.sign(meas_tilt_err) * (abs_te - DEADBAND_TILT)
         cmd_t = np.clip(KP_TILT_FRAME * eff_t, -MAX_STEP_TILT_FRAME, MAX_STEP_TILT_FRAME)
 
-    cur_pan += cmd_p
-    cur_tilt += cmd_t
+    # Servo 1. derece yanit (derece/kare komutu -> yumusak pozisyon)
+    pan_vel = (1.0 - alpha_servo) * pan_vel + alpha_servo * cmd_p
+    tilt_vel = (1.0 - alpha_servo) * tilt_vel + alpha_servo * cmd_t
+    cur_pan += pan_vel
+    cur_tilt += tilt_vel
 
     # Kilit histerezisi (Tolerans ±1.6°)
     if abs(meas_pan_err) <= 1.60 and abs(meas_tilt_err) <= 1.60:
@@ -622,9 +648,13 @@ kalman_vx = np.zeros(N_dyn)
 pan_err_dyn = np.zeros(N_dyn)
 is_locked_dyn = np.zeros(N_dyn)
 
+# Uretim CV Kalman filtresi (turret_fcs.kalman_filter.KalmanFilter) kullanilir.
+# Gecmis surumde hiz bir EMA ile "Kalman" diye ciziliyordu; artik gercek filtre.
+from turret_fcs.kalman_filter import KalmanFilter  # noqa: E402
+
+_kf = KalmanFilter(dt=DT_FRAME)
 cur_target_x = 0.0
 cur_turret_pan = 0.0
-kf_state_v = 0.0
 lock_cnt_dyn = 0
 
 for i in range(N_dyn):
@@ -633,9 +663,9 @@ for i in range(N_dyn):
     # Gurultulu optik olcum (piksel cinsinden)
     meas_x = cur_target_x + np.random.normal(0, 6.0)
 
-    # Basit CV Kalman filtresi durum guncellemesi
-    kf_state_v += 0.25 * (true_vx[i] - kf_state_v) + np.random.normal(0, 8.0)
-    kalman_vx[i] = kf_state_v
+    # Gercek CV Kalman: konum olcumu -> (konum, hiz) kestirimi
+    _kf_px, _kf_py, kf_vx, _kf_vy = _kf.update((meas_x, 360.0), dt=dt)
+    kalman_vx[i] = kf_vx
 
     # Taret takip hatasi (pikselden dereceye)
     err_deg = (cur_target_x - cur_turret_pan) * 0.05
@@ -650,7 +680,8 @@ for i in range(N_dyn):
     # Saf oransal P kontrol komutu (Kalman yalnizca lead/telemetri icindir, motoru surmez)
     total_cmd = np.clip(cmd, -MAX_OUTPUT_FRAME, MAX_OUTPUT_FRAME)
 
-    cur_turret_pan += total_cmd / 0.05
+    # P komutu derece/karedir; taret konumu ayni birimde ilerler.
+    cur_turret_pan += total_cmd
     pan_err_dyn[i] = meas_err_deg
 
     if abs(meas_err_deg) <= 1.60:
@@ -692,7 +723,7 @@ plt.close(fig8)
 # =========================================================================
 metrics_dict = {
     "system": "Turret FCS",
-    "timestamp": "2026-10-24",
+    "timestamp": datetime.now().strftime("%Y-%m-%d"),
     "control": {
         "kp_pan_frame": KP_PAN_FRAME,
         "kp_tilt_frame": CONFIG.control.kp_tilt,
@@ -733,6 +764,13 @@ metrics_dict = {
         "system_latency_s": LATENCY_SYSTEM,
         "sampling_fps": 30.0,
         "sampling_dt_s": round(float(DT_FRAME), 5)
+    },
+    "settling": {
+        "pan_settle_s_20deg": round(float(t_settle_pan), 2),
+        "tilt_settle_s_20deg": round(float(t_settle_tilt), 2),
+        "pan_overshoot_pct_20deg": round(float(overshoot_pan), 1),
+        "pan_ss_error_deg": round(float(ss_error_pan), 2),
+        "tilt_ss_error_deg": round(float(ss_error_tilt), 2),
     }
 }
 

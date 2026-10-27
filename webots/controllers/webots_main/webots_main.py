@@ -125,8 +125,17 @@ def main():
                 if eng_state.phase == "SPINUP":
                     launcher.start_spinup()
                 elif eng_state.phase == "FIRING":
-                    launcher.trigger()
-                    ballistics.fire_shot(dist_m=fcs.last_valid_target_dist_m, sim_time=sim_t)
+                    # Uretim doktrini ile uyumlu isabet kapisi kontrolu
+                    if not fcs.is_locked or fcs.hit_probability < CONFIG.lock.min_hit_probability_pct:
+                        engagement.abort()
+                        launcher.stop_flywheels()
+                        hud.log_event(
+                            f"[FIRE ABORTED] HIT PROB TOO LOW ({fcs.hit_probability:.1f}% < {CONFIG.lock.min_hit_probability_pct:.0f}%)",
+                            color=(0, 0, 255),
+                        )
+                    else:
+                        launcher.trigger()
+                        ballistics.fire_shot(dist_m=fcs.last_valid_target_dist_m, sim_time=sim_t)
                 elif eng_state.phase in ("EVAL", None):
                     launcher.stop_flywheels()
                 prev_phase = eng_state.phase

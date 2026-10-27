@@ -1,6 +1,7 @@
 {
   "min_conf": 0.3,
-  "track_min_conf": 0.16,
+  "track_min_conf_candidate": 0.16,
+  "track_min_conf_measured_min": 0.165,
   "spatial_gate_px": 173.0,
   "p99_5_jump_px": 128.41513958876632
 }

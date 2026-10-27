@@ -124,14 +124,17 @@ def generate_kalman_plots():
     mu_res = np.mean(res_clean)
     std_res = np.std(res_clean)
 
-    ax3.hist(res_clean, bins=35, density=True, color="#3498DB", alpha=0.6, edgecolor="#2980B9", label="Inovasyon Residueli")
+    # z - x_hat(post-update) = (1 - K) * inovasyon oldugu icin asilmis (sismis)
+    # bir buyukluk degil, yalnizca dagilim uyumunu gosteren bir kalintidir.
+    ax3.hist(res_clean, bins=35, density=True, color="#3498DB", alpha=0.6, edgecolor="#2980B9",
+             label="Post-update residual (z - x_hat)")
     x_g = np.linspace(-30, 30, 200)
     y_g = (1.0 / (std_res * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((x_g - mu_res) / std_res) ** 2)
     ax3.plot(x_g, y_g, color="#E67E22", lw=2.2, label=f"Gauss Fit (Ort: {mu_res:.2f} px, Std: {std_res:.2f} px)")
     ax3.axvline(0, color="k", ls="--", lw=1.0)
 
-    ax3.set_title("Inovasyon Kalinti Dagilimi (Beyaz Gurultu Uyumu)", fontsize=11, fontweight="bold")
-    ax3.set_xlabel("Inovasyon Kalintisi: z(k) - H x_hat(k) (piksel)", fontsize=10)
+    ax3.set_title("Post-Update Kalinti Dagilimi (Normalizasyon Kontrolu)", fontsize=11, fontweight="bold")
+    ax3.set_xlabel("Kalinti: z(k) - x_hat(k | k) (piksel)", fontsize=10)  # noqa: E501
     ax3.set_ylabel("Olasilik Yogunlugu", fontsize=10)
     ax3.grid(True, linestyle="--", alpha=0.5)
     ax3.legend(loc="upper right", framealpha=0.9, fontsize=8.8)
@@ -144,7 +147,7 @@ def generate_kalman_plots():
     table_data = [
         ["  Parametre / Metrik", "Sistem Degeri", "Hedef Kriter", "Degerlendirme"],
         ["  Kinematik Model", "CV + Joseph Kovaryans", "Fiziksel Model", "Kararli"],
-        ["  Olcum Gurultusu (R)", f"{CONFIG.kalman.r_var:.1f} px^2 (~8 px)", "Optik Gurultu", "Optimal"],
+        ["  Olcum Gurultusu (R)", f"{CONFIG.kalman.r_var:.1f} px^2 (std {CONFIG.kalman.r_var ** 0.5:.1f} px)", "Optik Gurultu", "Optimal"],
         ["  Surec Gurultusu (Q)", f"{CONFIG.kalman.sigma_a:.1f} px/s^2", "Manevra Limiti", "Cevik Takip"],
         ["  Hiz Yon Uyumu", f"%{sign_high:.1f} (>120 px/s)", "> %70.0", "Yuksek Guven"],
         ["  Hiz Korelasyonu", f"+{corr:.3f}", "> +0.70", "Guclu Takip"],

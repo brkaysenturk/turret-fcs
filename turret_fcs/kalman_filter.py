@@ -20,7 +20,7 @@ TASARIM KARARLARI (neden bu kadar sade?):
 4. Cikista yalnizca 30-60 px/s yumusak bir hiz olu bolgesi vardir. Bu bir filtre
    katmani degil, duran hedefin sifir civarindaki gurultusunu lead noktasindan
    uzak tutan statik bir esiklemedir.
-5. Robust Tekil-Sicrama Kapisi: Tek karelik 150 px ustu sahte YOLO kutu
+5. Robust Tekil-Sicrama Kapisi: Tek karelik 100 px ustu sahte YOLO kutu
    sicramalarinda olcum reddedilip yalnizca kestirim (predict-only) surdurulur;
    hiz, lead ve kovaryans P hic kirlenmez. Ayni yeni bolgede 3 kare tutarli
    olcum gorulurse gecmis aday olcumler yeniden oynatilarak (replay) yeni
@@ -185,7 +185,7 @@ class KalmanFilter:
         residual = float(np.hypot(nu[0, 0], nu[1, 0]))
         self.last_residual = residual
 
-        # 3. Robust tekil-sicrama kapisi (150 px)
+        # 3. Robust tekil-sicrama kapisi (100 px)
         # Tek karelik sahte YOLO kutu sicramalarinda olcum tamamen reddedilip
         # saf kestirim (predict-only) korunur; hiz, lead ve kovaryans P kirlenmez.
         # Ayni yeni bolgede ust uste 3 tutarli olcum gorulurse aday gecmisi

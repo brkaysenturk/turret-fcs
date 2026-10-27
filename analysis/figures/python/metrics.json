@@ -1,6 +1,6 @@
 {
   "system": "Turret FCS",
-  "timestamp": "2026-10-24",
+  "timestamp": "2026-10-27",
   "control": {
     "kp_pan_frame": 0.1953,
     "kp_tilt_frame": 0.1544,
@@ -41,5 +41,12 @@
     "system_latency_s": 0.0667,
     "sampling_fps": 30.0,
     "sampling_dt_s": 0.03333
+  },
+  "settling": {
+    "pan_settle_s_20deg": 0.54,
+    "tilt_settle_s_20deg": 0.98,
+    "pan_overshoot_pct_20deg": 9.3,
+    "pan_ss_error_deg": -0.53,
+    "tilt_ss_error_deg": -0.07
   }
 }

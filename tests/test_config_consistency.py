@@ -33,7 +33,7 @@ def test_config_ssot_and_component_defaults():
     assert math.isclose(kf.sigma_a, CONFIG.kalman.sigma_a, abs_tol=1e-5)
     assert math.isclose(kf.outlier_jump_px, CONFIG.kalman.outlier_jump_px, abs_tol=1e-5)
     assert kf.reacquire_frames == CONFIG.kalman.reacquire_frames
-    assert math.isclose(CONFIG.kalman.outlier_jump_px, 150.0, abs_tol=1e-5)
+    assert math.isclose(CONFIG.kalman.outlier_jump_px, 100.0, abs_tol=1e-5)
     assert CONFIG.kalman.reacquire_frames == 3
     assert math.isclose(CONFIG.control.cmd_accel_pan_deg_s2, 353.1, abs_tol=1e-5)
     assert math.isclose(CONFIG.control.cmd_accel_tilt_deg_s2, 213.6, abs_tol=1e-5)

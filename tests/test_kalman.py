@@ -157,8 +157,37 @@ def test_kalman_dynamic_slew_innovations_never_false_reset():
 
         kf.update((m_x, 360.0), dt=dt, ego_dx=0.0)
 
-        # Normal manevrada residual 150 px'in altinda kalmali ve sifirlama olmamali
+        # Normal manevrada residual 100 px'in altinda kalmali ve sifirlama olmamali
         assert kf.last_residual < kf.outlier_jump_px
         assert kf._outlier_frames == 0, f"Kare {i}'de sahte outlier tetiklendi (residual={kf.last_residual:.1f})"
 
     assert abs(kf.smooth_vx) > 0.0
+
+
+def test_kalman_100px_outlier_jump_protection():
+    """100 px ustu tekil sahte YOLO sicramalarinin (orn. 110 px) kapida yakalanip
+    hiz kestirimini bozmadigini dogrular.
+    """
+    kf = KalmanFilter()
+    dt = 0.033
+    # 1. 150 px/s sabit hizla takip oturur
+    _constant(kf, 150.0, 45, dt=dt)
+    assert kf.smooth_vx == pytest.approx(150.0, rel=0.05)
+    last_x = float(kf.x[0, 0])
+    vx_before = float(kf.smooth_vx)
+
+    # 2. Tekil 110 px sahte sicrama (eski 150 px esiginden gecip hizi firlatiyordu)
+    jump_x = last_x + 110.0
+    kf.update((jump_x, 360.0), dt=dt)
+    assert kf.last_residual > kf.outlier_jump_px
+    assert kf._outlier_frames == 1
+    # Predict-only sayesinde hiz hic bozulmaz
+    assert kf.smooth_vx == pytest.approx(vx_before, abs=1e-5)
+
+    # 3. Sonraki kare gercek hedefe donus
+    normal_x = last_x + 150.0 * dt * 2
+    kf.update((normal_x, 360.0), dt=dt)
+    assert kf.last_residual <= kf.outlier_jump_px
+    assert kf._outlier_frames == 0
+    assert abs(kf.smooth_vx - 150.0) < 15.0
+

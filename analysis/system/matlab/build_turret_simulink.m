@@ -28,31 +28,24 @@ if bdIsLoaded(model_name)
     close_system(model_name, 0);
 end
 
-% Parametreleri yukle (veya varsayilanlari kullan)
-mat_file = fullfile(script_dir, 'identified_model.mat');
-if exist(mat_file, 'file')
-    d = load(mat_file);
-    K_val = d.identified_model.K;
-    tau_val = d.identified_model.tau;
-    theta_val = d.identified_model.theta;
-    backlash_val = d.identified_model.backlash_deg;
-else
-    K_val = 0.95;
-    tau_val = 0.030;
-    theta_val = 0.080;
-    backlash_val = 1.35;
-end
+% Uretim ve Gercek Telemetri Sistem Tanilama Parametreleri (turret_fcs/config.py SSOT)
+% v2.1 Optuna TPE & Canli Telemetri sonuclari:
+K_val = 0.985;              % Aktuator kazanci
+tau_val = 0.0682;           % 68.2 ms servo zaman sabiti (CONFIG.mount.servo_tau)
+theta_val = 0.0667;         % 66.7 ms tasiyici gecikme (2 tam kare @ 30 FPS)
+backlash_val = 1.61;        % 1.61 deg MG996R mekanik disli boslugu (CONFIG.actuator.backlash_deg)
+cmd_accel_val = 353.1;      % 353.1 deg/s^2 Pan ivme siniri (CONFIG.control.cmd_accel_pan_deg_s2)
 
-Kp_val = 0.1953;
-deadband_val = 0.85;
+Kp_val = 0.1953;            % Optuna TPE optimal kare basi kazanc (deg/kare)
+deadband_val = 0.85;        % Pan yumusak olu bolgesi (deg)
 
 % FCS Oransal Kazanci (Ayrik 30 FPS komutundan surekli zaman hizina donusum: Kp_cont = Kp_frame * 30)
 fps_val = 30.0;
 Kp_cont = Kp_val * fps_val; % 0.1953 * 30 = 5.859 s^-1
 
-fprintf('>>> Model Parametreleri:\n');
-fprintf('  * Kp (Ayrik): %.4f deg/kare, Kp (Surekli): %.2f s^-1\n', Kp_val, Kp_cont);
-fprintf('  * Olu Bolge: +/- %.2f deg, Servo Hiz Limiti: +/- 45 deg/s, Ivme Limiti: +/- 400 deg/s^2\n', deadband_val);
+fprintf('>>> Model Parametreleri (Uretim CONFIG.py ile %100 Uyumlu):\n');
+fprintf('  * Kp (Ayrik): %.4f deg/kare, Kp (Surekli): %.3f s^-1\n', Kp_val, Kp_cont);
+fprintf('  * Olu Bolge: +/- %.2f deg, Servo Hiz Limiti: +/- 45 deg/s, Ivme Limiti: +/- %.1f deg/s^2\n', deadband_val, cmd_accel_val);
 fprintf('  * Tau: %.1f ms, Olu Zaman (Delay): %.1f ms, Disli Boslugu: %.2f deg\n\n', ...
     tau_val * 1000, theta_val * 1000, backlash_val);
 
@@ -109,11 +102,11 @@ add_block('simulink/Discontinuities/Saturation', [model_name, '/Velocity_Saturat
     'UpperLimit', '45.0', ...
     'LowerLimit', '-45.0');
 
-% 8. Komut Ivme Sinirlayici (Rate Limiter: +/- 400 deg/s^2)
+% 8. Komut Ivme Sinirlayici (Rate Limiter: +/- 353.1 deg/s^2 Optuna TPE optimal)
 add_block('simulink/Discontinuities/Rate Limiter', [model_name, '/Rate_Limiter'], ...
     'Position', [500, 165, 545, 195], ...
-    'RisingSlewLimit', '400.0', ...
-    'FallingSlewLimit', '-400.0');
+    'RisingSlewLimit', sprintf('%.1f', cmd_accel_val), ...
+    'FallingSlewLimit', sprintf('-%.1f', cmd_accel_val));
 
 % 9. Tasiyici Gecikme (Transport Delay: 50-80 ms kamera + UART)
 add_block('simulink/Continuous/Transport Delay', [model_name, '/Transport_Delay'], ...

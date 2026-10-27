@@ -8,7 +8,7 @@ tek bir merkezden (SSOT) yonetir.
 
 ZAMAN VE ASAMA SOZLESMESI:
 - SPINUP: Volan motorlari devirlenir; taret hedefe yumusakca rampalanir (slew_factor).
-- SETTLE: 0.15 s boyunca taret oturur; kilit dogrulanir.
+- SETTLE: 0.12 s boyunca taret oturur; kilit dogrulanir.
 - FIRING: 80 ms boyunca solenoid tetiklenir (FCSState.FIRING).
 - RECOVER: Namlu sarsintisi yumusatilip optik eksene geri donulur.
 - EVAL: Atis sonucu taktik panelde gosterilir.

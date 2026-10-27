@@ -70,7 +70,7 @@ Eğitim parametreleri:
 Eğitim tamamlandığında üretilen model `turret_fcs/rl_sim/models/turret_ppo_v14.zip` olarak kaydedilir. Bu modeli saf NumPy MLP (`.npz`) olarak dışa aktarmak için:
 
 ```bash
-python analysis/export_rl_policy.py
+python analysis/controllers/rl/export_rl_policy.py
 ```
 
 ---
