@@ -56,7 +56,7 @@ def main():
     engine_path = model_path.with_suffix(".engine")
     if engine_path.exists() and engine_path.stat().st_size > 1000:
         model_path = engine_path
-    model = YOLO(str(model_path))
+    model = YOLO(str(model_path), task='detect')
 
     cap = CameraThread()
     WINDOW_NAME = "Turret FCS"
