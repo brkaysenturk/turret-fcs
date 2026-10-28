@@ -35,8 +35,8 @@ def test_config_ssot_and_component_defaults():
     assert kf.reacquire_frames == CONFIG.kalman.reacquire_frames
     assert math.isclose(CONFIG.kalman.outlier_jump_px, 100.0, abs_tol=1e-5)
     assert CONFIG.kalman.reacquire_frames == 3
-    assert math.isclose(CONFIG.control.cmd_accel_pan_deg_s2, 353.1, abs_tol=1e-5)
-    assert math.isclose(CONFIG.control.cmd_accel_tilt_deg_s2, 213.6, abs_tol=1e-5)
+    assert math.isclose(CONFIG.control.cmd_accel_pan_deg_s2, 472.67, abs_tol=1e-2)
+    assert math.isclose(CONFIG.control.cmd_accel_tilt_deg_s2, 242.91, abs_tol=1e-2)
     assert math.isclose(CONFIG.control.ego_tau_s, CONFIG.mount.servo_tau, abs_tol=1e-5)
     assert math.isclose(CONFIG.control.lead_time_max_s, 0.40, abs_tol=1e-5)
 

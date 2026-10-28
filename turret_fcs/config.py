@@ -47,18 +47,18 @@ class OpticsConfig:
 @dataclass(frozen=True)
 class ControlConfig:
     """P kontrolcu ve filtre parametreleri."""
-    kp_pan: float = 0.1953      # P: 30 FPS bazinda Optuna TPE optimal kare basi kazanc
-    kp_tilt: float = 0.1544     # P: 30 FPS bazinda Optuna TPE optimal kare basi kazanc
+    kp_pan: float = 0.2439      # P: 30 FPS bazinda Optuna TPE optimal kare basi kazanc
+    kp_tilt: float = 0.1487     # P: 30 FPS bazinda Optuna TPE optimal kare basi kazanc
     deadband_pan_deg: float = 0.85
     deadband_tilt_deg: float = 0.95
     max_output_deg: float = 1.50
     max_command_step_deg: float = 1.50  # Firmware Servo_ApplyCorrection ust siniri
-    cmd_accel_pan_deg_s2: float = 353.1  # P/RL pan komut ivme siniri (Optuna TPE optimal)
-    cmd_accel_tilt_deg_s2: float = 213.6  # P/RL tilt komut ivme siniri (Optuna TPE optimal)
+    cmd_accel_pan_deg_s2: float = 472.67  # P/RL pan komut ivme siniri (Optuna TPE optimal)
+    cmd_accel_tilt_deg_s2: float = 242.91  # P/RL tilt komut ivme siniri (Optuna TPE optimal)
     lead_time_offset_s: float = 0.015    # Balistik lead'e eklenen sabit pay
     lead_time_min_s: float = 0.03        # Lead sure alt siniri
     lead_time_max_s: float = 0.40        # Lead sure ust siniri (dart ucus suresi olcegi)
-    alpha_filter: float = 0.9306         # P giris EMA'sinda yeni deger agirligi (Optuna TPE optimal)
+    alpha_filter: float = 0.8845         # P giris EMA'sinda yeni deger agirligi (Optuna TPE optimal)
     ego_tau_s: float = 0.0300            # Ego icin komut adimi servo zaman sabiti (30 ms fiziksel taret)
 
 
