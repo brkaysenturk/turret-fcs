@@ -33,8 +33,8 @@ def test_rl_policy_loading_and_manager_wiring():
     rl = RLController()
     assert rl.is_loaded, rl.load_error
     assert rl.policy_format == "numpy"
-    assert (rl.model.obs_dim, rl.model.act_dim) == (11, 2)
-    action, _ = rl.model.predict(np.zeros(11, dtype=np.float32))
+    assert (rl.model.obs_dim, rl.model.act_dim) == (9, 2)
+    action, _ = rl.model.predict(np.zeros(9, dtype=np.float32))
     assert action.shape == (2,)
     assert np.all(np.isfinite(action))
     assert np.all(np.abs(action) <= 1.0)
@@ -48,7 +48,7 @@ def test_rl_policy_loading_and_manager_wiring():
 
 
 def test_rl_observation_and_action_history():
-    """11-Boyutlu durum gozlem vektoru ve 2-adimli eylem gecmisi akisini dogrular."""
+    """9-Boyutlu durum gozlem vektoru ve 2-adimli eylem gecmisi akisini dogrular."""
     fake = _FakeModel([0.5, -0.25])
     rl = RLController(
         auto_load=False, soft_deadband_enabled=False,
@@ -61,7 +61,7 @@ def test_rl_observation_and_action_history():
         700.0, 360.0, 640.0, 360.0, 1280.0, 720.0,
         0.0, 0.0, 2.0, 0.0, 0.0, 0.03333,
     )
-    assert fake.last_obs.shape == (11,)
+    assert fake.last_obs.shape == (9,)
     assert fake.last_obs[0] == pytest.approx(60.0 / 640.0)
     assert d_pan == pytest.approx(0.5 * CONFIG.actuator.max_step_pan_deg)
     assert d_tilt == pytest.approx(-0.25 * CONFIG.actuator.max_step_tilt_deg)

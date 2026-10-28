@@ -1,21 +1,22 @@
 {
-    "_comment": "Optuna TPE optimization result (150,000 timesteps per trial, high-fidelity TurretEnv with resonance guard). Automatically consumed by train_rl.py.",
+    "_comment": "Optuna TPE optimization result (250,000 timesteps per trial, high-fidelity TurretEnv with resonance guard). Automatically consumed by train_rl.py.",
     "version": "2.1",
-    "model_name": "rl_v2-1",
-    "timesteps_per_trial": 150000,
-    "best_trial_number": 6,
-    "best_score": 70.19743139463722,
+    "study_name": "turret_v23_tau_latency_250k",
+    "timesteps_per_trial": 250000,
+    "best_trial_number": 31,
+    "best_score": 157.4024407917083,
+    "best_model_path": "C:\\YTU\\bitirme_projesi\\turret_fcs\\turret_fcs\\rl\\models\\trials\\trial_031.zip",
     "params": {
-        "lambda_u": 0.010414289671432387,
-        "mu_du": 0.00546043532358363,
-        "learning_rate": 0.0002626298228499735
+        "lambda_u": 0.043313373307490195,
+        "mu_du": 0.03381989010197865,
+        "learning_rate": 0.0002154186909186243
     },
     "metrics": {
-        "median_err_px": 36.26901845136721,
-        "iqr_err_px": 46.33302241567169,
-        "lock_ratio": 0.47383333333333333,
-        "mean_flip_pct": 1.3462099616170233,
-        "median_jerk": 0.009621813893318176
+        "median_err_px": 60.674773868118095,
+        "iqr_err_px": 75.82994505273331,
+        "lock_ratio": 0.22286666666666666,
+        "mean_flip_pct": 1.9412321192084832,
+        "median_jerk": 0.027593656443059444
     },
-    "elapsed_seconds": 1198.7521171569824
+    "elapsed_seconds": 5266.5666518211365
 }

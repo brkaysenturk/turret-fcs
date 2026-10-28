@@ -84,7 +84,7 @@ def train(timesteps=250_000):
         return Monitor(
             TurretEnv(
                 render_mode=None,
-                latency_steps=2,
+                latency_steps=3,
                 lambda_u=lambda_u,
                 mu_du=mu_du,
                 progress_gain=2.0,
@@ -143,7 +143,7 @@ def train(timesteps=250_000):
             "training_timesteps": int(timesteps),
             "algorithm": "PPO (Stable-Baselines3)",
             "policy": "MlpPolicy [64, 64]",
-            "observation_dimension": 11,
+            "observation_dimension": 9,
             "action_dimension": 2,
             "hyperparameters": {
                 "lambda_u": round(lambda_u, 6),

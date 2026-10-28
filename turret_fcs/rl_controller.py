@@ -59,9 +59,9 @@ def rate_scaled_step_limits(max_step_pan_deg, max_step_tilt_deg, dt,
 
 
 class _NumpyPolicy:
-    """SB3/torch bagimliligi olmayan 11-64-64-2 MLP cikarimi."""
+    """SB3/torch bagimliligi olmayan 9-64-64-2 (veya 11D'den kayipsiz indirgenmis 9D) MLP cikarimi."""
 
-    def __init__(self, path):
+    def __init__(self, path, target_obs_dim=9):
         data = np.load(path, allow_pickle=False)
         self.w1 = data["w1"].astype(np.float32)
         self.b1 = data["b1"].astype(np.float32)
@@ -69,10 +69,18 @@ class _NumpyPolicy:
         self.b2 = data["b2"].astype(np.float32)
         self.w3 = data["w3"].astype(np.float32)
         self.b3 = data["b3"].astype(np.float32)
-        self.obs_dim = int(data["obs_dim"][0])
+        loaded_obs_dim = int(data["obs_dim"][0])
         self.act_dim = int(data["act_dim"][0])
+
+        # 11-D egitilmis modeldeki 0.0 olan sahte hiz sutunlarini (indeks 4 ve 5) kayipsiz dilimle
+        if target_obs_dim == 9 and loaded_obs_dim == 11 and self.w1.shape[1] == 11:
+            self.w1 = np.delete(self.w1, [4, 5], axis=1)
+            self.obs_dim = 9
+        else:
+            self.obs_dim = loaded_obs_dim
+
         if self.w1.shape != (64, self.obs_dim) or self.w3.shape != (self.act_dim, 64):
-            raise ValueError("npz katman boyutlari uyumsuz")
+            raise ValueError(f"npz katman boyutlari uyumsuz: w1={self.w1.shape}, obs_dim={self.obs_dim}")
 
     def predict(self, obs, deterministic=True):
         x = np.asarray(obs, dtype=np.float32).reshape(self.obs_dim)
@@ -85,7 +93,7 @@ class _NumpyPolicy:
 class RLController:
     """PPO politikasini egitim semantigine sadik calistiran temiz cikarim motoru."""
 
-    OBS_DIM = 11
+    OBS_DIM = 9
     ACT_DIM = 2
 
     def __init__(self, model_path=None, auto_load=True,
@@ -134,6 +142,7 @@ class RLController:
         self.has_prev_target = False
         self.last_action = np.zeros(2, dtype=np.float32)
         self.prev_policy_action = np.zeros(2, dtype=np.float32)
+        self.recurrent_hidden = np.zeros(64, dtype=np.float32)
         self._in_deadband = False
         self.soft_deadband_enabled = bool(soft_deadband_enabled)
         self.reversal_damping = float(np.clip(float(reversal_damping), 0.0, 1.0))
@@ -207,6 +216,7 @@ class RLController:
         self.has_prev_target = False
         self.last_action = np.zeros(2, dtype=np.float32)
         self.prev_policy_action = np.zeros(2, dtype=np.float32)
+        self.recurrent_hidden = np.zeros(64, dtype=np.float32)
         self._in_deadband = False
         self._reversal_timer = np.zeros(self.ACT_DIM, dtype=int)
         self.prev_cmd_pan = 0.0
@@ -217,7 +227,7 @@ class RLController:
         self.reset()
 
     def _build_observation(self, bx, by, center_x, center_y, screen_w, screen_h,
-                           vx, vy, dist_m, dt):
+                           dist_m, dt):
         err_x_norm = float(np.clip((bx - center_x) / (screen_w / 2.0), -1.5, 1.5))
         err_y_norm = float(np.clip((by - center_y) / (screen_h / 2.0), -1.5, 1.5))
 
@@ -249,8 +259,6 @@ class RLController:
                 err_y_norm,
                 d_err_x,
                 d_err_y,
-                float(np.clip(vx / self.v_max_px_s, -1.0, 1.0)),
-                float(np.clip(vy / self.v_max_px_s, -1.0, 1.0)),
                 dist_norm,
                 self.act_hist_1[0],
                 self.act_hist_1[1],
@@ -261,14 +269,14 @@ class RLController:
         )
 
     def predict_angles(self, bx, by, center_x, center_y, screen_w, screen_h,
-                       vx, vy, dist_m, curr_pan_deg, curr_tilt_deg, dt):
-        """Politikadan egitimdeki gibi ham aksiyon alir ve fiziksel adima cevirir."""
+                       vx=0.0, vy=0.0, dist_m=2.0, curr_pan_deg=0.0, curr_tilt_deg=0.0, dt=0.033):
+        """Politikadan 9-boyutlu durum ile egitimdeki gibi ham aksiyon alir ve fiziksel adima cevirir."""
         if not self.is_loaded or self.model is None:
             return 0.0, 0.0
 
         dt_safe = max(0.005, float(dt))
         obs = self._build_observation(
-            bx, by, center_x, center_y, screen_w, screen_h, vx, vy, dist_m, dt_safe
+            bx, by, center_x, center_y, screen_w, screen_h, dist_m, dt_safe
         )
         action, _ = self.model.predict(obs, deterministic=True)
         action = np.asarray(action, dtype=np.float32).reshape(self.ACT_DIM)

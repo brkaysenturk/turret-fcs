@@ -31,8 +31,8 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 from turret_env import TurretEnv
 from turret_fcs.config import CONFIG
 
-# CPU termal korumasi icin 2-thread kisiti
-torch.set_num_threads(2)
+# 12-cekirdekli sistemde dengeli performans icin 4-thread
+torch.set_num_threads(4)
 
 EVAL_SEEDS = list(range(100, 150))
 SCREEN_STEPS = 250_000
@@ -60,7 +60,7 @@ def evaluate_agent(model, test_seeds=EVAL_SEEDS, max_steps=300):
     for seed in test_seeds:
         eval_env = TurretEnv(
             render_mode=None,
-            latency_steps=2,
+            latency_steps=3,
             use_velocity_obs=False,
             enable_randomization=False,
         )
@@ -115,7 +115,7 @@ def objective(trial):
     def env_fn():
         return TurretEnv(
             render_mode=None,
-            latency_steps=2,
+            latency_steps=3,
             lambda_u=lambda_u,
             mu_du=mu_du,
             progress_gain=2.0,
@@ -200,7 +200,7 @@ def run_optimization(n_trials=40):
 
     sampler = optuna.samplers.TPESampler(seed=42, n_startup_trials=10, multivariate=True)
     study = optuna.create_study(
-        study_name="turret_v22_unified_plant_250k",
+        study_name="turret_v23_tau_latency_250k",
         storage=storage_url,
         direction="minimize",
         sampler=sampler,
@@ -275,6 +275,15 @@ def run_optimization(n_trials=40):
         target_best = current_dir / "models" / "turret_ppo_best_optuna.zip"
         shutil.copyfile(best_model_file, target_best)
         print(f"[Model Kopyalandi] En iyi model -> {target_best.name}", flush=True)
+
+        target_v21 = current_dir / "models" / "rl_v2-1.zip"
+        shutil.copyfile(best_model_file, target_v21)
+        try:
+            from analysis.controllers.rl.export_rl_policy import export
+            export(target_v21)
+            print(f"[Model Aktif Edildi] En iyi model -> {target_v21.name} ve {target_v21.stem}_policy.npz", flush=True)
+        except Exception as e:
+            print(f"[UYARI] Model export sirasinda hata: {e}", flush=True)
 
     return best.params
 
