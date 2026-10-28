@@ -31,8 +31,8 @@ end
 % Uretim ve Gercek Telemetri Sistem Tanilama Parametreleri (turret_fcs/config.py SSOT)
 % v2.1 Optuna TPE & Canli Telemetri sonuclari:
 K_val = 0.985;              % Aktuator kazanci
-tau_val = 0.0682;           % 68.2 ms servo zaman sabiti (CONFIG.mount.servo_tau)
-theta_val = 0.0667;         % 66.7 ms tasiyici gecikme (2 tam kare @ 30 FPS)
+tau_val = 0.0300;           % 30.0 ms servo zaman sabiti (CONFIG.mount.servo_tau)
+theta_val = 0.0900;         % 90.0 ms tasiyici gecikme (3 tam kare @ 30 FPS)
 backlash_val = 1.61;        % 1.61 deg MG996R mekanik disli boslugu (CONFIG.actuator.backlash_deg)
 cmd_accel_val = 353.1;      % 353.1 deg/s^2 Pan ivme siniri (CONFIG.control.cmd_accel_pan_deg_s2)
 

@@ -44,13 +44,13 @@ Tüm analiz betikleri gerçek saha telemetri verileriyle (`logs/telemetry_*.csv`
 
 `system_id_turret.m` betiği, taretin fiziksel test kayıtlarını (`telemetry_*.csv`) okuyarak dinamik modeli çıkarır:
 
-* **Taşıyıcı Gecikme (Transport Delay / theta):** YOLOv8 çıkarımı, kamera USB tamponu ve UART iletiminden kaynaklanan toplam gecikme (Ölçülen: `66.7 ms`, tam `2.0 kare @ 30 FPS`).
+* **Taşıyıcı Gecikme (Transport Delay / theta):** Uçtan uca kamera USB tamponu, TensorRT YOLOv8 + balistik filtreleme ve UART iletiminden kaynaklanan toplam gecikme (Ölçülen: `90.0 ms`, tam `3.0 kare @ 30 FPS`).
 * **Mekanik Dişli Boşluğu (Backlash):** Yön değişimlerinde servonun harekete başlayana kadar yuttuğu açısal komut (Canlı telemetri ile ölçülen: `1.61 derece`).
 * **Transfer Fonksiyonları (turret_fcs/config.py SSOT Uyumlu):**
   * **Tip-1 Açısal Konum Modeli:** `G_pos(s) = [ K / (s * (tau * s + 1)) ] * exp(-theta * s)`
     * Kazanç `K = 0.985`
-    * Zaman sabiti `tau = 68.2 ms` (Optuna TPE optimal / `CONFIG.mount.servo_tau`)
-    * Efektif ölü zaman `theta = 66.7 ms` (2 tam kare)
+    * Zaman sabiti `tau = 30.0 ms` (FOPDT adım/Bode testi / `CONFIG.mount.servo_tau`)
+    * Efektif ölü zaman `theta = 90.0 ms` (3 tam kare)
     * Uyum başarısı: `R^2 = 0.993`, `RMSE = 0.349 derece`.
   * **2. Derece Eyleyici Modeli (SOPDT):** `G_sopdt(s) = [ K * wn^2 / (s^2 + 2*zeta*wn*s + wn^2) ] * exp(-theta * s)` (`wn = 14.66 rad/s`, `zeta = 0.76`).
 
@@ -161,7 +161,7 @@ turret_hil_runner;
 
 1. **Bölüm: Sistem Modeli ve Dinamik Tanımlama:** `matlab_fig1_system_id_result.png` ile
    gözlenebilirlik sınırını açıkça belirtip, model parametrelerini
-   `K = 0.985, tau = 68.2 ms, theta = 66.7 ms, backlash = 1.61 derece` olarak **SSOT'tan**
+   `K = 0.985, tau = 30.0 ms, theta = 90.0 ms, backlash = 1.61 derece` olarak **SSOT'tan**
    alındığını yazın (telemetriden ölçülmedi).
 2. **Bölüm: Kontrolcü Tasarımı ve Kararlılık Analizi:** `matlab_fig2` ve `matlab_fig3`
    grafiklerini kullanarak `Ki = 0` / `Kd = 0` tercihini `PM = 49.04 derece`,

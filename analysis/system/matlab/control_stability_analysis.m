@@ -63,10 +63,10 @@ end
 % 1. SISTEM MODELI VE PARAMETRELERININ YUKLENMESI
 % ------------------------------------------------------------------------------
 % DEGERLER `turret_fcs/config.py` (SSOT) VE CANLI TELEMETRI SISTEM TANILAMA ILE %100 UYUMLUDUR
-% v2.1 Canli telemetri Sistem Tanilama (system_id_results.json) ve Optuna TPE sonuclari:
+% v2.1 Canli telemetri Sistem Tanilama (tau_comparison_results.json: 81.5 ms -> 90 ms gecikme, 22 ms -> 30 ms tau):
 K_plant = 0.985;           % FOPDT kazanci
-tau = 0.0682;              % 68.2 ms servo zaman sabiti (CONFIG.mount.servo_tau)
-theta = 0.0667;            % 66.7 ms tasiyici gecikme (2 tam kare @ 30 FPS)
+tau = 0.0300;              % 30.0 ms servo zaman sabiti (CONFIG.mount.servo_tau)
+theta = 0.0900;            % 90.0 ms tasiyici gecikme (3 tam kare @ 30 FPS)
 backlash_deg = 1.61;       % 1.61 deg mekanik disli boslugu (CONFIG.actuator.backlash_deg)
 cmd_accel_pan = 353.1;     % 353.1 deg/s^2 Pan komut ivme siniri (CONFIG.control.cmd_accel_pan_deg_s2)
 

@@ -1,0 +1,8 @@
+{
+  "step_tau_63_ms": 20.603561504827226,
+  "step_tau_exp_ms": 10.000000000001206,
+  "step_dead_time_ms": 81.47353565089377,
+  "bode_cutoff_freq_hz": 6.585614896480764,
+  "bode_tau_ms": 24.167058899381576,
+  "config_servo_tau_ms": 30.0
+}

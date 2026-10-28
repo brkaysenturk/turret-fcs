@@ -1,11 +1,12 @@
 {
   "log_file": "telemetry_test_20261025_054723.csv",
-  "delay_ms": 66.66,
-  "delay_frames": 2.0,
+  "delay_ms": 81.5,
+  "delay_frames": 2.45,
+  "tau_ms": 22.0,
+  "gain_K": 0.985,
   "backlash_deg": 1.613,
-  "tau_s": 0.01,
-  "gain_K": 0.9845847468154221,
+  "mean_backlash_deg": 1.7571999999999999,
   "noise_sigma_px": 2.0967130275743506,
   "noise_r_var": 4.39620552,
-  "fopdt_rmse_deg": 0.3490526526505138
+  "fopdt_rmse_deg": 0.6009578935983629
 }
