@@ -29,6 +29,7 @@ kaldiran dogrusal Tip-1 P kontrolcusu:
 import numpy as np
 
 from .config import CONFIG
+from .ballistics import compute_rk4_super_elevation
 
 
 class PController:
@@ -95,9 +96,17 @@ class PController:
         return self.actual_pan, self.actual_tilt
 
     def compute_gravity_comp(self, dist_cm):
-        """Analitik yercekimi dususu kompanzasyonu: theta = arctan(g * D / (2 * v^2))."""
+        """Yercekimi ve aerodinamik surukleme (drag) kompanzasyonu (RK4 veya analitik)."""
         min_dist_cm = CONFIG.lidar.min_distance_m * 100.0
         target_d_m = (dist_cm / 100.0) if (dist_cm is not None and dist_cm >= min_dist_cm) else self.DEFAULT_DISTANCE_M
+        if CONFIG.ballistics.drag_enabled:
+            theta_deg, _ = compute_rk4_super_elevation(
+                target_d_m,
+                v0=self.PROJECTILE_SPEED_MPS,
+                g=self.GRAVITY_ACCEL,
+                k=CONFIG.ballistics.drag_k,
+            )
+            return float(theta_deg)
         v_sq_2 = 2.0 * (self.PROJECTILE_SPEED_MPS ** 2)
         return float(np.degrees(np.arctan((self.GRAVITY_ACCEL * target_d_m) / v_sq_2)))
 

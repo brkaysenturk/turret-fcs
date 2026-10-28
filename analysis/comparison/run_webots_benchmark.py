@@ -4,7 +4,7 @@
 MODUL: WEBOTS DIJITAL IKIZ BASARIM KARSILASTIRMA TESTI (P vs RL BENCHMARK)
 ================================================================================
 Bu betik; yeni optimize edilmis sistem parametreleriyle (backlash=1.61 deg,
-ego_tau=0.0682 s, Kalman sigma_a=478.19, RL sarmalayici taper/damping)
+ego_tau=0.0300 s, Kalman sigma_a=478.19, RL sarmalayici taper/damping)
 Webots simulasyonunu Figure-8 profilinde 20 saniye kosturur ve sonuclari
 karsilastirir.
 ================================================================================

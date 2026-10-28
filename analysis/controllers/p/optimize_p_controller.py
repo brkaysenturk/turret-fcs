@@ -77,7 +77,7 @@ def evaluate_p_params(
         np.random.seed(seed)
         env = TurretEnv(
             render_mode=None,
-            latency_steps=2,
+            latency_steps=3,
             backlash_deg=CONFIG.actuator.backlash_deg,  # 1.61 deg (gercek donanim)
             enable_randomization=True,
         )
@@ -151,7 +151,7 @@ def evaluate_p_params(
 def main():
     print("=" * 76)
     print(" P KONTROLCU COK DEGISKENLI (MULTIVARIATE) BAYESYEN TPE OPTIMIZASYONU")
-    print(f" Tesis Parametreleri: Backlash = {CONFIG.actuator.backlash_deg:.2f} deg | Gecikme = 2 kare (66.7 ms)")
+    print(f" Tesis Parametreleri: Backlash = {CONFIG.actuator.backlash_deg:.2f} deg | Gecikme = 3 kare (90.0 ms) | Tau = {CONFIG.mount.servo_tau * 1000.0:.1f} ms")
     print("=" * 76)
 
     # 1. Mevcut Yapilandirma (Trial #0 referansi)
@@ -170,42 +170,47 @@ def main():
     )
     print("-" * 76)
 
-    max_allowed_pan_flip = cur["pan_flip_pct"] + 0.20
-    max_allowed_tilt_flip = cur["tilt_flip_pct"] + 0.20
+    max_allowed_pan_flip = cur["pan_flip_pct"] + 0.25
+    max_allowed_tilt_flip = cur["tilt_flip_pct"] + 0.25
 
     def objective(trial: optuna.Trial) -> float:
-        # Gercek donanim ve Webots rezonans sinirlari dahilinde arama araligi:
-        kp_pan = trial.suggest_float("kp_pan", 0.160, 0.260)
-        kp_tilt = trial.suggest_float("kp_tilt", 0.090, 0.170)
-        alpha = trial.suggest_float("alpha_filter", 0.750, 0.960)
-        accel_pan = trial.suggest_float("cmd_accel_pan_deg_s2", 280.0, 480.0)
-        accel_tilt = trial.suggest_float("cmd_accel_tilt_deg_s2", 160.0, 320.0)
+        # Gercek donanim ve Webots rezonans sinirlari dahilinde arama araligi (90ms / 30ms tesis uyumlu):
+        kp_pan = trial.suggest_float("kp_pan", 0.150, 0.280)
+        kp_tilt = trial.suggest_float("kp_tilt", 0.080, 0.180)
+        alpha = trial.suggest_float("alpha_filter", 0.750, 0.950)
+        accel_pan = trial.suggest_float("cmd_accel_pan_deg_s2", 280.0, 500.0)
+        accel_tilt = trial.suggest_float("cmd_accel_tilt_deg_s2", 160.0, 340.0)
 
         m = evaluate_p_params(kp_pan, kp_tilt, alpha, accel_pan, accel_tilt)
 
-        # Rezonans ve Titresim Koruma Bariyeri (Limit Cycle Guard):
+        # Rezonans ve Titresim Koruma Bariyeri (Limit Cycle & Jerk Guard):
         pan_flip_ex = max(0.0, m["pan_flip_pct"] - max_allowed_pan_flip)
         tilt_flip_ex = max(0.0, m["tilt_flip_pct"] - max_allowed_tilt_flip)
-        jerk_ex = max(0.0, m["pan_jerk_deg"] - (cur["pan_jerk_deg"] * 1.20))
-        res_penalty = 150.0 * (pan_flip_ex ** 2 + tilt_flip_ex ** 2) + 2000.0 * (jerk_ex ** 2)
+        jerk_ex = max(0.0, m["pan_jerk_deg"] - (cur["pan_jerk_deg"] * 1.15))
+        tilt_jerk_ex = max(0.0, m["tilt_jerk_deg"] - (cur["tilt_jerk_deg"] * 1.15))
+
+        # Sertlestirilmis lineer + kuadratik jerk ve flip cezasi:
+        flip_penalty = 250.0 * (pan_flip_ex + tilt_flip_ex) + 1500.0 * (pan_flip_ex ** 2 + tilt_flip_ex ** 2)
+        jerk_penalty = 800.0 * (jerk_ex + tilt_jerk_ex) + 20000.0 * (jerk_ex ** 2 + tilt_jerk_ex ** 2)
+        res_penalty = flip_penalty + jerk_penalty
 
         cost = (
             m["rms_px"]
             + 0.5 * m["med_px"]
-            + 6.0 * (m["pan_flip_pct"] + m["tilt_flip_pct"])
-            + 120.0 * (m["pan_jerk_deg"] + m["tilt_jerk_deg"])
+            + 8.0 * (m["pan_flip_pct"] + m["tilt_flip_pct"])
+            + 150.0 * (m["pan_jerk_deg"] + m["tilt_jerk_deg"])
             + res_penalty
-            - 0.8 * m["lock_pct"]
+            - 2.5 * m["lock_pct"]
         )
 
         for k, v in m.items():
             trial.set_user_attr(k, v)
         return cost
 
-    sampler = optuna.samplers.TPESampler(seed=42, n_startup_trials=15, multivariate=True)
+    sampler = optuna.samplers.TPESampler(seed=42, n_startup_trials=25, multivariate=True)
     study = optuna.create_study(direction="minimize", sampler=sampler)
 
-    # Ilk denemeler olarak mevcut konfigrasyonu ve eski nominali onceden kaydet
+    # Ilk denemeler olarak mevcut konfigrasyonu ve akademik referanslari onceden kaydet
     study.enqueue_trial(
         {
             "kp_pan": CONFIG.control.kp_pan,
@@ -224,15 +229,24 @@ def main():
             "cmd_accel_tilt_deg_s2": 267.0,
         }
     )
+    study.enqueue_trial(
+        {
+            "kp_pan": 0.2400,
+            "kp_tilt": 0.1400,
+            "alpha_filter": 0.8800,
+            "cmd_accel_pan_deg_s2": 420.0,
+            "cmd_accel_tilt_deg_s2": 280.0,
+        }
+    )
 
     t0 = time.time()
-    study.optimize(objective, n_trials=100)
+    study.optimize(objective, n_trials=250)
     elapsed = time.time() - t0
 
     best = study.best_trial
     bm = best.user_attrs
 
-    print(f"\n[OK] 100 Multivariate Bayesyen Deneme Tamamlandi ({elapsed:.1f} saniye)")
+    print(f"\n[OK] 250 Multivariate Bayesyen Deneme Tamamlandi ({elapsed:.1f} saniye)")
     print(f"En Iyi Deneme: #{best.number} (Maliyet: {best.value:.2f} vs Referans #0: {study.trials[0].value:.2f})")
     print("-" * 76)
     print(" EN IYI P KONTROLCU PARAMETRELERI (1.61 deg Backlash Altinda):")
@@ -254,7 +268,8 @@ def main():
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
         "plant": {
             "backlash_deg": CONFIG.actuator.backlash_deg,
-            "latency_frames": 2,
+            "latency_frames": 3,
+            "latency_ms": 90.0,
             "servo_tau_s": CONFIG.mount.servo_tau,
         },
         "best_trial_number": best.number,

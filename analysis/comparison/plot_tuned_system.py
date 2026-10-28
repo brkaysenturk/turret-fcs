@@ -88,8 +88,8 @@ DEADBAND_TILT = CONFIG.control.deadband_tilt_deg   # 0.95 deg
 TAPER_PAN = CONFIG.rl.taper_pan_deg                # 1.00 deg
 TAPER_TILT = CONFIG.rl.taper_tilt_deg              # 2.50 deg
 
-TAU_SERVO = CONFIG.mount.servo_tau                 # 0.045 s (45 ms)
-LATENCY_SYSTEM = CONFIG.ballistics.system_latency_s # 0.080 s (80 ms)
+TAU_SERVO = CONFIG.mount.servo_tau                 # 0.030 s (30 ms)
+LATENCY_SYSTEM = CONFIG.ballistics.system_latency_s # 0.090 s (90 ms)
 V0_PROJECTILE = CONFIG.ballistics.projectile_speed_mps # 10.0 m/s
 GRAVITY = CONFIG.ballistics.gravity_accel          # 9.80665 m/s^2
 
