@@ -23,7 +23,6 @@ sabitini (tau) iki ayri bilimsel yontemle olcer ve karsilastirir:
 ================================================================================
 """
 
-import os
 import sys
 import time
 import json
@@ -33,7 +32,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.optimize import curve_fit, minimize
+from scipy.optimize import curve_fit
 
 # Proje kokunu sys.path'e ekle
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -366,7 +365,6 @@ def analyze_bode_tau(bode_data, frequencies):
     4) tau_bode = 1 / (2 * pi * f_c)
     """
     t = np.array([r["time_sec"] for r in bode_data])
-    cmd = np.array([r["cmd_pan"] for r in bode_data])
     sp = np.array([r["turret_pan"] for r in bode_data])
     freq_arr = np.array([r["freq_hz"] for r in bode_data])
 
@@ -398,7 +396,7 @@ def analyze_bode_tau(bode_data, frequencies):
                 bounds=([0.1, -2.0 * np.pi, -5.0], [4.0, 2.0 * np.pi, 5.0])
             )
             A_out = abs(float(popt[0]))
-            phi = float(popt[1])
+            _phi = float(popt[1])
             gain = A_out / A_in
             gain_db = 20.0 * np.log10(max(1e-4, gain))
             bode_points.append({
@@ -648,7 +646,7 @@ def main():
     with open(out_json, "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2)
 
-    print(f"[+] Veriler ve grafik basariyla kaydedildi.")
+    print("[+] Veriler ve grafik basariyla kaydedildi.")
 
 
 def replot_from_latest_logs():

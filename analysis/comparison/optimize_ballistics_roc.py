@@ -92,7 +92,8 @@ def run_monte_carlo_ballistics(n_sims=50000):
     # kullanicinin kabul ettigi bosa atis orani butcesine (risk esigi) gore yapilir.
     false_fire_budget_pct = 5.0  # Kabul edilen maksimum bosa atis orani (%)
 
-    speed_categories = {
+    # speed_categories tanimi
+    _speed_categories = {
         "slow": {"speed_range": (0, 150), "maneuver_std": 4.0},
         "medium": {"speed_range": (150, 350), "maneuver_std": 12.0},
         "fast": {"speed_range": (350, 800), "maneuver_std": 25.0},

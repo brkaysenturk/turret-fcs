@@ -102,7 +102,7 @@ def generate_fig13():
     ends = np.where(diff_det == -1)[0]
     lens = ends - starts
     longest_idx = np.argmax(lens)
-    s, e = starts[longest_idx], ends[longest_idx]
+    s, _e = starts[longest_idx], ends[longest_idx]
 
     # Ilk 10 saniye (300 ornek) uzerinde FOPDT analizi
     N = 300
