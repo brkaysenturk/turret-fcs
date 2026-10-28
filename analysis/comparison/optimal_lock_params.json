@@ -1,8 +1,8 @@
 {
-  "gate_slow_deg": 0.85,
-  "gate_medium_deg": 0.8,
-  "gate_fast_deg": 0.85,
+  "gate_slow_deg": 1.7,
+  "gate_medium_deg": 2.33,
+  "gate_fast_deg": 2.95,
   "threshold_low_speed_px_s": 150.0,
   "threshold_high_speed_px_s": 350.0,
-  "settle_time_s": 0.12
+  "settle_time_s": 0.15
 }

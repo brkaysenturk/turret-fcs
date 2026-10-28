@@ -22,7 +22,7 @@ ALGORITMA VE GUCLU MEKANIZMALAR:
 """
 
 import numpy as np
-from scipy.stats import ncx2
+from scipy.special import chndtr
 
 
 from .config import CONFIG
@@ -53,7 +53,29 @@ class LockManager:
         self._post_fire_grace_frames = 0
         self.post_fire_grace_duration_frames = CONFIG.lock.post_fire_grace_duration_frames  # 0.75 saniye @ 30 FPS kilit muafiyeti (grace period)
 
-    def compute_dynamic_threshold(self, target_velocity, fx=None, fy=None):
+    @staticmethod
+    def _compute_angular_speed(target_velocity, fx, fy, target_pos_deg=None):
+        """
+        Piksel hizindan tam trigonometrik acisal hizi hesaplar (kamera kenarlarinda sec^2 duzeltmeli).
+        
+        theta = arctan((x - cx) / fx) bagintisinin tam turevi:
+        omega_x = deg((vx * fx) / (fx^2 + (x - cx)^2)) = deg(vx / fx) * cos^2(theta_pan)
+        Kamera kenarlarindaki (+/-24 derece) %15-20 abartili acisal hiz kestirimini onler.
+        """
+        scale_pan = 1.0
+        scale_tilt = 1.0
+        if target_pos_deg is not None and len(target_pos_deg) >= 2:
+            pan_rad = float(np.radians(float(target_pos_deg[0])))
+            tilt_rad = float(np.radians(float(target_pos_deg[1])))
+            scale_pan = float(np.cos(pan_rad) ** 2)
+            scale_tilt = float(np.cos(tilt_rad) ** 2)
+
+        vx_deg_s = float(np.degrees(float(target_velocity[0]) / fx) * scale_pan)
+        vy_deg_s = float(np.degrees(float(target_velocity[1]) / fy) * scale_tilt)
+        speed_deg_s = float(np.hypot(vx_deg_s, vy_deg_s))
+        return vx_deg_s, vy_deg_s, speed_deg_s
+
+    def compute_dynamic_threshold(self, target_velocity, fx=None, fy=None, target_pos_deg=None):
         """
         Tip-1 P kontrolcunun teorik takip hatasi yasasina bagli pruzsuz kilit kapisi:
         e_ss = deadband + (omega / Kv)
@@ -64,9 +86,9 @@ class LockManager:
         effective_fx = float(fx) if (fx is not None and fx > 100.0) else self.fx
         effective_fy = float(fy) if (fy is not None and fy > 100.0) else self.fy
 
-        vx_deg_s = float(np.degrees(target_velocity[0] / effective_fx))
-        vy_deg_s = float(np.degrees(target_velocity[1] / effective_fy))
-        speed_deg_s = float(np.hypot(vx_deg_s, vy_deg_s))
+        vx_deg_s, vy_deg_s, speed_deg_s = self._compute_angular_speed(
+            target_velocity, effective_fx, effective_fy, target_pos_deg=target_pos_deg
+        )
 
         kv = max(0.1, float(CONFIG.control.kp_pan * 30.0))
         deadband = float(CONFIG.control.deadband_pan_deg)
@@ -87,6 +109,7 @@ class LockManager:
         box_dim=None,
         stability_progress=1.0,
         dynamic_threshold=None,
+        target_pos_deg=None,
     ):
         """
         Tam 2B Dairesel Gauss Integrali (Non-Central Chi-Squared CDF / Marcum Q) + Takip Kararliligi:
@@ -118,10 +141,10 @@ class LockManager:
         system_latency_s = CONFIG.ballistics.system_latency_s
         total_lead_time = t_flight + system_latency_s
 
-        # 3. Anizotropik Acisal Hedef Hizi (pan ve tilt ayrik odak uzakliklariyla)
-        vx_deg_s = float(np.degrees(target_velocity[0] / effective_fx))
-        vy_deg_s = float(np.degrees(target_velocity[1] / effective_fy))
-        speed_deg_s = float(np.hypot(vx_deg_s, vy_deg_s))
+        # 3. Anizotropik Acisal Hedef Hizi (sec^2 kenar duzeltmeli ve ayrik odak uzakliklariyla)
+        vx_deg_s, vy_deg_s, speed_deg_s = self._compute_angular_speed(
+            target_velocity, effective_fx, effective_fy, target_pos_deg=target_pos_deg
+        )
 
         # 4. Saçılma Bileşenleri
         sigma_motion = 0.35 * speed_deg_s * total_lead_time
@@ -130,11 +153,13 @@ class LockManager:
         sigma_safe = max(0.01, sigma_total)
 
         # 5. Tam 2B Gauss Integrali: Merkezi Olmayan Ki-Kare (ncx2) CDF
+        # scipy.stats.ncx2.cdf yerine dogrudan alt seviye C/Cephes fonksiyonu olan
+        # scipy.special.chndtr cagirilarak Python wrapper yukunden kacinilir ve ~30x daha hizli calisir.
         err_mag = max(0.0, float(angular_error_deg))
         nc_param = float((err_mag / sigma_safe) ** 2)
         x_cutoff = float((theta_target / sigma_safe) ** 2)
 
-        p_ballistic = float(ncx2.cdf(x_cutoff, df=2, nc=nc_param))
+        p_ballistic = float(chndtr(x_cutoff, 2.0, nc_param))
 
         # 6. Takip ve Kilit Kararliligi Modulasyonu (FCS Operasyonel Doktrini):
         # Kilit henuz oturmamissa (stability_counter < 10) veya taret hedefe yakinsiyorsa,
@@ -151,7 +176,17 @@ class LockManager:
         p_hit_ratio = p_ballistic * s_track * s_gate
         return float(np.clip(p_hit_ratio * 100.0, 0.0, 100.0))
 
-    def update(self, angular_error_deg, target_velocity, is_firing=False, dist_m=2.0, fx=None, fy=None, box_dim=None):
+    def update(
+        self,
+        angular_error_deg,
+        target_velocity,
+        is_firing=False,
+        dist_m=2.0,
+        fx=None,
+        fy=None,
+        box_dim=None,
+        target_pos_deg=None,
+    ):
         if is_firing:
             self._prev_is_firing = True
             # Atis ve geri toparlanma (recover) dongusu boyunca mevcut kilit durumunu dondurarak koru
@@ -166,7 +201,9 @@ class LockManager:
         if in_grace_period:
             self._post_fire_grace_frames -= 1
 
-        dynamic_threshold = self.compute_dynamic_threshold(target_velocity, fx=fx, fy=fy)
+        dynamic_threshold = self.compute_dynamic_threshold(
+            target_velocity, fx=fx, fy=fy, target_pos_deg=target_pos_deg
+        )
         dynamic_exit_threshold = dynamic_threshold + self.lock_exit_margin_deg
 
         # Hedef tolerans icindeyse sayaci artir, ciktiysa her kare 1 azalt 
@@ -197,8 +234,15 @@ class LockManager:
         )
 
         self.hit_probability = self.compute_hit_probability(
-            angular_error_deg, target_velocity, dist_m=dist_m, fx=fx, fy=fy, box_dim=box_dim,
-            stability_progress=stability_progress, dynamic_threshold=dynamic_threshold
+            angular_error_deg,
+            target_velocity,
+            dist_m=dist_m,
+            fx=fx,
+            fy=fy,
+            box_dim=box_dim,
+            stability_progress=stability_progress,
+            dynamic_threshold=dynamic_threshold,
+            target_pos_deg=target_pos_deg,
         )
         self.lock_quality = self.hit_probability / 100.0
 

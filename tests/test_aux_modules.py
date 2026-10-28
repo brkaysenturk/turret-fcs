@@ -2,7 +2,8 @@
 import csv
 import sys
 from pathlib import Path
-
+import numpy as np
+import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -109,4 +110,57 @@ def test_camera_thread_device_detection(monkeypatch):
     idx_rev, name_rev = CameraThread.detect_camera(preferred_name="C270", backend="msmf")
     assert idx_rev == 0
     assert "c270" in name_rev.lower()
+
+
+def test_rk4_aerodynamic_drag_ballistics():
+    """RK4 aerodinamik drag balistik cozumleyicisini dogrular."""
+    from turret_fcs.ballistics import (
+        compute_drag_constant,
+        compute_rk4_super_elevation,
+        compute_rk4_drop,
+    )
+    k = compute_drag_constant()
+    assert 0.020 < k < 0.060, f"Beklenmeyen drag katsayisi: {k}"
+
+    # 2.0 metrede drag vs vakum karsilastirmasi
+    theta_rk4, t_rk4 = compute_rk4_super_elevation(2.0, v0=10.0, k=k)
+    theta_vac, t_vac = compute_rk4_super_elevation(2.0, v0=10.0, k=0.0)
+    assert theta_rk4 > theta_vac
+    assert t_rk4 > t_vac
+    assert 0.15 < (theta_rk4 - theta_vac) < 0.50
+
+    # 3.0 metrede dikey dusus karsilastirmasi
+    drop_drag, _ = compute_rk4_drop(3.0, v0=10.0, k=k)
+    drop_vac, _ = compute_rk4_drop(3.0, v0=10.0, k=0.0)
+    assert drop_drag > drop_vac
+    assert 0.02 < (drop_drag - drop_vac) < 0.06  # 2 ila 6 cm daha fazla dusus
+
+
+def test_lock_manager_trig_derivative_and_chndtr():
+    """LockManager chndtr optimizasyonu ve sec^2 tam turev duzeltmesini dogrular."""
+    lm = LockManager()
+
+    # 1. chndtr ile Gauss Marcum Q / Non-central chi-sq hesabi
+    p_hit = lm.compute_hit_probability(
+        angular_error_deg=0.5,
+        target_velocity=[100.0, 50.0],
+        dist_m=2.0,
+        fx=1100.0,
+        fy=1100.0,
+        target_pos_deg=(0.0, 0.0),
+    )
+    assert 0.0 <= p_hit <= 100.0
+    assert p_hit > 60.0
+
+    # 2. Tam trigonometrik turev (kamera kenarinda sec^2 duzeltmesi)
+    # Merkezde (0 deg): scale = 1.0
+    vx_c, vy_c, sp_c = LockManager._compute_angular_speed([200.0, 0.0], 1000.0, 1000.0, target_pos_deg=(0.0, 0.0))
+    # Kenarda (+/-24 deg): scale = cos^2(24 deg) ~ 0.8346
+    vx_e, vy_e, sp_e = LockManager._compute_angular_speed([200.0, 0.0], 1000.0, 1000.0, target_pos_deg=(24.0, 0.0))
+
+    assert vx_c == pytest.approx(np.degrees(200.0 / 1000.0), abs=1e-4)
+    expected_ratio = np.cos(np.radians(24.0)) ** 2
+    assert (vx_e / vx_c) == pytest.approx(expected_ratio, abs=1e-4)
+    assert (sp_e / sp_c) == pytest.approx(expected_ratio, abs=1e-4)
+
 

@@ -28,6 +28,7 @@ from .lock_manager import LockManager
 from .p_controller import PController
 from .patrol_generator import PatrolGenerator
 from .config import CONFIG
+from .ballistics import compute_rk4_super_elevation
 
 
 class FCSManager:
@@ -64,9 +65,18 @@ class FCSManager:
         self.last_cmd_pan = 0.0
         self.last_cmd_tilt = 0.0
 
-        # Taret Açısal Konum Kestirimi (Dead-Reckoning Odometri - Devriye ve Emniyet Sinirlari)
+        # Taret Acisal Konum Kestirimi (Cift Durum Mimarisi)
+        # 1. Komut Edilen Ic Pozisyon (Commanded Pose / Dead-Reckoning):
+        # Devriye ve yazilimsal limitler bu temiz referansa gore calisir.
         self.turret_pan_deg = 0.0
         self.turret_tilt_deg = 0.0
+        # 2. Olculen Donanimsal Pozisyon (Sensed Pose / Telemetry Feedback):
+        # STM32 potansiyometre paketlerinden beslenir; HUD ve stall kontrolu icindir.
+        self.hw_pan_deg = 0.0
+        self.hw_tilt_deg = 0.0
+        self._has_initial_hw_sync = False
+        self.tracking_lag_deg = 0.0
+        self.is_stalled = False
         self.PAN_LIMIT_MIN = CONFIG.mount.pan_limit_min
         self.PAN_LIMIT_MAX = CONFIG.mount.pan_limit_max
         self.TILT_LIMIT_MIN = CONFIG.mount.tilt_limit_min
@@ -91,6 +101,7 @@ class FCSManager:
         # Balistik Slew ve Nisan Noktasi Ileri Beslemesi (Aim-Point Feedforward)
         self.prev_applied_lead_pan = 0.0
         self.prev_applied_lead_tilt = 0.0
+        self.lead_time = 0.0
 
     def _integrate_command(self, u_pan, u_tilt):
         """Hesaplanan inkremental adimlari limitler dahilinde tarete uygular."""
@@ -282,11 +293,23 @@ class FCSManager:
         self._update_lidar_range(dist_cm, is_firing, box_dim, fx, fy)
         d_m = self.last_valid_target_dist_m
         effective_dist_cm = float(d_m * 100.0)
+        if CONFIG.ballistics.drag_enabled:
+            _, t_flight_rk4 = compute_rk4_super_elevation(
+                d_m,
+                v0=self.p_controller.PROJECTILE_SPEED_MPS,
+                g=self.p_controller.GRAVITY_ACCEL,
+                k=CONFIG.ballistics.drag_k,
+            )
+            raw_lead_time = t_flight_rk4 + CONFIG.control.lead_time_offset_s
+        else:
+            raw_lead_time = (d_m / self.p_controller.PROJECTILE_SPEED_MPS) + CONFIG.control.lead_time_offset_s
+
         lead_time = float(np.clip(
-            (d_m / self.p_controller.PROJECTILE_SPEED_MPS) + CONFIG.control.lead_time_offset_s,
+            raw_lead_time,
             CONFIG.control.lead_time_min_s,
             CONFIG.control.lead_time_max_s,
         ))
+        self.lead_time = lead_time
 
         # 3. Ego-Motion (son motor komutunun 1. derece servo yaniti)
         if self.tracker.initialized:
@@ -309,8 +332,17 @@ class FCSManager:
         self.firing_lead_offset = np.array([lead_pan, lead_tilt], dtype=float)
         self.gravity_comp_deg = self.p_controller.compute_gravity_comp(effective_dist_cm)
 
-        # 5. Kilit durumu kontrolu (Tam 2B Gauss ncx2 integrali ve hedef kutu boyutu ile)
-        self.lock_mgr.update(angular_err, self.target_velocity, is_firing=is_firing, dist_m=d_m, fx=fx, fy=fy, box_dim=box_dim)
+        # 5. Kilit durumu kontrolu (Tam 2B Gauss integrali ve hedef kutu boyutu ile)
+        self.lock_mgr.update(
+            angular_err,
+            self.target_velocity,
+            is_firing=is_firing,
+            dist_m=d_m,
+            fx=fx,
+            fy=fy,
+            box_dim=box_dim,
+            target_pos_deg=(pan_deg, tilt_deg),
+        )
         return bx, by, pan_deg, tilt_deg, d_m
 
     def _select_control_command(self, bx, by, center_x, center_y, fx, fy, pan_deg, tilt_deg, d_m, dt, slew_factor):
@@ -409,15 +441,44 @@ class FCSManager:
             )
         return self._handle_target_lost(dt, fx=fx, fy=fy)
 
-    def sync_turret_pose(self, pan_deg, tilt_deg):
-        """STM32 geri beslemesinden taretin mutlak pozunu senkronize eder.
+    def sync_turret_pose(self, pan_deg, tilt_deg, force=False):
+        """STM32 geri beslemesinden donanimsal (sensed) taret pozunu gunceller.
 
-        Bu poz yalnizca devriye, limitler ve HUD icindir; ego-motion hesabi
-        komut adimi modelinden gelir (bkz. update).
+        Cift durum mimarisi:
+        - Donanim acisi (hw_pan_deg / hw_tilt_deg) guncellenir.
+        - Ilk gecerli pakette veya force=True durumunda ic komut pozisyonu
+          donanima kilitlenir.
+        - Aktif hareket esnasinda kablo gecikmesinin ve potansiyometre kuantalama
+          gurultusunun devriye adimlarini ezmesini onlemek icin komut pozisyonu
+          her kare dogrudan ezilmez.
+        - Komut ve donanim arasindaki anlik takip farki (lag) olculur (>8.0 deg stall).
+        - Taret duraganken son komutlar kucukse yavas bir tamamlayici filtre (%2/kare)
+          uzun vadeli mekanik kaymalari yumusakca toparlar.
         """
-        if pan_deg is not None and tilt_deg is not None:
-            self.turret_pan_deg = float(np.clip(pan_deg, self.PAN_LIMIT_MIN, self.PAN_LIMIT_MAX))
-            self.turret_tilt_deg = float(np.clip(tilt_deg, self.TILT_LIMIT_MIN, self.TILT_LIMIT_MAX))
+        if pan_deg is None or tilt_deg is None:
+            return
+
+        self.hw_pan_deg = float(np.clip(pan_deg, self.PAN_LIMIT_MIN, self.PAN_LIMIT_MAX))
+        self.hw_tilt_deg = float(np.clip(tilt_deg, self.TILT_LIMIT_MIN, self.TILT_LIMIT_MAX))
+
+        if force or not self._has_initial_hw_sync:
+            self.turret_pan_deg = self.hw_pan_deg
+            self.turret_tilt_deg = self.hw_tilt_deg
+            self._has_initial_hw_sync = True
+            self.tracking_lag_deg = 0.0
+            self.is_stalled = False
+            return
+
+        # Komut ile donanim arasindaki anlik mekanik takip gecikmesi (lag)
+        err_p = self.turret_pan_deg - self.hw_pan_deg
+        err_t = self.turret_tilt_deg - self.hw_tilt_deg
+        self.tracking_lag_deg = float(np.hypot(err_p, err_t))
+        self.is_stalled = self.tracking_lag_deg > 8.0
+
+        # Duragan durumda yavas tamamlayici filtre ile kayma telafisi (soft drift correction)
+        if abs(self.last_cmd_pan) < 0.05 and abs(self.last_cmd_tilt) < 0.05:
+            self.turret_pan_deg -= 0.02 * err_p
+            self.turret_tilt_deg -= 0.02 * err_t
 
     def reset(self):
         self.frames_since_lost = 0
@@ -434,6 +495,11 @@ class FCSManager:
         self.last_cmd_tilt = 0.0
         self.turret_pan_deg = 0.0
         self.turret_tilt_deg = 0.0
+        self.hw_pan_deg = 0.0
+        self.hw_tilt_deg = 0.0
+        self._has_initial_hw_sync = False
+        self.tracking_lag_deg = 0.0
+        self.is_stalled = False
         self.ego_step_pan_deg = 0.0
         self.ego_step_tilt_deg = 0.0
         self.prev_applied_lead_pan = 0.0

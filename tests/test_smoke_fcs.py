@@ -1,6 +1,6 @@
 """FCSManager duman ve entegrasyon testleri."""
-import pytest
 import numpy as np
+import pytest
 
 from turret_fcs.config import CONFIG
 from turret_fcs.fcs_manager import FCSManager
@@ -62,12 +62,7 @@ def test_fcs_ballistic_slew_and_lead():
         target_box = [bx - 20, 340, bx + 20, 380]
         fcs.update(target_box, 640, 360, 1411.0, 1411.0, 0.033, dist_cm=200)
 
-    lead_time = float(np.clip(
-        fcs.last_valid_target_dist_m / CONFIG.ballistics.projectile_speed_mps
-        + CONFIG.control.lead_time_offset_s,
-        CONFIG.control.lead_time_min_s,
-        CONFIG.control.lead_time_max_s,
-    ))
+    lead_time = fcs.lead_time
     measured_x = (target_box[0] + target_box[2]) // 2
     measured_y = (target_box[1] + target_box[3]) // 2
     assert fcs.pred_center == pytest.approx(
@@ -83,3 +78,42 @@ def test_fcs_ballistic_slew_and_lead():
     bx_reacquired = 640.0 + 100.0 * 0.033 * 33
     fcs.update([bx_reacquired - 20, 340, bx_reacquired + 20, 380], 640, 360, 1411.0, 1411.0, 0.033, dist_cm=200)
     assert fcs.target_velocity[0] == pytest.approx(vel_before_dropout, rel=0.08)
+
+
+def test_dual_state_pose_architecture():
+    """Cift Durum Poz Mimarisi (Commanded Pose vs Sensed HW Pose) dogrulamasi."""
+    fcs = FCSManager(control_mode="P")
+
+    # 1. Ilk acilista senkronizasyon (Initial Sync)
+    fcs.sync_turret_pose(10.0, 5.0)
+    assert fcs.turret_pan_deg == pytest.approx(10.0)
+    assert fcs.turret_tilt_deg == pytest.approx(5.0)
+    assert fcs.hw_pan_deg == pytest.approx(10.0)
+    assert fcs.hw_tilt_deg == pytest.approx(5.0)
+    assert not fcs.is_stalled
+
+    # 2. Komut uygulandiginda komut pozisyonu ilerler
+    fcs._integrate_command(1.5, 0.5)
+    assert fcs.turret_pan_deg == pytest.approx(11.5)
+    assert fcs.turret_tilt_deg == pytest.approx(5.5)
+
+    # 3. Gecikmeli donanim telemetrisi komut pozisyonunu ezmez
+    fcs.sync_turret_pose(10.2, 5.1)
+    assert fcs.hw_pan_deg == pytest.approx(10.2)
+    assert fcs.hw_tilt_deg == pytest.approx(5.1)
+    # turret_pan_deg komut edilen 11.5'te kalir (ezilmez!)
+    assert fcs.turret_pan_deg == pytest.approx(11.5)
+    assert fcs.tracking_lag_deg == pytest.approx(np.hypot(1.3, 0.4), abs=1e-3)
+    assert not fcs.is_stalled
+
+    # 4. Asiri farkta (> 8.0 deg) Stall korumasi devreye girer
+    fcs.sync_turret_pose(0.0, 0.0)
+    assert fcs.tracking_lag_deg > 8.0
+    assert fcs.is_stalled
+
+    # 5. force=True ile zorunlu donanim senkronizasyonu
+    fcs.sync_turret_pose(0.0, 0.0, force=True)
+    assert fcs.turret_pan_deg == pytest.approx(0.0)
+    assert fcs.turret_tilt_deg == pytest.approx(0.0)
+    assert not fcs.is_stalled
+

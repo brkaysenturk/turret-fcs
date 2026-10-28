@@ -52,6 +52,10 @@ def main():
                 f"[FCS HATA] Model agirliklari temin edilemedi: {err}\n"
                 f"Lutfen 'python -m turret_fcs.weights' komutunu calistirarak modelleri indirin."
             ) from err
+
+    engine_path = model_path.with_suffix(".engine")
+    if engine_path.exists() and engine_path.stat().st_size > 1000:
+        model_path = engine_path
     model = YOLO(str(model_path))
 
     cap = CameraThread()
@@ -180,6 +184,8 @@ def main():
                 active_pan_cmd = 0.0
                 active_tilt_cmd = 0.0
                 stm.send(0.0, 0.0, FCSState.ESTOP)
+                if hw_pan is not None and hw_tilt is not None:
+                    fcs.sync_turret_pose(eff_hw_pan, eff_hw_tilt, force=True)
             elif target_detected:
                 prev_target_detected = True
                 fcs_state = eng_state.fcs_fire_cmd_state

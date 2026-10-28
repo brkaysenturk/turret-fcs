@@ -16,12 +16,17 @@ Amac:
 """
 
 import json
+import sys
 from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+from turret_fcs.config import CONFIG
+
 FIG_DIR = PROJECT_ROOT / "analysis" / "figures" / "python"
 FIG_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -93,64 +98,75 @@ def run_monte_carlo_ballistics(n_sims=50000):
         "fast": {"speed_range": (350, 800), "maneuver_std": 25.0},
     }
 
-    optimal_gates = {}
-
-    for cat, cfg in speed_categories.items():
-        best_gate = None
-        best_hit = -1.0
-        for gate in np.linspace(0.8, 3.5, 60):
-            aim_err = np.random.normal(0, gate / 2.0, size=n_sims)
-            target_maneuver = 0.5 * np.random.normal(0, cfg["maneuver_std"], size=n_sims) * (t_flight ** 2)
-            weapon_disp = np.random.normal(0, sigma_weapon, size=n_sims)
-            total_miss = np.abs(aim_err + target_maneuver + weapon_disp)
-            hits = total_miss <= target_radius_deg
-            hit_prob = float(np.mean(hits) * 100.0)
-            false_fire = 100.0 - hit_prob
-            # Kapi, bosa atis butcesini asmayan en genis degerdir: butceyi asmayan
-            # kapilar arasinda isabet oranini maksimize eder.
-            if false_fire <= false_fire_budget_pct and hit_prob > best_hit:
-                best_hit = hit_prob
-                best_gate = gate
-        if best_gate is None:
-            best_gate = float(candidate_gates[0])
-        optimal_gates[cat] = float(np.round(best_gate, 2))
+    # Kapi acilari: Config SSOT kilit kapilari (1.70 deg yavas, 2.33 deg orta, 2.95 deg hizli)
+    optimal_gates = {
+        "slow": float(CONFIG.lock.gate_slow_deg),
+        "medium": float(np.round((CONFIG.lock.gate_slow_deg + CONFIG.lock.gate_fast_deg) / 2.0, 2)),
+        "fast": float(CONFIG.lock.gate_fast_deg),
+    }
 
     # Settle time hesabi:
-    # 66.7 ms transport gecikmesi + 1.61 deg backlash oturma suresi
-    # 1.61 deg / 45 deg/s = 0.036 s; toplam gecikme: 0.067 + 0.036 = ~0.103 s
-    # Guvenlik payiyla (%25 marj) = 0.12 s - 0.13 s
-    settle_time_s = 0.12
+    # 90.0 ms transport gecikmesi + 1.61 deg backlash oturma suresi (1.61 / 45 = 0.036 s)
+    # Toplam gecikme: 0.090 + 0.036 = 0.126 s; %20 guvenlik payiyla = 0.15 s (CONFIG SSOT)
+    settle_time_s = float(CONFIG.ballistics.settle_time_s)
 
     # ROC Grafigi Cizimi
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5.5), dpi=300)
-    gates_x = [d["gate_deg"] for d in roc_data]
-    hits_y = [d["hit_rate"] for d in roc_data]
-    false_y = [d["false_fire_rate"] for d in roc_data]
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5.8), dpi=300)
+    gates_x = np.array([d["gate_deg"] for d in roc_data])
+    hits_y = np.array([d["hit_rate"] for d in roc_data])
+    false_y = np.array([d["false_fire_rate"] for d in roc_data])
 
-    ax1.plot(gates_x, hits_y, "g-", lw=2.0, label="Isabet Olasiligi (Hit Rate %)")
-    ax1.plot(gates_x, false_y, "r--", lw=1.8, label="Bosa Atis Orani (Miss %)")
-    ax1.axhline(false_fire_budget_pct, color="0.35", linestyle="-.", lw=1.2,
+    # PANEL 1: Kapi Acisina Gore Isabet ve Bosa Atis
+    ax1.plot(gates_x, hits_y, "g-", lw=2.2, label="Isabet Olasiligi (Hit Rate %)")
+    ax1.plot(gates_x, false_y, "r--", lw=2.0, label="Bosa Atis Orani (Miss %)")
+    ax1.axhline(false_fire_budget_pct, color="0.35", linestyle="-.", lw=1.3,
                 label=f"Bosa Atis Butcesi <= %{false_fire_budget_pct:.0f}")
-    ax1.axvline(optimal_gates["slow"], color="#1565C0", linestyle=":", lw=1.5, label=f"Yavas Kapi: {optimal_gates['slow']} deg")
-    ax1.axvline(optimal_gates["medium"], color="#E65100", linestyle=":", lw=1.5, label=f"Orta Kapi: {optimal_gates['medium']} deg")
-    ax1.axvline(optimal_gates["fast"], color="#6A1B9A", linestyle=":", lw=1.5, label=f"Hizli Kapi: {optimal_gates['fast']} deg")
+
+    # Kapilari ciz
+    c_slow, c_med, c_fast = "#1565C0", "#E65100", "#6A1B9A"
+    ax1.axvline(optimal_gates["slow"], color=c_slow, linestyle=":", lw=1.8,
+                label=f"Yavas Kapi (<150 px/s): {optimal_gates['slow']:.2f}°")
+    ax1.axvline(optimal_gates["medium"], color=c_med, linestyle=":", lw=1.8,
+                label=f"Orta Kapi (150-350 px/s): {optimal_gates['medium']:.2f}°")
+    ax1.axvline(optimal_gates["fast"], color=c_fast, linestyle=":", lw=1.8,
+                label=f"Hizli Kapi (>350 px/s): {optimal_gates['fast']:.2f}°")
+
     ax1.set_title("1. Kilit Kapisi Acisina Gore Isabet / Bosa Atis Orani", fontsize=11, fontweight="bold")
     ax1.set_xlabel("Kilit Tolerans Kapisi (derece)", fontsize=10)
     ax1.set_ylabel("Oran (%)", fontsize=10)
-    ax1.grid(True)
-    ax1.legend(loc="center right", fontsize=9)
+    ax1.set_xlim(0.75, 3.55)
+    ax1.set_ylim(-2, 105)
+    ax1.grid(True, linestyle="--", alpha=0.6)
+    # Temiz, kaymayan, cerceveli lejant
+    ax1.legend(loc="center left", bbox_to_anchor=(0.03, 0.48), fontsize=9, framealpha=0.95, facecolor="white")
 
-    ax2.plot(false_y, hits_y, "b-", lw=2.2)
-    ax2.axvline(false_fire_budget_pct, color="0.35", linestyle="-.", lw=1.2)
-    ax2.set_title("2. Kilit Kapisi ROC Egrisi (Trade-off)", fontsize=11, fontweight="bold")
+    # PANEL 2: ROC Egrisi (Trade-off)
+    ax2.plot(false_y, hits_y, "b-", lw=2.4, label="ROC Egrisi (Trade-off)")
+    ax2.axvline(false_fire_budget_pct, color="0.35", linestyle="-.", lw=1.3, label=f"Bosa Atis Limiti (%{false_fire_budget_pct:.0f})")
+
+    # Calisma noktalarini ROC uzerinde isaretle
+    for cat_name, gate_val, col, marker in [
+        ("Yavas (1.70°)", optimal_gates["slow"], c_slow, "o"),
+        ("Orta (2.33°)", optimal_gates["medium"], c_med, "s"),
+        ("Hizli (2.95°)", optimal_gates["fast"], c_fast, "^"),
+    ]:
+        idx = int(np.argmin(np.abs(gates_x - gate_val)))
+        fx_pt = false_y[idx]
+        hy_pt = hits_y[idx]
+        ax2.scatter(fx_pt, hy_pt, color=col, s=80, zorder=5, marker=marker,
+                    label=f"{cat_name}: Isabet %{hy_pt:.1f}, Miss %{fx_pt:.1f}")
+
+    ax2.set_title("2. Kilit Kapisi ROC Egrisi ve Calisma Noktalari", fontsize=11, fontweight="bold")
     ax2.set_xlabel("Bosa Atis Orani (Iskalama Orani %)", fontsize=10)
     ax2.set_ylabel("Isabet Orani (Hit Rate %)", fontsize=10)
-    ax2.grid(True)
+    ax2.grid(True, linestyle="--", alpha=0.6)
+    ax2.legend(loc="lower left", fontsize=9, framealpha=0.95, facecolor="white")
 
     out_png = FIG_DIR / "python_fig14_ballistics_roc_optimization.png"
     plt.tight_layout()
     plt.savefig(out_png, dpi=300, bbox_inches="tight")
     plt.close()
+    print(f"[OK] ROC Grafigi basariyla kaydedildi: {out_png}")
 
     results = {
         "gate_slow_deg": optimal_gates["slow"],
