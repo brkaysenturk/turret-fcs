@@ -6,7 +6,7 @@ Bu modul; Webots robot supervisor, motorlar, enkoderler, C270 kamera ve TF-Luna
 sensorlerini yoneten yuksek sadakatli (High-Fidelity) donanim soyutlama katmanidir (HAL).
 
 v2.0 YUKSEK SADAKATLI (SIM-TO-REAL) FIZIKSEL MODELLER:
-- 80 ms Tasiyici Gecikmesi: 2-3 karelik kuyruk (deque) ile C270 sensor pozu + USB + YOLO gecikmesi.
+- 64 ms (2 Kare) Tasiyici Gecikmesi: 2 karelik kuyruk (deque) ile C270 sensor pozu + USB + YOLO gecikmesi.
 - 45 ms Servo Dinamigi: MG996R motor zaman sabiti (tau = 0.045 s) 1. derece gecikme modeli.
 - 1.20 Derece Disli Boslugu (Backlash): Yon degisimlerinde mekanik histerezis olu bolgesi.
 - 0.10 Derece STM32 UART Kuantalamasi: Dijital paket cozunurluk benzetimi.
@@ -73,12 +73,13 @@ class WebotsHardwareInterface:
             self.w_cam = CONFIG.optics.default_width
             self.h_cam = CONFIG.optics.default_height
 
-        # 80 ms kamera/algilama gecikmesi: (sim_t, frame, pan, tilt, dist, strength)
-        # Zaman damgali kuyruk; kare ile birlikte pozu ve mesafeyi de geciktirir.
+        # Kamera/algilama tasiyici gecikmesi: Tam 3 karelik donanim gecikmesi (3 * timestep = 96 ms ~ 90 ms).
+        # SSOT: CONFIG.ballistics.system_latency_s (90.0 ms @ 30 FPS, Webots'ta 3 * dt = 96 ms).
+        default_delay = 3 * self.dt
         self.observation_delay_s = float(
-            os.environ.get("WEBOTS_OBS_DELAY_S", str(CONFIG.ballistics.system_latency_s))
+            os.environ.get("WEBOTS_OBS_DELAY_S", str(default_delay))
         )
-        self.observation_delay_s = max(0.04, min(0.12, self.observation_delay_s))
+        self.observation_delay_s = max(0.03, min(0.12, self.observation_delay_s))
         self.observation_queue = collections.deque(maxlen=8)
 
         # TF-Luna LiDAR
@@ -91,10 +92,10 @@ class WebotsHardwareInterface:
         self.cmd_tilt_deg = 0.0
 
         # Yuksek Sadakatli Servo Tesis Parametreleri
-        self.servo_tau = CONFIG.mount.servo_tau  # 0.045 s (45 ms motor zaman sabiti)
+        self.servo_tau = CONFIG.mount.servo_tau  # CONFIG SSOT motor zaman sabiti
         self.servo_lag_pan_deg = 0.0
         self.servo_lag_tilt_deg = 0.0
-        self.backlash_deg = CONFIG.actuator.backlash_deg  # 1.2 derece mekanik disli boslugu
+        self.backlash_deg = CONFIG.actuator.backlash_deg  # CONFIG SSOT mekanik disli boslugu
         self.backlash_pan_out = 0.0
         self.backlash_tilt_out = 0.0
 
@@ -143,9 +144,11 @@ class WebotsHardwareInterface:
         self.observation_queue.append((sim_t, frame, pan_deg, tilt_deg, dist_cm, strength))
 
         # En az delay_s yasinda olan en yeni kaydi sec; henuz yoksa en eskiyi kullan.
+        # Sayisal yuvarlama payi icin 0.005 s tolerans eklenir (tam 2 kareyi / 64 ms yakalar).
         chosen = self.observation_queue[0]
+        tolerance = 0.005
         for sample in reversed(self.observation_queue):
-            if (sim_t - sample[0]) >= delay_s:
+            if (sim_t - sample[0]) >= (delay_s - tolerance):
                 chosen = sample
                 break
 
@@ -198,7 +201,7 @@ class WebotsHardwareInterface:
         else:
             q_pan, q_tilt = self.cmd_pan_deg, self.cmd_tilt_deg
 
-        # 4. 45 ms servo dinamiği (1. derece gecikme)
+        # 4. 30 ms servo dinamiği (1. derece gecikme)
         alpha_servo = min(1.0, max(0.01, self.dt / max(0.001, self.servo_tau)))
         self.servo_lag_pan_deg += alpha_servo * (q_pan - self.servo_lag_pan_deg)
         self.servo_lag_tilt_deg += alpha_servo * (q_tilt - self.servo_lag_tilt_deg)

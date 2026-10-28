@@ -20,9 +20,8 @@ analysis/
 │   │   ├── turret_digital_twin.slx     # Simulink blok diyagramı
 │   │   └── README.md                   # MATLAB & Simulink modül kılavuzu
 │   └── python/                # Python analitik transfer fonksiyonu ve gecikme kestirimleri
-│       ├── system_identification.py
-│       ├── system_identification_real.py
-│       └── system_id_results.json
+│       ├── run_tau_identification.py   # Gerçek donanım saf basamak ve Bode tau/gecikme tanılama
+│       └── tau_comparison_results.json # 81.5 ms gecikme ve 22 ms tau doğrulama raporu
 ├── logs/                      # Telemetri ve saha test logu inceleme motorları
 │   ├── inspect_logs.py                 # Kilit süresi, açısal hata, salınım ve rezonans dedektörü
 │   └── consolidate_telemetry_logs.py   # Parçalı telemetrileri birleştirme ve KPI özeti
@@ -55,7 +54,7 @@ analysis/
 │   ├── optimal_lock_params.json
 │   └── optimal_selector_params.json
 └── figures/                   # Tüm akademik analiz ve doğrulama grafikleri
-    ├── python/                # Python analiz ve doğrulama figürleri (python_fig1 - python_fig14)
+    ├── python/                # Python analiz ve doğrulama figürleri (python_fig1 - python_fig18)
     └── matlab/                # MATLAB & Simulink kararlılık ve HIL figürleri (matlab_fig1 - matlab_fig6)
 ```
 

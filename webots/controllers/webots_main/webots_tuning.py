@@ -17,12 +17,18 @@ DEFAULTS = {
     "kp_pan": CONFIG.control.kp_pan,
     "kp_tilt": CONFIG.control.kp_tilt,
     "max_output_deg": CONFIG.control.max_output_deg,
+    "alpha_filter": CONFIG.control.alpha_filter,
+    "cmd_accel_pan_deg_s2": CONFIG.control.cmd_accel_pan_deg_s2,
+    "cmd_accel_tilt_deg_s2": CONFIG.control.cmd_accel_tilt_deg_s2,
 }
 
 LIMITS = {
     "kp_pan": (0.05, 0.80),
     "kp_tilt": (0.02, 0.30),
     "max_output_deg": (0.50, 2.00),
+    "alpha_filter": (0.50, 0.99),
+    "cmd_accel_pan_deg_s2": (50.0, 1000.0),
+    "cmd_accel_tilt_deg_s2": (50.0, 1000.0),
 }
 
 # Profil bazli pan kazanc tavanlari. Webots kazanc taramasi (analysis/p_profile_sweep.py)
@@ -81,7 +87,9 @@ def load_tuning():
         raw = {}
 
     profile_limits = _profile_limits_for()
-    for key in ("kp_pan", "kp_tilt", "max_output_deg"):
+    for key in ("kp_pan", "kp_tilt", "max_output_deg", "alpha_filter", "cmd_accel_pan_deg_s2", "cmd_accel_tilt_deg_s2"):
+        if key not in LIMITS:
+            continue
         try:
             val = float(raw.get(key, DEFAULTS[key]))
         except (TypeError, ValueError):
@@ -106,4 +114,10 @@ def apply_tuning(fcs, tuning):
     p.kp_frame_pan = kp_pan_frame
     p.kp_frame_tilt = kp_tilt_frame
     p.max_output = float(tuning["max_output_deg"])
+    if "alpha_filter" in tuning:
+        p.alpha = float(tuning["alpha_filter"])
+    if "cmd_accel_pan_deg_s2" in tuning:
+        p.cmd_accel_pan_deg_s2 = float(tuning["cmd_accel_pan_deg_s2"])
+    if "cmd_accel_tilt_deg_s2" in tuning:
+        p.cmd_accel_tilt_deg_s2 = float(tuning["cmd_accel_tilt_deg_s2"])
     return tuning

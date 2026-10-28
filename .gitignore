@@ -96,3 +96,10 @@ weights/*.pt
 # 3D assets required by simulation
 !webots/worlds/red_ballonn/red ballon.obj
 !webots/worlds/tf_luna/TF-Luna 3D structure.obj
+
+# Compiled TensorRT and ONNX weights
+*.engine
+*.onnx
+
+# Local backup models
+turret_fcs/rl/models/backup_v2-1/

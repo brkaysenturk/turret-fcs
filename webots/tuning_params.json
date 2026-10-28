@@ -1,6 +1,9 @@
 {
-  "label": "p_optuna_tpe",
-  "kp_pan": 0.1953,
-  "kp_tilt": 0.1544,
+  "label": "p_optuna_tpe_v2.1",
+  "kp_pan": 0.2439,
+  "kp_tilt": 0.1487,
+  "alpha_filter": 0.8845,
+  "cmd_accel_pan_deg_s2": 472.67,
+  "cmd_accel_tilt_deg_s2": 242.91,
   "max_output_deg": 1.50
 }

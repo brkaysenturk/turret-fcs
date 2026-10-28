@@ -59,7 +59,7 @@ class ControlConfig:
     lead_time_min_s: float = 0.03        # Lead sure alt siniri
     lead_time_max_s: float = 0.40        # Lead sure ust siniri (dart ucus suresi olcegi)
     alpha_filter: float = 0.9306         # P giris EMA'sinda yeni deger agirligi (Optuna TPE optimal)
-    ego_tau_s: float = 0.0682            # Ego icin komut adimi servo zaman sabiti (Optuna TPE optimal)
+    ego_tau_s: float = 0.0300            # Ego icin komut adimi servo zaman sabiti (30 ms fiziksel taret)
 
 
 @dataclass(frozen=True)
@@ -89,12 +89,26 @@ class BallisticsConfig:
     projectile_speed_mps: float = 10.0
     gravity_accel: float = 9.80665
     default_distance_m: float = 2.0
+    # Aerodinamik surukleme (drag) parametreleri
+    drag_enabled: bool = True
+    projectile_mass_kg: float = 0.0012        # 1.2 gram sunger dart
+    projectile_cross_area_m2: float = 1.131e-4  # 12 mm cap (pi * 0.006^2)
+    drag_coefficient: float = 0.60            # Kup / yarim kure burunlu dart Cd katsayisi
+    air_density_kg_m3: float = 1.225          # 15 C deniz seviyesi hava yogunlugu
     # Atis sekansi zamanlamalari (saniye; spin-up sureleri FlywheelConfig icindedir)
-    settle_time_s: float = 0.15     # Slew sonrasi servo oturma (tau=68.2ms + 66.7ms tasiyici + 1.61 deg backlash tam sonumlenmesi)
+    settle_time_s: float = 0.15     # Slew sonrasi servo oturma (tau=30ms + 90ms tasiyici + 1.61 deg backlash tam sonumlenmesi)
     firing_pulse_s: float = 0.08    # Solenoid itici darbe suresi (80 ms - STM32 firmware ile uyumlu)
     recovery_time_s: float = 0.35   # Mekanik geri toplama suresi
     eval_display_time_s: float = 1.50  # Atis sonrasi EVAL gosterim suresi
-    system_latency_s: float = 0.0667 # 66.7 ms (2.0 kare) kamera-yolo-uart-servo olculen tasiyici gecikmesi
+    system_latency_s: float = 0.0900 # 90.0 ms (3.0 kare @ 30 FPS / TensorRT 5ms + Donanim 81.5ms olculen uctan uca gecikme)
+
+    @property
+    def drag_k(self) -> float:
+        """Surukleme sabiti k = (0.5 * rho * Cd * A) / m (1/m)."""
+        if not self.drag_enabled:
+            return 0.0
+        m = max(1e-6, self.projectile_mass_kg)
+        return float((0.5 * self.air_density_kg_m3 * self.drag_coefficient * self.projectile_cross_area_m2) / m)
 
 
 @dataclass(frozen=True)
@@ -102,7 +116,7 @@ class RLConfig:
     """RL cikarim ve egitim ortaminin ortak sabitleri (tek kaynak)."""
     soft_deadband_enabled: bool = True   # Acisal yumusak olu bolge + taper anahtari
     reversal_damping: float = 0.2889        # Yon degistiren aksiyonun sonum orani (Optuna TPE optimal)
-    reversal_hold_frames: int = 2        # Yon degisim sonumunu 2 kare (~66ms, gecikme+backlash) koru
+    reversal_hold_frames: int = 3        # Yon degisim sonumunu 3 kare (~90ms, gecikme+backlash) koru
     taper_pan_deg: float = 1.60           # Soft deadband gecis genisligi (pan - 1.61 deg backlash uyumlu)
     taper_tilt_deg: float = 1.60          # Soft deadband gecis genisligi (tilt - 1.61 deg backlash ile simetrik)
     nominal_dt_s: float = 0.03333        # Egitim kare periyodu (adim limiti olcekleme referansi)
@@ -114,11 +128,11 @@ class RLConfig:
     yolo_noise_std: float = 3.5          # Ortam varsayilan YOLO kutu gurultusu (px)
     yolo_noise_std_min: float = 2.0      # Domain randomization alt siniri
     yolo_noise_std_max: float = 5.0      # Domain randomization ust siniri
-    servo_tau_min_s: float = 0.045       # Domain randomization servo zaman sabiti (olculen tau=0.0682 s kapsanir)
-    servo_tau_max_s: float = 0.085
+    servo_tau_min_s: float = 0.025       # Domain randomization servo zaman sabiti (olculen tau=0.030 s etrafinda)
+    servo_tau_max_s: float = 0.035
     episode_steps: int = 300             # Egitim bolumu uzunlugu
-    lambda_u: float = 0.0104             # Kontrol eforu ceza katsayisi (Optuna TPE 14x150k optimal)
-    mu_du: float = 0.0055                # Komut degisimi (jerk) ceza katsayisi (Optuna TPE 14x150k optimal)
+    lambda_u: float = 0.0433             # Kontrol eforu ceza katsayisi (Optuna TPE 40x250k Trial #31 optimal)
+    mu_du: float = 0.0338                # Komut degisimi (jerk) ceza katsayisi (Optuna TPE 40x250k Trial #31 optimal)
     progress_gain: float = 2.0           # Hata azalma ilerleme odulu katsayisi
     error_gain: float = 0.05             # Kalici karesel hata ceza katsayisi
     bullseye_reward: float = 0.50        # Tam merkez (bullseye) arti odulu
@@ -155,7 +169,7 @@ class MountConfig:
     tilt_limit_max: float = 25.0
     pan_invert: bool = True
     tilt_invert: bool = False
-    servo_tau: float = 0.0682       # 1. derece motor zaman sabiti (Optuna TPE optimal)
+    servo_tau: float = 0.0300       # 1. derece motor zaman sabiti (FOPDT saf basamak ve Bode testleri olcumu)
 
 
 @dataclass(frozen=True)

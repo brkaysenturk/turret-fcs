@@ -19,6 +19,7 @@ v2.0 UYUMLULUKLARI:
 import math
 
 from turret_fcs.config import CONFIG
+from turret_fcs.ballistics import compute_rk4_drop
 
 
 class VirtualBallisticsEvaluator:
@@ -73,11 +74,18 @@ class VirtualBallisticsEvaluator:
         dist_front = max(0.5, float(dist_m)) if dist_m else CONFIG.ballistics.default_distance_m
         # LiDAR ön yüzeyi ölçer; balistik merkez için +hedef yarıçapı
         dist = dist_front + self.target_radius_m
-        t_flight = dist / self.bullet_speed
-        t_delay = CONFIG.ballistics.system_latency_s  # 80 ms donanim gecikmesi
-
-        g = CONFIG.ballistics.gravity_accel
-        gravity_drop_m = 0.5 * g * (t_flight ** 2)
+        if CONFIG.ballistics.drag_enabled:
+            gravity_drop_m, t_flight = compute_rk4_drop(
+                dist,
+                v0=self.bullet_speed,
+                g=CONFIG.ballistics.gravity_accel,
+                k=CONFIG.ballistics.drag_k,
+            )
+        else:
+            t_flight = dist / self.bullet_speed
+            g = CONFIG.ballistics.gravity_accel
+            gravity_drop_m = 0.5 * g * (t_flight ** 2)
+        t_delay = CONFIG.ballistics.system_latency_s  # CONFIG SSOT donanim tasiyici gecikmesi
 
         # Namlu merkez konumu ve 3B donus matrisi
         head_pos = self.kafa_node.getPosition() if self.kafa_node else [0.0, 0.0, 0.828]

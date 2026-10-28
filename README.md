@@ -10,6 +10,7 @@ Bitirme Çalışması ve Tasarım Projesi
 [![CI](https://github.com/brkaysenturk/turret-fcs/actions/workflows/ci.yml/badge.svg)](https://github.com/brkaysenturk/turret-fcs/actions/workflows/ci.yml)
 [![Tests](https://img.shields.io/badge/Tests-28%20passed-brightgreen.svg)](tests/)
 [![Hardware](https://img.shields.io/badge/Hardware-STM32F401RE-002B49.svg)](https://www.st.com/)
+[![LiDAR](https://img.shields.io/badge/LiDAR-TF--Luna%20ToF-blueviolet.svg)](https://en.benewake.com/)
 [![Simulation](https://img.shields.io/badge/Simulation-Webots%20R2025a-red.svg)](https://cyberbotics.com/)
 [![Detection](https://img.shields.io/badge/Detection-YOLOv8n%20%2B%20ByteTrack-00AEEF.svg)](https://ultralytics.com/)
 [![Control](https://img.shields.io/badge/Control-Type--1%20P%20%2B%20PPO-orange.svg)](turret_fcs/p_controller.py)
@@ -288,7 +289,7 @@ Tek karelik 150 px üstü sıçramada ölçüm durumu bozmaz; filtre yalnızca t
 
 Hedef hızına göre dinamik kilit eşiği uygular: 150 px/s altında 1.70°, 150-350 px/s arasında 2.25°, üstünde 2.95°. Çıkış eşiği +0.60° histerezisli, kararlılık sayacı 10 karedir. Atış sonrası 22 karelik (0.75 s) kilit muafiyeti tanır.
 
-Vuruş olasılığında hedefin yalnızca %60'lık ölümcül çekirdeği kullanılır; bu çekirdek fiziksel hedef yarıçapıyla üstten sınırlanır. Toplam belirsizlik, silah saçılımı (1.25°) ve `0.35 * omega * (t_flight + 0.0667 s)` hareket teriminin geometrik toplamıdır. Sonuç, takip kararlılık sayacı (`s_track`) ve dinamik kapı aşımı (`s_gate`) ile modüle edilir; böylece taret hedefe yönelirken sahte %99 vuruş olasılığı oluşmaz.
+Vuruş olasılığında hedefin yalnızca %60'lık ölümcül çekirdeği kullanılır; bu çekirdek fiziksel hedef yarıçapıyla üstten sınırlanır. Toplam belirsizlik, silah saçılımı (1.25°) ve `0.35 * omega * (t_flight + 0.0900 s)` hareket teriminin geometrik toplamıdır. Sonuç, takip kararlılık sayacı (`s_track`) ve dinamik kapı aşımı (`s_gate`) ile modüle edilir; böylece taret hedefe yönelirken sahte %99 vuruş olasılığı oluşmaz.
 
 **Ne sağlar:** Titreşimli kilit açılıp kapanmasını önler ve operatöre anlık, fiziksel temelli bir vuruş kalitesi gösterir.
 
@@ -452,7 +453,7 @@ alpha_m = dt / (tau + dt)
 ego_step = (1 - alpha_m) * ego_step + alpha_m * last_cmd
 ```
 
-`tau = 0.0682 s` değerindedir. Böylece taretin kendi dönüşü hedef hızına karışmaz. Ölçüm güncellemesi Joseph formuyla yapılır.
+`tau = 0.0300 s` değerindedir. Böylece taretin kendi dönüşü hedef hızına karışmaz. Ölçüm güncellemesi Joseph formuyla yapılır.
 
 150 px üstü inovasyonda ölçüm reddedilir; durum yalnızca `F` ile ilerletilir. Aynı yeni bölgede 3 tutarlı ölçüm oluşursa ilk aday kareden başlanarak tüm adaylar ileri sarılır (`predict + correct`), böylece yeni hedefin hızı sıfırdan öğrenilmez.
 
@@ -480,7 +481,7 @@ p_ballistic = ncx2.cdf(x_cutoff, df=2, nc=nc)
 p_hit = 100 * p_ballistic * s_tracking * s_gate
 ```
 
-`sigma_weapon = 1.25°`, `t_total = t_flight + 0.0667 s` sistem gecikmesidir. `s_tracking`, kilit oturana kadar 0.15-1.0 arasında ilerler; `s_gate`, hata dinamik kapı dışına çıktığında üstel olarak söner. Atış için minimum vuruş olasılığı %25'tir.
+`sigma_weapon = 1.25°`, `t_total = t_flight + 0.0900 s` sistem gecikmesidir. `s_tracking`, kilit oturana kadar 0.15-1.0 arasında ilerler; `s_gate`, hata dinamik kapı dışına çıktığında üstel olarak söner. Atış için minimum vuruş olasılığı %25'tir.
 
 ### 7.6 PPO RL formülasyonu
 
@@ -584,7 +585,7 @@ Tüm analiz grafikleri `analysis/figures/` altında `python/` ve `matlab/` olara
 | :--- | :--- |
 | `python_fig1_tuned_step_and_control_effort.png` | 20° basamak yanıtı; 0.54 s yerleşme, %9.3 aşım, ivme sınırlı kalkış |
 | `python_fig2_tuned_phase_plane_portrait.png` | Faz düzlemi; yumuşak ölü bölgeye asimptotik yakınlaşma |
-| `python_fig3_tuned_bode_stability.png` | Açık çevrim Bode; 5.49 rad/s geçiş, 48.5° faz marjı, 9.2 dB kazanç marjı |
+| `python_fig3_tuned_bode_stability.png` | Açık çevrim Bode; 5.77 rad/s geçiş, 50.4° faz marjı, 7.7 dB kazanç marjı |
 | `python_fig4_tuned_dynamic_tracking.png` | Sinüzoidal hedefte pan/tilt dinamik takip ve hata |
 | `python_fig5_tuned_lissajous_coverage.png` | Figure-8 devriye yörüngesi ve 3B tarama hacmi |
 | `python_fig6_tuned_ballistic_characteristics.png` | Mesafeye göre uçuş süresi ve süper-elevasyon |
@@ -596,6 +597,10 @@ Tüm analiz grafikleri `analysis/figures/` altında `python/` ve `matlab/` olara
 | `python_fig12_selector_evt_optimization.png` | EVT ile hedef güven skoru analizi ve eşik tespiti |
 | `python_fig13_system_id_real_hardware.png` | Gerçek telemetriden 1.61° dişli boşluğu ve 66.7 ms gecikme kestirimi |
 | `python_fig14_ballistics_roc_optimization.png` | Vuruş olasılığı ROC eğrisi ve Youden J optimal kesme noktası |
+| `python_fig15_patrol_kinematic_telemetry.png` | Kinematik devriye telemetrisi ve yumuşak ivmelenme analizi |
+| `python_fig16_robustness_monte_carlo.png` | Monte Carlo gecikme ve ölçüm gürültüsü dayanıklılık analizi |
+| `python_fig17_pipeline_latency_breakdown.png` | Uçtan uca boru hattı gecikme dağılımı (Kamera, YOLO, FCS, STM32) |
+| `python_fig18_real_tau_comparison.png` | Gerçek donanım servo zaman sabiti (tau) ve frekans cevabı karşılaştırması |
 
 #### MATLAB & Simulink figürleri (`analysis/figures/matlab/`)
 
@@ -628,11 +633,21 @@ Tüm analiz grafikleri `analysis/figures/` altında `python/` ve `matlab/` olara
 
 ![Kalman Doğrulama](analysis/figures/python/python_fig10_kalman_tracking_performance.png)
 
+![P vs RL Final Benchmark](analysis/figures/python/python_fig11_p_vs_rl_final_benchmark.png)
+
 ![Hedef Güven Eşiği EVT Optimizasyonu](analysis/figures/python/python_fig12_selector_evt_optimization.png)
 
 ![Gerçek Donanım Sistem Tanılaması](analysis/figures/python/python_fig13_system_id_real_hardware.png)
 
 ![Balistik ROC Eğrisi](analysis/figures/python/python_fig14_ballistics_roc_optimization.png)
+
+![Kinematik Devriye Telemetrisi](analysis/figures/python/python_fig15_patrol_kinematic_telemetry.png)
+
+![Monte Carlo Dayanıklılık Analizi](analysis/figures/python/python_fig16_robustness_monte_carlo.png)
+
+![Boru Hattı Gecikme Dağılımı](analysis/figures/python/python_fig17_pipeline_latency_breakdown.png)
+
+![Gerçek Zaman Sabiti Karşılaştırması](analysis/figures/python/python_fig18_real_tau_comparison.png)
 
 ![MATLAB Sistem Tanımlama](analysis/figures/matlab/matlab_fig1_system_id_result.png)
 
@@ -702,7 +717,7 @@ venv\Scripts\python.exe -m turret_fcs.main
    ```
 
 3. Hedef profilini `webots/balloon_profile.json` içindeki `active_profile` ile veya `WEBOTS_BALLOON_PROFILE` ortam değişkeniyle seçin (0-7).
-4. Gözlem gecikmesini `WEBOTS_OBS_DELAY_S` (varsayılan 0.0667 s), kutu titremesini `WEBOTS_BBOX_JITTER` (varsayılan 3.0 px) ile ayarlayabilirsiniz.
+4. Gözlem gecikmesini `WEBOTS_OBS_DELAY_S` (varsayılan 0.096 s / 3 kare), kutu titremesini `WEBOTS_BBOX_JITTER` (varsayılan 3.0 px) ile ayarlayabilirsiniz.
 5. P kazancı için `webots/tuning_params.json` kullanılır; bu dosya üretim `CONFIG` değerini değiştirmez.
 
 ### 10.6 Model ağırlıkları

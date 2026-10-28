@@ -68,6 +68,9 @@ def main():
     model_path = project_root / CONFIG.paths.yolo_model
     if not model_path.exists():
         model_path = project_root / CONFIG.paths.fallback_yolo_model
+    engine_path = model_path.with_suffix(".engine")
+    if engine_path.exists() and engine_path.stat().st_size > 1000:
+        model_path = engine_path
     model = YOLO(str(model_path))
 
     WINDOW_NAME = "Turret FCS - Webots Digital Twin"
