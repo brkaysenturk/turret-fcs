@@ -158,3 +158,41 @@ def test_kalman_outlier_gating_and_reacquire():
     assert px == pytest.approx(moving_start + new_speed * dt * 2, abs=2.0)
     assert vx < -100.0
 
+
+
+def test_kalman_cwna_substep_and_ego_variance_nis_gate():
+    """CWNA alt-adimlama (sub-step) degismezligini, 3B pinhole ego kaymasini ve ego_var NIS kapisini dogrular."""
+    from turret_fcs.ego_motion import ServoMotionEstimator
+    from turret_fcs.geometry import rotated_pixel_shift
+
+    # 1. CWNA: 0.20 sn adim 2 alt-adima bolundugunde tek adim integrasyonla ayni Q kovaryansini uretmeli
+    kf_sub = KalmanFilter()
+    kf_sub.update((640.0, 360.0), dt=0.033)
+    _, P_sub = kf_sub._predict_state(0.20, 0.0, 0.0)
+    assert P_sub[0, 0] > kf_sub.P[0, 0]
+    assert np.allclose(P_sub, P_sub.T)
+
+    # 2. Yuksek ego_var_x belirsizliginde (hizli taret donusu) 115 px yenilik NIS kapisi sayesinde kabul edilmeli
+    kf_ego = KalmanFilter()
+    _constant(kf_ego, 100.0, 41, dt=0.033)
+    last_x = float(kf_ego.x[0, 0])
+    kf_ego.update((last_x + 115.0, 360.0), dt=0.033, ego_var_x=2000.0)
+    assert kf_ego.measurement_status == "accepted"
+    assert kf_ego._outlier_frames == 0
+
+    # 3. ServoMotionEstimator disli boslugu (backlash) ve 3B pinhole kaymasi
+    est = ServoMotionEstimator()
+    est.command(1.5, 0.0)
+    step_fwd, _, var_fwd = est.advance(0.033, 1411.0, 1411.0)
+    assert step_fwd[0] > 0.0
+    assert var_fwd[0] > 0.0
+
+    # Yon terslendiginde 1.61 deg disli boslugu devreye girer
+    est.command(-0.5, 0.0)
+    step_rev, _, _ = est.advance(0.033, 1411.0, 1411.0)
+    assert est.slack[0] > 0.0
+    assert step_rev[0] == 0.0
+
+    shift_center = rotated_pixel_shift((0.0, 0.0), 1.0, 0.0, 1411.0, 1411.0)
+    shift_edge = rotated_pixel_shift((500.0, 0.0), 1.0, 0.0, 1411.0, 1411.0)
+    assert abs(shift_edge[0]) > abs(shift_center[0])

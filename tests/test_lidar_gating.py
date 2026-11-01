@@ -53,3 +53,17 @@ def test_lidar_range_gating_and_freeze():
     fcs_init._update_lidar_range(115, False, (60, 60), 1410.0, 1412.0)
     assert fcs_init.range_valid is True
     assert fcs_init.last_valid_target_dist_m == 1.15
+
+
+
+def test_lidar_off_target_and_geometric_fallback():
+    """Nisangah hedef kutusunun disindayken (off_target) duvar okumasinin reddedildigini ve geometrik mesafeye dusuldugunu dogrular."""
+    fcs = FCSManager(control_mode="P")
+    # Hedef kenarda [900, 300, 1000, 400] (merkezi 950, 350), nisangah (640, 360) kutunun disinda.
+    # LiDAR arka duvar olan 450 cm (4.5 m) okuyor.
+    fcs.update([900, 300, 1000, 400], 640, 360, 1411.0, 1411.0, 0.033, is_firing=False, dist_cm=450)
+    assert fcs.range_status == "off_target"
+    assert fcs.range_valid is False
+    # 4.5 m duvar mesafesi kabul edilmemeli!
+    assert fcs.last_valid_target_dist_m == 2.0
+    assert fcs.range_geom_m is not None and fcs.range_geom_m > 3.5

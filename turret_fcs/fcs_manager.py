@@ -6,15 +6,15 @@ Bu modul, otonom taretin en ust karar verici ve durum yoneticisidir (State Machi
 Tum alt kontrolculeri, filtreleri ve guvenlik mekanizmalarini koordine eder.
 
 GOREVLER VE ALGORITMALAR:
-1. Hedef Onceliklendirme: Coklu hedef arasindan merkeze en yakin/tehditkar olani secme.
-2. Durum Kestirimi (Kalman Filter): Olcum gurultusunu filtreleyerek hedef hiz vektoru
-   (vx, vy) ve gelecekteki konumunu kestirme.
+1. Hedef Onceliklendirme: Ego-hareket telafili uzamsal kapi ve IoU handoff ile hedef secimi.
+2. Durum Kestirimi (CWNA Kalman Filter): 3B pinhole ego-motion ve disli boslugu (backlash)
+   kovaryans enjeksiyonu ile dunya referansli hedef hiz vektoru (vx, vy) kestirimi.
 3. Balistik Onleme ve Yercekimi Telafisi: Ucus suresi (Time-of-Flight) boyunca hedefin
    alacagi yolu hesaplayip atis onleme acisi (Lead Angle) ve irtifa dususunu kompanse etme.
 4. Dinamik Kilit Yonetimi (Lock Manager): Histerezisli kilit penceresi ve analitik
    Gauss isabet olasiligi hesabi ile atis izni kontrolu.
-5. Mod Yonetimi ve Kontrolculer: Yumusak Olu Bolgeli Tip-1 P Kontrolcu (Hassas Kilit)
-   veya 11-Boyutlu PPO RL Kontrolcu (Cevik Takip).
+5. Mod Yonetimi ve Kontrolculer: Fiziksel hiz-ivme sinirli Tip-1 P Kontrolcu (Hassas Kilit)
+   veya 9-Boyutlu PPO RL Kontrolcu (Cevik Takip).
 6. Sakin Figure-8 (Lissajous) Devriye: Hedef kayboldugunda 1.5 sn bekleme, merkeze donus ve 2 eksenli sekiz motifi tarama.
 ================================================================================
 """
@@ -24,6 +24,8 @@ import numpy as np
 
 from .target_selector import TargetSelector
 from .kalman_filter import KalmanFilter
+from .ego_motion import ServoMotionEstimator
+from .geometry import rotated_pixel_shift
 from .lock_manager import LockManager
 from .p_controller import PController
 from .patrol_generator import PatrolGenerator
@@ -40,6 +42,7 @@ class FCSManager:
     def __init__(self, control_mode="P", max_lost_frames=CONFIG.selector.max_lost_frames, patrol_enabled=False):
         self.selector = TargetSelector()
         self.tracker = KalmanFilter()
+        self.ego_model = ServoMotionEstimator()
         self.lock_mgr = LockManager()
         self.p_controller = PController()
         self.patrol = PatrolGenerator()
@@ -71,7 +74,7 @@ class FCSManager:
         self.turret_pan_deg = 0.0
         self.turret_tilt_deg = 0.0
         # 2. Olculen Donanimsal Pozisyon (Sensed Pose / Telemetry Feedback):
-        # STM32 potansiyometre paketlerinden beslenir; HUD ve stall kontrolu icindir.
+        # STM32 paketlerinden beslenir; HUD ve stall kontrolu icindir.
         self.hw_pan_deg = 0.0
         self.hw_tilt_deg = 0.0
         self._has_initial_hw_sync = False
@@ -82,10 +85,15 @@ class FCSManager:
         self.TILT_LIMIT_MIN = CONFIG.mount.tilt_limit_min
         self.TILT_LIMIT_MAX = CONFIG.mount.tilt_limit_max
 
-        # Ego-motion: son komutun 1. derece servo yaniti (kare basi piksel kaymasi icin)
+        # Ego-motion: 1. derece servo yaniti, disli boslugu (backlash) ve kovaryans modeli
         self.ego_tau_s = CONFIG.control.ego_tau_s
         self.ego_step_pan_deg = 0.0
         self.ego_step_tilt_deg = 0.0
+        self.ego_var_x = 0.0
+        self.ego_var_y = 0.0
+        self._frame_ego = (0.0, 0.0)
+        self._ego_prepared = False
+        self._image_center = (CONFIG.optics.default_width / 2.0, CONFIG.optics.default_height / 2.0)
 
         # Menzil Kapilama (Range Gating) icin dogrulanmis hedef mesafesi hafizasi
         self.last_valid_target_dist_m = float(CONFIG.ballistics.default_distance_m)
@@ -94,6 +102,8 @@ class FCSManager:
         self.range_jump = False
         self.range_geom_m = None
         self.range_geom_mismatch = False
+        self.range_status = "unavailable"
+        self._range_has_reference = False
         self._range_history = deque(maxlen=max(3, int(CONFIG.lidar.stability_window)))
         self._range_candidate = None
         self._range_candidate_count = 0
@@ -104,21 +114,33 @@ class FCSManager:
         self.lead_time = 0.0
 
     def _integrate_command(self, u_pan, u_tilt):
-        """Hesaplanan inkremental adimlari limitler dahilinde tarete uygular."""
-        self.turret_pan_deg = float(np.clip(self.turret_pan_deg + u_pan, self.PAN_LIMIT_MIN, self.PAN_LIMIT_MAX))
-        self.turret_tilt_deg = float(np.clip(self.turret_tilt_deg + u_tilt, self.TILT_LIMIT_MIN, self.TILT_LIMIT_MAX))
+        """Hesaplanan inkremental adimlari limitler dahilinde tarete ve ego modeline uygular."""
+        new_pan = float(np.clip(self.turret_pan_deg + u_pan, self.PAN_LIMIT_MIN, self.PAN_LIMIT_MAX))
+        new_tilt = float(np.clip(self.turret_tilt_deg + u_tilt, self.TILT_LIMIT_MIN, self.TILT_LIMIT_MAX))
+        pan_applied = new_pan - self.turret_pan_deg
+        tilt_applied = new_tilt - self.turret_tilt_deg
+        self.turret_pan_deg = new_pan
+        self.turret_tilt_deg = new_tilt
+        self.ego_model.command(pan_applied, tilt_applied)
         self.last_cmd_pan = u_pan
         self.last_cmd_tilt = u_tilt
         return u_pan, u_tilt
 
     def _compute_ego_pixel_shift(self, dt, fx, fy):
-        """1. derece servo yanitini gunceller ve kare basi ego piksel kaymasini hesaplar."""
-        alpha_m = float(dt / (self.ego_tau_s + dt))
-        self.ego_step_pan_deg = (1.0 - alpha_m) * self.ego_step_pan_deg + alpha_m * self.last_cmd_pan
-        self.ego_step_tilt_deg = (1.0 - alpha_m) * self.ego_step_tilt_deg + alpha_m * self.last_cmd_tilt
-        ego_dx = -float(fx) * float(np.tan(np.radians(self.ego_step_pan_deg)))
-        ego_dy = float(fy) * float(np.tan(np.radians(self.ego_step_tilt_deg)))
-        return ego_dx, ego_dy
+        """Servo yanitini (backlash dahil) gunceller ve 3B pinhole ego piksel kaymasini hesaplar."""
+        point = np.zeros(2, dtype=float)
+        if self.tracker.initialized:
+            point = np.array([
+                self.tracker.x[0, 0] - self._image_center[0],
+                self.tracker.x[1, 0] - self._image_center[1],
+            ], dtype=float)
+        step, _, variance = self.ego_model.advance(dt, fx, fy, tau=self.ego_tau_s)
+        shift = rotated_pixel_shift(point, step[0], step[1], fx, fy)
+        self.ego_step_pan_deg = float(step[0])
+        self.ego_step_tilt_deg = float(step[1])
+        self.ego_var_x = float(variance[0])
+        self.ego_var_y = float(variance[1])
+        return float(shift[0]), float(shift[1])
 
     def _estimate_geom_distance(self, box_dim, fx, fy):
         """Hedef kutusunun acisal boyutundan mesafe tahmini (0.15 m yaricap varsayimi)."""
@@ -135,12 +157,13 @@ class FCSManager:
         d_geom = float(CONFIG.lock.target_radius_m / np.tan(theta))
         return d_geom if np.isfinite(d_geom) and d_geom > CONFIG.lidar.min_distance_m else None
 
-    def _update_lidar_range(self, dist_cm, is_firing, box_dim, fx, fy):
+    def _update_lidar_range(self, dist_cm, is_firing, box_dim, fx, fy, box_center=None, frame_center=None):
         """
         TF-Luna menzil kapilama:
         - Ates sirasinda mesafeyi dondur (spin-up'ta duvar okumasini engelle).
+        - Nisangah hedef kutusunun disindaysa (off_target) arka plan okumasini reddet.
         - Son gecerli mesafeden 50 cm'den fazla sicramayi reddet.
-        - 5 kare boyunca tutarli yeni mesafeyi gercek degisim olarak kabul et.
+        - Ust uste reacquire_frames kare boyunca tutarli yeni mesafeyi gercek degisim olarak kabul et.
         - Kutu geometrisiyle celisen okumayi (duvar) reddet.
         - Ates icin 3 kare / 10 cm kararlilik iste.
         """
@@ -152,6 +175,7 @@ class FCSManager:
             self.range_valid = False
             self.range_stable = False
             self.range_jump = False
+            self.range_status = "invalid"
             return
 
         d_new = float(dist_cm) / 100.0
@@ -159,12 +183,23 @@ class FCSManager:
             self.range_valid = False
             self.range_stable = False
             self.range_jump = False
+            self.range_status = "out_of_range"
             return
 
         # Ates sirasinda LiDAR'in arka plani okumasina izin verme.
         if is_firing:
             self.range_jump = False
             return
+
+        # Nisangah merkezi hedef kutusunun disindaysa LiDAR arka plani okuyordur.
+        if box_center is not None and frame_center is not None and box_dim is not None:
+            if (abs(float(box_center[0]) - float(frame_center[0])) > float(box_dim[0]) / 2.0
+                    or abs(float(box_center[1]) - float(frame_center[1])) > float(box_dim[1]) / 2.0):
+                self.range_valid = False
+                self.range_stable = False
+                self.range_jump = False
+                self.range_status = "off_target"
+                return
 
         geom_bad = False
         if self.range_geom_m is not None and self.range_geom_m > 0.3:
@@ -179,12 +214,13 @@ class FCSManager:
         if jump:
             self.range_valid = False
             self.range_stable = False
+            self.range_status = "jump_rejected"
             # Duvar/arka plan ise adayi hic kabul etme.
             if geom_bad:
                 self._range_candidate = None
                 self._range_candidate_count = 0
                 return
-            # Gercek hedef mesafesi degismis olabilir: 5 kare tutarliysa kabul et.
+            # Gercek hedef mesafesi degismis olabilir: reacquire_frames kare tutarliysa kabul et.
             if self._range_candidate is None or abs(d_new - self._range_candidate) > L.stability_tolerance_m:
                 self._range_candidate = d_new
                 self._range_candidate_count = 1
@@ -192,6 +228,7 @@ class FCSManager:
                 self._range_candidate_count += 1
             if self._range_candidate_count >= L.reacquire_frames:
                 self.last_valid_target_dist_m = d_new
+                self._range_has_reference = True
                 self._range_history.clear()
                 self._range_history.append(d_new)
                 self._range_candidate = None
@@ -199,19 +236,21 @@ class FCSManager:
                 self.range_jump = False
                 self.range_valid = True
                 self.range_stable = False
+                self.range_status = "valid"
             return
 
         # Normal, sicramasiz okuma.
         self._range_candidate = None
         self._range_candidate_count = 0
-        # Geometri yalnizca teshis/uyari; normal hedef okumasini engellemez.
         self.last_valid_target_dist_m = d_new
+        self._range_has_reference = True
         self._range_history.append(d_new)
         self.range_valid = True
         if len(self._range_history) >= L.stability_window:
             self.range_stable = (max(self._range_history) - min(self._range_history)) <= L.stability_tolerance_m
         else:
             self.range_stable = False
+        self.range_status = "stable" if self.range_stable else "valid"
 
     def _reset_lidar_range(self):
         """Hedef kaybinda filtre gecmisini sifirla; son gecerli mesafeyi koru."""
@@ -219,6 +258,8 @@ class FCSManager:
         self.range_stable = False
         self.range_jump = False
         self.range_geom_mismatch = False
+        self.range_status = "unavailable"
+        self._range_has_reference = False
         self._range_history.clear()
         self._range_candidate = None
         self._range_candidate_count = 0
@@ -267,8 +308,28 @@ class FCSManager:
     def target_conf(self):
         return getattr(self.selector, "last_target_conf", 0.0)
 
-    def select_best_target(self, boxes, center_x, center_y):
-        return self.selector.select_best_target(boxes, center_x, center_y)
+    def select_best_target(self, boxes, center_x, center_y, dt=None):
+        dt = self.p_controller.normalize_dt(dt)
+        self._image_center = (float(center_x), float(center_y))
+        fx = CONFIG.optics.compute_fx(int(center_x * 2))
+        fy = CONFIG.optics.compute_fy(int(center_y * 2))
+        if self.tracker.initialized:
+            self._frame_ego = self._compute_ego_pixel_shift(dt, fx, fy)
+        else:
+            self.ego_step_pan_deg = 0.0
+            self.ego_step_tilt_deg = 0.0
+            self.ego_var_x = 0.0
+            self.ego_var_y = 0.0
+            self._frame_ego = (0.0, 0.0)
+        self._ego_prepared = True
+
+        shift = (0.0, 0.0)
+        assoc_center = self.selector.association_center
+        if assoc_center is not None and (self.ego_step_pan_deg != 0.0 or self.ego_step_tilt_deg != 0.0):
+            point = np.asarray(assoc_center, dtype=float) - np.asarray(self._image_center, dtype=float)
+            shift = tuple(map(float, rotated_pixel_shift(point, self.ego_step_pan_deg, self.ego_step_tilt_deg, fx, fy)))
+
+        return self.selector.select_best_target(boxes, center_x, center_y, dt=dt, ego_shift=shift)
 
     def _update_tracking_and_ballistics(self, best_box, center_x, center_y, fx, fy, dt, is_firing, dist_cm):
         """Hedef acilari, menzil kapilama, ego-hareket, Kalman hiz kestirimi ve kilit durumunu gunceller."""
@@ -289,9 +350,18 @@ class FCSManager:
         self.last_tilt_err_deg = float(np.degrees(np.arctan(-(by - center_y) / max(float(fy), 1e-6))))
         angular_err = float(np.hypot(pan_deg, tilt_deg))
 
-        # 2. Menzil Kapilama (Range Gating)
-        self._update_lidar_range(dist_cm, is_firing, box_dim, fx, fy)
-        d_m = self.last_valid_target_dist_m
+        # 2. Menzil Kapilama (Range Gating) - kutu ici (off_target) dogrulamasi ve geometrik fallback ile
+        self._update_lidar_range(
+            dist_cm, is_firing, box_dim, fx, fy,
+            box_center=((x1 + x2) / 2.0, (y1 + y2) / 2.0),
+            frame_center=(center_x, center_y),
+        )
+        if self.range_valid or self._range_has_reference:
+            d_m = self.last_valid_target_dist_m
+        elif self.range_geom_m is not None:
+            d_m = self.range_geom_m
+        else:
+            d_m = self.last_valid_target_dist_m
         effective_dist_cm = float(d_m * 100.0)
         if CONFIG.ballistics.drag_enabled:
             _, t_flight_rk4 = compute_rk4_super_elevation(
@@ -311,17 +381,29 @@ class FCSManager:
         ))
         self.lead_time = lead_time
 
-        # 3. Ego-Motion (son motor komutunun 1. derece servo yaniti)
-        if self.tracker.initialized:
-            ego_dx, ego_dy = self._compute_ego_pixel_shift(dt, fx, fy)
+        # 3. Ego-Motion (son motor komutunun servo/backlash yaniti ve 3B pinhole kaymasi)
+        if not self._ego_prepared:
+            if self.tracker.initialized:
+                ego_dx, ego_dy = self._compute_ego_pixel_shift(dt, fx, fy)
+            else:
+                self.ego_step_pan_deg = 0.0
+                self.ego_step_tilt_deg = 0.0
+                self.ego_var_x = 0.0
+                self.ego_var_y = 0.0
+                ego_dx, ego_dy = 0.0, 0.0
         else:
-            self.ego_step_pan_deg = 0.0
-            self.ego_step_tilt_deg = 0.0
-            ego_dx = 0.0
-            ego_dy = 0.0
+            ego_dx, ego_dy = self._frame_ego
+        self._ego_prepared = False
 
         # 4. Kalman filtresi, balistik onleme ve yercekimi telafisi
-        _, _, kvx, kvy = self.tracker.update((float(bx), float(by)), dt=dt, ego_dx=ego_dx, ego_dy=ego_dy)
+        _, _, kvx, kvy = self.tracker.update(
+            (float(bx), float(by)),
+            dt=dt,
+            ego_dx=ego_dx,
+            ego_dy=ego_dy,
+            ego_var_x=self.ego_var_x,
+            ego_var_y=self.ego_var_y,
+        )
         self.target_velocity = np.array([kvx, kvy], dtype=float)
 
         d_lead_x = kvx * lead_time
@@ -408,11 +490,21 @@ class FCSManager:
             self.firing_lead_offset = np.array([0.0, 0.0], dtype=float)
             self.ego_step_pan_deg = 0.0
             self.ego_step_tilt_deg = 0.0
+            self.ego_var_x = 0.0
+            self.ego_var_y = 0.0
+            self.ego_model.reset(self.turret_pan_deg, self.turret_tilt_deg)
             self.prev_applied_lead_pan = 0.0
             self.prev_applied_lead_tilt = 0.0
         elif self.tracker.initialized:
-            ego_dx, ego_dy = self._compute_ego_pixel_shift(dt, fx, fy)
-            px, py, kvx, kvy = self.tracker.predict_only(dt=dt, ego_dx=ego_dx, ego_dy=ego_dy)
+            if not self._ego_prepared:
+                ego_dx, ego_dy = self._compute_ego_pixel_shift(dt, fx, fy)
+            else:
+                ego_dx, ego_dy = self._frame_ego
+            self._ego_prepared = False
+            px, py, kvx, kvy = self.tracker.predict_only(
+                dt=dt, ego_dx=ego_dx, ego_dy=ego_dy,
+                ego_var_x=self.ego_var_x, ego_var_y=self.ego_var_y,
+            )
             self.target_velocity = np.array([kvx, kvy], dtype=float)
             self.pred_center = np.array([px, py], dtype=float)
 
@@ -431,7 +523,8 @@ class FCSManager:
 
     def update(self, best_box, center_x, center_y, fx, fy, dt, is_firing=False, dist_cm=None, slew_factor=0.0):
         """Hedef kutusuna gore takip, balistik, kilit ve motor komut adimini (d_pan, d_tilt) hesaplar."""
-        dt = 0.033 if (dt is None or dt <= 0.0) else float(dt)
+        dt = self.p_controller.normalize_dt(dt)
+        self._image_center = (float(center_x), float(center_y))
         if best_box is not None:
             bx, by, pan_deg, tilt_deg, d_m = self._update_tracking_and_ballistics(
                 best_box, center_x, center_y, fx, fy, dt, is_firing, dist_cm
@@ -442,19 +535,7 @@ class FCSManager:
         return self._handle_target_lost(dt, fx=fx, fy=fy)
 
     def sync_turret_pose(self, pan_deg, tilt_deg, force=False):
-        """STM32 geri beslemesinden donanimsal (sensed) taret pozunu gunceller.
-
-        Cift durum mimarisi:
-        - Donanim acisi (hw_pan_deg / hw_tilt_deg) guncellenir.
-        - Ilk gecerli pakette veya force=True durumunda ic komut pozisyonu
-          donanima kilitlenir.
-        - Aktif hareket esnasinda kablo gecikmesinin ve potansiyometre kuantalama
-          gurultusunun devriye adimlarini ezmesini onlemek icin komut pozisyonu
-          her kare dogrudan ezilmez.
-        - Komut ve donanim arasindaki anlik takip farki (lag) olculur (>8.0 deg stall).
-        - Taret duraganken son komutlar kucukse yavas bir tamamlayici filtre (%2/kare)
-          uzun vadeli mekanik kaymalari yumusakca toparlar.
-        """
+        """STM32 geri beslemesinden donanimsal (sensed) taret pozunu gunceller."""
         if pan_deg is None or tilt_deg is None:
             return
 
@@ -464,6 +545,8 @@ class FCSManager:
         if force or not self._has_initial_hw_sync:
             self.turret_pan_deg = self.hw_pan_deg
             self.turret_tilt_deg = self.hw_tilt_deg
+            self.ego_model.reset(self.hw_pan_deg, self.hw_tilt_deg)
+            self._ego_prepared = False
             self._has_initial_hw_sync = True
             self.tracking_lag_deg = 0.0
             self.is_stalled = False
@@ -502,6 +585,11 @@ class FCSManager:
         self.is_stalled = False
         self.ego_step_pan_deg = 0.0
         self.ego_step_tilt_deg = 0.0
+        self.ego_var_x = 0.0
+        self.ego_var_y = 0.0
+        self._frame_ego = (0.0, 0.0)
+        self._ego_prepared = False
+        self.ego_model.reset()
         self.prev_applied_lead_pan = 0.0
         self.prev_applied_lead_tilt = 0.0
         self.tracker.reset()
