@@ -2,8 +2,8 @@
 Webots-only tuning parametreleri.
 
 Bu modul uretim config'ini degistirmez; sadece Webots controller'inda
-P kazanclarini ve max_output'u gecici olarak uygular.
-`webots/tuning_params.json` tarama araclariyla guncellenir.
+P ve RL kazanclarini / sarmalayici parametrelerini gecici olarak uygular.
+`webots/tuning_params.json` veya `WEBOTS_TUNING_JSON` tarama araclariyla guncellenir.
 """
 
 import json
@@ -14,12 +14,23 @@ from turret_fcs.config import CONFIG
 
 DEFAULTS = {
     "label": "baseline",
+    # P parametreleri
     "kp_pan": CONFIG.control.kp_pan,
     "kp_tilt": CONFIG.control.kp_tilt,
     "max_output_deg": CONFIG.control.max_output_deg,
     "alpha_filter": CONFIG.control.alpha_filter,
     "cmd_accel_pan_deg_s2": CONFIG.control.cmd_accel_pan_deg_s2,
     "cmd_accel_tilt_deg_s2": CONFIG.control.cmd_accel_tilt_deg_s2,
+    "in_flight_damping": CONFIG.control.in_flight_damping,
+    "deadband_pan_deg": CONFIG.control.deadband_pan_deg,
+    "deadband_tilt_deg": CONFIG.control.deadband_tilt_deg,
+    # RL spesifik parametreleri
+    "rl_deadband_pan_deg": CONFIG.rl.deadband_pan_deg,
+    "rl_deadband_tilt_deg": CONFIG.rl.deadband_tilt_deg,
+    "reversal_damping": CONFIG.rl.reversal_damping,
+    "taper_pan_deg": CONFIG.rl.taper_pan_deg,
+    "taper_tilt_deg": CONFIG.rl.taper_tilt_deg,
+    "d_err_ema_alpha": CONFIG.rl.d_err_ema_alpha,
 }
 
 LIMITS = {
@@ -29,26 +40,31 @@ LIMITS = {
     "alpha_filter": (0.50, 0.99),
     "cmd_accel_pan_deg_s2": (50.0, 1000.0),
     "cmd_accel_tilt_deg_s2": (50.0, 1000.0),
+    "in_flight_damping": (0.0, 1.20),
+    "deadband_pan_deg": (0.20, 1.50),
+    "deadband_tilt_deg": (0.20, 1.50),
+    "rl_deadband_pan_deg": (0.20, 1.50),
+    "rl_deadband_tilt_deg": (0.20, 1.50),
+    "reversal_damping": (0.10, 1.00),
+    "taper_pan_deg": (0.10, 3.50),
+    "taper_tilt_deg": (0.10, 3.50),
+    "d_err_ema_alpha": (0.10, 0.95),
 }
 
-# Profil bazli pan kazanc tavanlari. Webots kazanc taramasi (analysis/p_profile_sweep.py)
-# su sonucu verdi: ani yon degisimi iceren profiller kazanc artisina tolerans gostermiyor.
-#   standart sinus         : 0.30-0.32 kararli, 0.39+ limit cycle
-#   figure-8               : 0.32'ye kadar kararli
-#   hizli sinus            : 0.20-0.32 ayirt edilemez, 0.25 tavan
-#   step/hold              : 0.20 bile doyumda (%25), daha da dusurulur
-#   zigzag                 : 0.24-0.27 en iyi (kilit %89), 0.30+ limit cycle
 PROFILE_LIMITS = {
     "2": {"kp_pan": (0.10, 0.32)},
     "3": {"kp_pan": (0.10, 0.25)},
     "4": {"kp_pan": (0.08, 0.15)},
     "5": {"kp_pan": (0.10, 0.27)},
     "7": {"kp_pan": (0.10, 0.32)},
+    "8": {"kp_pan": (0.10, 0.35)},
 }
 
 
 def _profile_limits_for():
     """Aktif balon profilini okur ve profile ozel tarama sinirlarini dondurur."""
+    if os.environ.get("WEBOTS_IGNORE_PROFILE_LIMITS") == "1":
+        return {}
     profile = os.environ.get("WEBOTS_BALLOON_PROFILE")
     if profile is None:
         try:
@@ -87,9 +103,7 @@ def load_tuning():
         raw = {}
 
     profile_limits = _profile_limits_for()
-    for key in ("kp_pan", "kp_tilt", "max_output_deg", "alpha_filter", "cmd_accel_pan_deg_s2", "cmd_accel_tilt_deg_s2"):
-        if key not in LIMITS:
-            continue
+    for key in LIMITS:
         try:
             val = float(raw.get(key, DEFAULTS[key]))
         except (TypeError, ValueError):
@@ -106,18 +120,52 @@ def load_tuning():
 
 
 def apply_tuning(fcs, tuning):
-    """Tuning degerlerini PController'a uygular (uretim config'e yazmaz)."""
+    """Tuning degerlerini PController ve RLController'a uygular (uretim config'e yazmaz)."""
     p = fcs.p_controller
-    kp_pan_frame = float(tuning["kp_pan"])
-    kp_tilt_frame = float(tuning["kp_tilt"])
-
-    p.kp_frame_pan = kp_pan_frame
-    p.kp_frame_tilt = kp_tilt_frame
-    p.max_output = float(tuning["max_output_deg"])
+    if "kp_pan" in tuning:
+        p.kp_frame_pan = float(tuning["kp_pan"])
+    if "kp_tilt" in tuning:
+        p.kp_frame_tilt = float(tuning["kp_tilt"])
+    if "max_output_deg" in tuning:
+        p.max_output = float(tuning["max_output_deg"])
     if "alpha_filter" in tuning:
         p.alpha = float(tuning["alpha_filter"])
     if "cmd_accel_pan_deg_s2" in tuning:
         p.cmd_accel_pan_deg_s2 = float(tuning["cmd_accel_pan_deg_s2"])
     if "cmd_accel_tilt_deg_s2" in tuning:
         p.cmd_accel_tilt_deg_s2 = float(tuning["cmd_accel_tilt_deg_s2"])
+    if "in_flight_damping" in tuning:
+        p.in_flight_damping = float(tuning["in_flight_damping"])
+    if "deadband_pan_deg" in tuning:
+        p.deadband_pan = float(tuning["deadband_pan_deg"])
+    if "deadband_tilt_deg" in tuning:
+        p.deadband_tilt = float(tuning["deadband_tilt_deg"])
+
+    if fcs.rl_controller is not None:
+        rl = fcs.rl_controller
+        if "in_flight_damping" in tuning:
+            rl.in_flight_damping = float(tuning["in_flight_damping"])
+        if "rl_deadband_pan_deg" in tuning:
+            rl.deadband_pan_deg = float(tuning["rl_deadband_pan_deg"])
+        elif "deadband_pan_deg" in tuning and "rl_deadband_pan_deg" not in tuning:
+            rl.deadband_pan_deg = float(tuning["deadband_pan_deg"])
+
+        if "rl_deadband_tilt_deg" in tuning:
+            rl.deadband_tilt_deg = float(tuning["rl_deadband_tilt_deg"])
+        elif "deadband_tilt_deg" in tuning and "rl_deadband_tilt_deg" not in tuning:
+            rl.deadband_tilt_deg = float(tuning["deadband_tilt_deg"])
+
+        if "cmd_accel_pan_deg_s2" in tuning:
+            rl.cmd_accel_pan_deg_s2 = float(tuning["cmd_accel_pan_deg_s2"])
+        if "cmd_accel_tilt_deg_s2" in tuning:
+            rl.cmd_accel_tilt_deg_s2 = float(tuning["cmd_accel_tilt_deg_s2"])
+        if "reversal_damping" in tuning:
+            rl.reversal_damping = float(tuning["reversal_damping"])
+        if "taper_pan_deg" in tuning:
+            rl.taper_pan_deg = float(tuning["taper_pan_deg"])
+        if "taper_tilt_deg" in tuning:
+            rl.taper_tilt_deg = float(tuning["taper_tilt_deg"])
+        if "d_err_ema_alpha" in tuning:
+            rl.d_err_ema_alpha = float(tuning["d_err_ema_alpha"])
+
     return tuning

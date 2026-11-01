@@ -11,6 +11,7 @@ ekleyerek tam dogrulama (full verification) verisi saglar.
 
 import atexit
 import csv
+import os
 from datetime import datetime
 from pathlib import Path
 import numpy as np
@@ -55,7 +56,9 @@ class WebotsTelemetryLogger:
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
         self.session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
-        self.csv_path = self.output_dir / f"webots_telemetry_{self.session_id}.csv"
+        env_csv = os.environ.get("WEBOTS_TELEMETRY_PATH")
+        self.csv_path = Path(env_csv) if env_csv else (self.output_dir / f"webots_telemetry_{self.session_id}.csv")
+        self.csv_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Balon dugumunu bagla
         self.balloon_node = None

@@ -1,9 +1,18 @@
 {
-  "label": "p_optuna_tpe_v2.1",
-  "kp_pan": 0.2439,
-  "kp_tilt": 0.1487,
-  "alpha_filter": 0.8845,
-  "cmd_accel_pan_deg_s2": 472.67,
-  "cmd_accel_tilt_deg_s2": 242.91,
-  "max_output_deg": 1.50
+  "label": "multiprofile_optuna_v2.2",
+  "kp_pan": 0.3159,
+  "kp_tilt": 0.2155,
+  "in_flight_damping": 0.6242,
+  "deadband_pan_deg": 0.691,
+  "deadband_tilt_deg": 0.683,
+  "cmd_accel_pan_deg_s2": 601.74,
+  "cmd_accel_tilt_deg_s2": 255.19,
+  "alpha_filter": 0.9323,
+  "max_output_deg": 1.5,
+  "rl_deadband_pan_deg": 0.49,
+  "rl_deadband_tilt_deg": 0.656,
+  "reversal_damping": 0.7716,
+  "taper_pan_deg": 0.254,
+  "taper_tilt_deg": 0.801,
+  "d_err_ema_alpha": 0.3361
 }

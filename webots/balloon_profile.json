@@ -1,5 +1,5 @@
 {
-  "active_profile": 2,
+  "active_profile": 8,
   "profiles": [
     "0 STATIK",
     "1 YAVAS SINUS",
@@ -9,5 +9,6 @@
     "5 ZIGZAG",
     "6 TILT-ONLY",
     "7 FIGURE-8"
+    "8 KOSE GIRIS / ILK KILIT"
   ]
 }

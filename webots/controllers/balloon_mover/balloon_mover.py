@@ -1,11 +1,13 @@
 """
 ================================================================================
-MODUL: WEBOTS 3B HAREKETLI HEDEF KONTROLCUSU (BALLOON MOVER - v2.0)
+MODUL: WEBOTS 3B HAREKETLI HEDEF KONTROLCUSU (BALLOON MOVER - v2.1)
 ================================================================================
-Balonun 8 test hareketini, secilebilir profil ile uretir. Profil secimi:
-  - WEBOTS_BALLOON_PROFILE ortam degiskeni (0-7), veya
+Balonun 9 test hareketini, secilebilir profil ile uretir. Profil secimi:
+  - WEBOTS_BALLOON_PROFILE ortam degiskeni (0-8), veya
   - webots/balloon_profile.json icindeki active_profile.
-Profil degistirmeden ayni kosu tekrarlanir; Bayesian karsilastirmasi icin uygundur.
+Profil 8 (KOSE GIRIS / ILK KILIT): Her 5 saniyede bir tareti merkeze cekip
+takipciyi sifirlar ve balonu 4 farkli kadraj kosesinden (+/-17 deg pan,
++/-6 deg tilt) aniden sokarak ilk kilitlenme osilasyonunu test eder.
 ================================================================================
 """
 
@@ -27,7 +29,7 @@ start_x = initial_pos[0]
 fixed_y = initial_pos[1]
 fixed_z = initial_pos[2]
 
-# 0 statik, 1 yavas, 2 standart, 3 cevik, 4 step, 5 zigzag, 6 tilt-only, 7 figure-8
+# 0 statik, 1 yavas, 2 standart, 3 cevik, 4 step, 5 zigzag, 6 tilt-only, 7 figure-8, 8 kose giris
 PROFILES = {
     0: {"name": "STATIK", "kind": "static", "ax": 0.00, "az": 0.00, "wx": 1.0, "wz": 1.0},
     1: {"name": "YAVAS SINUS", "kind": "sine", "ax": 0.20, "az": 0.06, "wx": 0.50, "wz": 0.60},
@@ -37,19 +39,27 @@ PROFILES = {
     5: {"name": "ZIGZAG", "kind": "zigzag", "ax": 0.45, "az": 0.08, "wx": 0.55, "wz": 0.55},
     6: {"name": "TILT-ONLY", "kind": "tilt", "ax": 0.00, "az": 0.20, "wx": 1.0, "wz": 0.70},
     7: {"name": "FIGURE-8", "kind": "figure8", "ax": 0.40, "az": 0.14, "wx": 0.60, "wz": 1.20},
+    8: {"name": "KOSE GIRIS / ILK KILIT", "kind": "corner_entry", "ax": 0.60, "az": 0.20, "wx": 0.05, "wz": 0.02},
 }
+
+CORNER_SEQUENCE = (
+    (1.0, 1.0),    # Sag-Ust Kose
+    (-1.0, -1.0),  # Sol-Alt Kose
+    (-1.0, 1.0),   # Sol-Ust Kose
+    (1.0, -1.0),   # Sag-Alt Kose
+)
 
 
 def _profile_id():
     env = os.environ.get("WEBOTS_BALLOON_PROFILE")
     if env is not None:
         try:
-            return max(0, min(7, int(env)))
+            return max(0, min(8, int(env)))
         except ValueError:
             pass
     path = Path(__file__).resolve().parents[2] / "balloon_profile.json"
     try:
-        return max(0, min(7, int(json.loads(path.read_text(encoding="utf-8")).get("active_profile", 2))))
+        return max(0, min(8, int(json.loads(path.read_text(encoding="utf-8")).get("active_profile", 2))))
     except (OSError, ValueError, TypeError, json.JSONDecodeError):
         return 2
 
@@ -93,6 +103,27 @@ def target_offsets(t):
         return 0.0, az * math.sin(wz * t)
     if kind == "figure8":
         return ax * math.sin(wx * t), az * math.sin(2.0 * wx * t)
+    if kind == "corner_entry":
+        # 5.0 saniyelik periyotlarla 4 farkli kadraj kosesinden ilk giris testi:
+        # - 0.00 .. 3.40 s: Balon kosede belirir ve hafif iceri suzulur (Ilk Kilitlenme testi)
+        # - 3.40 .. 4.40 s: Balon merkeze cekilir (taret merkeze doner)
+        # - 4.40 .. 5.00 s: Balon kadraj disinda gizlenir (takipci sifirlanir, yeni koseye hazirlanir)
+        cycle_s = 5.0
+        idx = int(t // cycle_s) % len(CORNER_SEQUENCE)
+        local_t = t % cycle_s
+        sx, sz = CORNER_SEQUENCE[idx]
+        if local_t < 3.40:
+            # Koseden giris ve cok yavas iceri suzulme
+            drift = local_t
+            return sx * (ax - wx * drift), sz * (az - wz * drift)
+        if local_t < 4.40:
+            # Merkeze geri cekilme rampasi
+            ratio = 1.0 - (local_t - 3.40) / 1.00
+            end_x = sx * (ax - wx * 3.40)
+            end_z = sz * (az - wz * 3.40)
+            return end_x * ratio, end_z * ratio
+        # 0.60 s boyunca gizle (z = -20 m) ki FCS hedef kaybi yasayip sifirlansin
+        return None, None
     return 0.0, 0.0
 
 
@@ -106,6 +137,9 @@ sim_time = 0.0
 while robot.step(timestep) != -1:
     sim_time += timestep / 1000.0
     dx, dz = target_offsets(sim_time)
+    if dx is None or dz is None:
+        trans_field.setSFVec3f([0.0, 0.0, -20.0])
+        continue
     # El tutusu / hava akimi kaynakli kucuk, tekrarlanabilir tremor.
     dx += TREMOR_M * math.sin(5.3 * sim_time)
     dz += TREMOR_M * math.sin(7.7 * sim_time + 0.4)

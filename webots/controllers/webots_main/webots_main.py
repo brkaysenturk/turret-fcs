@@ -8,8 +8,8 @@ ince donanim adaptoru ve ana calistiricisidir.
 
 CALISMA ZAMANI SOZLESMESI:
 - Tesis Dogrulugu: Inkremental aci integrasyonu (theta += delta_theta), 46.9 deg/s limit (1.50 deg / 0.032 s).
-- Kontrolcu: Uretim FCSManager; varsayilan P (Kp=0.22/0.11).
-- RL: saf PPO, 11-64-64-2 NumPy politika; P harmani yok.
+- Kontrolcu: Uretim FCSManager; varsayilan P (Kp=0.2439/0.1487).
+- RL: saf PPO, 9-64-64-2 NumPy politika; P harmani yok.
 - Mod Yapisi: Ayrik 'P' veya 'RL'; WEBOTS_CONTROL_MODE ile baslangic modu secilir.
 - Zaman Tabani: Saf simulasyon zamani (sim_t = hw.get_time()).
 - Atis Emniyeti: 'Y' yalnizca kilitli, menzili dogrulanmis ve sekans bostayken atesler.
@@ -24,12 +24,18 @@ import os
 from pathlib import Path
 import cv2
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(line_buffering=True)
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(line_buffering=True)
+
 # Proje kokunu ve venv site-packages'i sys.path'e ekle (Webots dahili Python korumasi)
 project_root = Path(__file__).resolve().parents[3]
 turret_fcs_dir = project_root / "turret_fcs"
+controller_dir = Path(__file__).resolve().parent
 venv_site = project_root / "venv" / "Lib" / "site-packages"
 
-for p in [str(project_root), str(turret_fcs_dir), str(venv_site)]:
+for p in [str(project_root), str(turret_fcs_dir), str(controller_dir), str(venv_site)]:
     if p not in sys.path and Path(p).exists():
         sys.path.insert(0, p)
 
@@ -57,6 +63,10 @@ def main():
     hud = TurretHUD()
     presenter = HUDPresenter(hud)
     start_mode = os.environ.get("WEBOTS_CONTROL_MODE", "P").strip().upper()
+    headless = os.environ.get("WEBOTS_HEADLESS", "0").strip() == "1"
+    max_sim_time_env = os.environ.get("WEBOTS_MAX_SIM_TIME", "").strip()
+    max_sim_time = float(max_sim_time_env) if max_sim_time_env else None
+
     fcs = FCSManager(control_mode=start_mode if start_mode in ("P", "RL") else "P", patrol_enabled=False)
     engagement = EngagementManager()
     tuning = load_tuning()
@@ -74,7 +84,8 @@ def main():
     model = YOLO(str(model_path))
 
     WINDOW_NAME = "Turret FCS - Webots Digital Twin"
-    cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
+    if not headless:
+        cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
 
     # 3. Optik Kamera Parametreleri (Logitech C270 SSOT - CONFIG)
     fx = CONFIG.optics.compute_fx(hw.w_cam)
@@ -95,6 +106,7 @@ def main():
         color=(0, 215, 255),
     )
 
+    quit_requested = False
     try:
         while hw.step() != -1:
             frame_id += 1
@@ -148,7 +160,7 @@ def main():
             ballistics.update(sim_time=sim_t)
 
             # Hedef Secimi ve Algilama Titremesi (Gercek kameraya yakin simulasyon)
-            best_box = fcs.select_best_target(boxes, center_x, center_y)
+            best_box = fcs.select_best_target(boxes, center_x, center_y, dt=hw.dt)
             if best_box is not None:
                 jitter_px = float(os.environ.get("WEBOTS_BBOX_JITTER", "3.0"))
                 if jitter_px > 0.0:
@@ -195,60 +207,70 @@ def main():
                     tuning=tuning,
                 )
 
-            # Atis Hakem Geri Bildirimi (Webots Sanal Balistik Sonucu)
-            ballistic_hud_data = None
-            if eng_state.is_active:
-                res_txt, res_col = ballistics.get_hud_result(sim_t)
-                if res_txt:
-                    ballistic_hud_data = (res_txt, res_col)
-                elif eng_state.phase in ("FIRING", "RECOVER", "EVAL"):
-                    ballistic_hud_data = ("AWAITING IMPACT", (0, 215, 255))
-
-            # Standart Askeri HUD Sunumu
-            presenter.render(
-                frame=frame,
-                fcs=fcs,
-                engagement_state=eng_state,
-                target_box=best_box,
-                center_x=center_x,
-                center_y=center_y,
-                fps=fps,
-                dist_cm=dist_cm,
-                strength=strength,
-                is_estop=is_estop,
-                hit_feedback=ballistic_hud_data,
-            )
-
-            cv2.imshow(WINDOW_NAME, frame)
-            key = cv2.waitKey(1) & 0xFF
-
-            # Operator Klavye ve Etkilesim Haritasi
-            prev_estop = is_estop
-            should_exit, is_estop = process_key_event(
-                key_code=key,
-                fcs=fcs,
-                engagement=engagement,
-                is_estop=is_estop,
-                now=sim_t,
-                is_range_valid=(fcs.range_valid and fcs.range_stable),
-                is_flywheel_idle=launcher.is_idle_ready(),
-                log_event_cb=hud.log_event,
-            )
-            if should_exit:
-                hud.log_event("[SYS] WEBOTS SESSION TERMINATED", color=(180, 180, 180))
+            if max_sim_time is not None and sim_t >= max_sim_time:
+                quit_requested = True
                 break
-            if is_estop and not prev_estop:
-                launcher.stop_flywheels()
-                hw.set_neutral()
+
+            if not headless:
+                # Atis Hakem Geri Bildirimi (Webots Sanal Balistik Sonucu)
+                ballistic_hud_data = None
+                if eng_state.is_active:
+                    res_txt, res_col = ballistics.get_hud_result(sim_t)
+                    if res_txt:
+                        ballistic_hud_data = (res_txt, res_col)
+                    elif eng_state.phase in ("FIRING", "RECOVER", "EVAL"):
+                        ballistic_hud_data = ("AWAITING IMPACT", (0, 215, 255))
+
+                # Standart Askeri HUD Sunumu
+                presenter.render(
+                    frame=frame,
+                    fcs=fcs,
+                    engagement_state=eng_state,
+                    target_box=best_box,
+                    center_x=center_x,
+                    center_y=center_y,
+                    fps=fps,
+                    dist_cm=dist_cm,
+                    strength=strength,
+                    is_estop=is_estop,
+                    hit_feedback=ballistic_hud_data,
+                )
+
+                cv2.imshow(WINDOW_NAME, frame)
+                key = cv2.waitKey(1) & 0xFF
+
+                # Operator Klavye ve Etkilesim Haritasi
+                prev_estop = is_estop
+                should_exit, is_estop = process_key_event(
+                    key_code=key,
+                    fcs=fcs,
+                    engagement=engagement,
+                    is_estop=is_estop,
+                    now=sim_t,
+                    is_range_valid=(fcs.range_valid and fcs.range_stable),
+                    is_flywheel_idle=launcher.is_idle_ready(),
+                    log_event_cb=hud.log_event,
+                )
+                if should_exit:
+                    hud.log_event("[SYS] WEBOTS SESSION TERMINATED", color=(180, 180, 180))
+                    break
+                if is_estop and not prev_estop:
+                    launcher.stop_flywheels()
+                    hw.set_neutral()
 
     finally:
         if telemetry:
             telemetry.save()
         launcher.stop_flywheels()
         hw.set_neutral()
-        cv2.destroyAllWindows()
+        if not headless:
+            cv2.destroyAllWindows()
+        if quit_requested:
+            try:
+                hw.robot.simulationQuit(0)
+            except Exception:
+                pass
 
 
 if __name__ == "__main__":
     main()
-
