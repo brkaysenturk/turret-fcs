@@ -27,13 +27,78 @@ from turret_fcs.config import CONFIG  # noqa: E402
 ASSETS = ROOT / "docs" / "assets"
 FONT = "Segoe UI, Arial, sans-serif"
 
-INK = "#0f172a"
-MUTED = "#475569"
-WHITE = "#ffffff"
+INK = "#f8fafc"
+MUTED = "#cbd5e1"
+NOTE = "#94a3b8"
+BG = "#121212"
+
+DARK_CARD_FILLS = {
+    "#7c3aed": "#181228",  # mor (YOLO / RL / C270)
+    "#8b5cf6": "#181228",
+    "#2563eb": "#0c182c",  # mavi (LiDAR / Host)
+    "#1d4ed8": "#0c182c",
+    "#3b82f6": "#0c182c",
+    "#0ea5e9": "#071e2c",  # gok mavisi (Donanim / Kamera yakalama)
+    "#0e7490": "#071e2c",  # siyan (STM32)
+    "#0891b2": "#071e2c",
+    "#06b6d4": "#071e2c",
+    "#0f766e": "#07201c",  # teal (Hedef secici, devriye, Kalman, balistik)
+    "#10b981": "#07201c",
+    "#15803d": "#072118",  # yesil (Servolar, volan, solenoid eyleme)
+    "#16a34a": "#072118",
+    "#b45309": "#241606",  # kehribar / amber (Kilit yoneticisi, P kontrolcu, HUD)
+    "#f59e0b": "#241606",
+    "#ea580c": "#261306",  # turuncu (XL4015, motor hatti)
+    "#c2410c": "#261306",
+    "#f97316": "#261306",
+    "#dc2626": "#260c12",  # kirmizi (Firlatma, solenoid darbe, atis sekansi)
+    "#ef4444": "#260c12",
+    "#64748b": "#141c28",  # arduvaz / slate (Mod secimi, bekleme, devriye dongusu)
+}
+
+BRIGHT_ACCENTS = {
+    "#7c3aed": "#a78bfa",
+    "#8b5cf6": "#c4b5fd",
+    "#2563eb": "#60a5fa",
+    "#1d4ed8": "#60a5fa",
+    "#3b82f6": "#93c5fd",
+    "#0ea5e9": "#38bdf8",
+    "#0e7490": "#22d3ee",
+    "#0891b2": "#22d3ee",
+    "#06b6d4": "#67e8f9",
+    "#0f766e": "#34d399",
+    "#10b981": "#6ee7b7",
+    "#15803d": "#4ade80",
+    "#16a34a": "#86efac",
+    "#b45309": "#fbbf24",
+    "#f59e0b": "#fde68a",
+    "#ea580c": "#fb923c",
+    "#c2410c": "#fdba74",
+    "#f97316": "#fdba74",
+    "#dc2626": "#f87171",
+    "#ef4444": "#fca5a5",
+    "#64748b": "#94a3b8",
+}
+
+BORDER_ACCENTS = {
+    "#7c3aed": "#8b5cf6",
+    "#2563eb": "#3b82f6",
+    "#1d4ed8": "#3b82f6",
+    "#0ea5e9": "#0284c7",
+    "#0e7490": "#0891b2",
+    "#0891b2": "#0891b2",
+    "#0f766e": "#0d9488",
+    "#15803d": "#16a34a",
+    "#b45309": "#d97706",
+    "#ea580c": "#ea580c",
+    "#c2410c": "#ea580c",
+    "#dc2626": "#ef4444",
+    "#64748b": "#475569",
+}
 
 
 class SVG:
-    def __init__(self, width: int, height: int, background: str = "#f8fafc"):
+    def __init__(self, width: int, height: int, background: str = BG):
         self.width = width
         self.height = height
         self.background = background
@@ -74,7 +139,8 @@ class SVG:
         return f"arrow-{key}"
 
     def arrow(self, points, color, width=2.0, label=None, label_at=None, dash=None, curve=False):
-        marker = self.marker(color)
+        draw_color = BRIGHT_ACCENTS.get(color, color)
+        marker = self.marker(draw_color)
         dash_attr = f' stroke-dasharray="{dash}"' if dash else ""
         if curve and len(points) == 4:
             (x1, y1), (cx, cy), (x2, y2) = points
@@ -82,7 +148,7 @@ class SVG:
         else:
             path = "M " + " L ".join(f"{x} {y}" for x, y in points)
         self.add(
-            f'<path d="{path}" fill="none" stroke="{color}" stroke-width="{width}" '
+            f'<path d="{path}" fill="none" stroke="{draw_color}" stroke-width="{width}" '
             f'stroke-linecap="round" stroke-linejoin="round"{dash_attr} '
             f'marker-end="url(#{marker})"/>'
         )
@@ -91,28 +157,36 @@ class SVG:
 
     def badge(self, x, y, label, color):
         width = max(44, len(label) * 6.3 + 14)
-        self.rect(x - width / 2, y - 10, width, 20, "#ffffff", color, rx=5, sw=1.0)
-        self.text(x, y + 3.6, label, size=9.5, color=color, weight="bold", anchor="middle")
+        border_color = BRIGHT_ACCENTS.get(color, color)
+        self.rect(x - width / 2, y - 10, width, 20, "#111827", border_color, rx=5, sw=1.1)
+        self.text(x, y + 3.6, label, size=9.5, color=border_color, weight="bold", anchor="middle")
 
-    def card(self, x, y, w, h, title, subtitle, bullets, accent, fill="#ffffff", tag=None):
-        self.rect(x, y, w, h, fill, accent, rx=12, sw=1.6)
-        self.rect(x, y, 6, h, accent, "none", rx=3, sw=0)
+    def card(self, x, y, w, h, title, subtitle, bullets, accent, fill=None, tag=None):
+        card_fill = fill if fill is not None else DARK_CARD_FILLS.get(accent, "#141c28")
+        border_color = BORDER_ACCENTS.get(accent, accent)
+        accent_bar = BRIGHT_ACCENTS.get(accent, accent)
+        self.rect(x, y, w, h, card_fill, border_color, rx=12, sw=1.6)
+        self.rect(x, y, 6, h, accent_bar, "none", rx=3, sw=0)
         self.text(x + 18, y + 27, title, size=14.5, color=INK, weight="bold")
         if subtitle:
-            self.text(x + 18, y + 47, subtitle, size=10.5, color=accent, weight="bold")
+            sub_color = BRIGHT_ACCENTS.get(accent, accent)
+            self.text(x + 18, y + 47, subtitle, size=10.5, color=sub_color, weight="bold")
         start = y + 68 if subtitle else y + 52
         for index, bullet in enumerate(bullets):
             self.text(x + 18, start + index * 17, f"- {bullet}", size=11.2, color=MUTED)
         if tag:
-            self.text(x + w - 14, y + h - 10, tag, size=9, color="#94a3b8", anchor="end")
+            self.text(x + w - 14, y + h - 10, tag, size=9, color=NOTE, anchor="end")
 
     def band(self, x, y, w, h, title, color, fill):
-        self.rect(x, y, w, h, fill, color, rx=16, sw=1.3, dash="7 5")
-        self.text(x + 18, y + 27, title, size=13.5, color=color, weight="bold")
+        border_color = BORDER_ACCENTS.get(color, color)
+        title_color = BRIGHT_ACCENTS.get(color, color)
+        self.rect(x, y, w, h, fill, border_color, rx=16, sw=1.3, dash="7 5")
+        self.text(x + 18, y + 27, title, size=13.5, color=title_color, weight="bold")
 
     def diamond(self, cx, cy, w, h, lines, fill, stroke):
         points = f"{cx},{cy - h / 2} {cx + w / 2},{cy} {cx},{cy + h / 2} {cx - w / 2},{cy}"
-        self.add(f'<polygon points="{points}" fill="{fill}" stroke="{stroke}" stroke-width="1.5"/>')
+        border_color = BRIGHT_ACCENTS.get(stroke, stroke)
+        self.add(f'<polygon points="{points}" fill="{fill}" stroke="{border_color}" stroke-width="1.5"/>')
         start_y = cy - (len(lines) - 1) * 9
         self.lines(cx, start_y, lines, size=11.5, color=INK, leading=18, weight="bold", anchor="middle")
 
@@ -127,7 +201,7 @@ class SVG:
         body = "\n".join(self.parts)
         output = (
             '<?xml version="1.0" encoding="UTF-8"?>\n'
-            f'<svg xmlns="http://www.w3.org/2000/svg" width="{self.width}" height="{self.height}" '
+            f'<svg xmlns="http://www.w3.org/2000/svg" style="background: {self.background}; background-color: {self.background}; color-scheme: dark;" width="{self.width}" height="{self.height}" '
             f'viewBox="0 0 {self.width} {self.height}" role="img">\n'
             "<defs>\n" + "\n".join(marker_defs) + "\n</defs>\n"
             f'<rect width="{self.width}" height="{self.height}" fill="{self.background}"/>\n'
@@ -141,15 +215,15 @@ class SVG:
 def architecture() -> None:
     C = CONFIG
     svg = SVG(1600, 1120)
-    svg.text(40, 34, "Turret FCS - Guncel Sistem Mimarisi", size=21, color=INK, weight="bold")
+    svg.text(40, 34, "Turret FCS - Sistem Mimarisi", size=21, color=INK, weight="bold")
     svg.text(
         40, 57,
         "Kamera + LiDAR -> algilama -> kestirim/balistik -> P veya PPO kontrol -> STM32 -> servo/firlatma",
-        size=12, color=MUTED,
+        size=12, color=NOTE,
     )
 
     # Katman 1
-    svg.band(28, 78, 1544, 198, "1. ALGILAMA VE SENSOR FUSYONU", "#7c3aed", "#f5f3ff")
+    svg.band(28, 78, 1544, 198, "1. ALGILAMA VE SENSOR FUSYONU", "#7c3aed", "#141022")
     svg.card(
         48, 112, 462, 146,
         "Logitech C270 Kamera",
@@ -185,7 +259,7 @@ def architecture() -> None:
     )
 
     # Katman 2
-    svg.band(28, 296, 1544, 254, "2. FCS CEKIRDEGI - KARAR, KESTIRIM VE BALISTIK", "#0f766e", "#ecfdf5")
+    svg.band(28, 296, 1544, 254, "2. FCS CEKIRDEGI - KARAR, KESTIRIM VE BALISTIK", "#0f766e", "#071b18")
     svg.card(
         48, 330, 310, 104,
         "Hedef Secici",
@@ -244,7 +318,7 @@ def architecture() -> None:
     )
 
     # Katman 3
-    svg.band(28, 568, 1544, 230, "3. KONTROL KATMANI - IKI BAGIMSIZ MOD", "#b45309", "#fffbeb")
+    svg.band(28, 568, 1544, 230, "3. KONTROL KATMANI - IKI BAGIMSIZ MOD", "#b45309", "#1a1408")
     svg.card(
         48, 604, 470, 166,
         "P Kontrolcu - Hassas Kilit",
@@ -281,7 +355,7 @@ def architecture() -> None:
     )
 
     # Katman 4
-    svg.band(28, 818, 1544, 260, "4. GOMULU DENETLEYICI, EYLEME VE OPERATOR ARAYUZU", "#0e7490", "#ecfeff")
+    svg.band(28, 818, 1544, 260, "4. GOMULU DENETLEYICI, EYLEME VE OPERATOR ARAYUZU", "#0e7490", "#061b24")
     svg.card(
         48, 854, 448, 198,
         "STM32F401RE",
@@ -331,20 +405,25 @@ def architecture() -> None:
     svg.arrow([(1060, 532), (1060, 556), (1112, 556), (1112, 604)], "#7c3aed", label="11D gozlem", label_at=(1140, 574))
     svg.arrow([(542, 687), (518, 687)], "#b45309", label="P", label_at=(530, 673))
     svg.arrow([(864, 687), (890, 687)], "#7c3aed", label="RL", label_at=(877, 673))
-    svg.arrow([(283, 770), (283, 854)], "#b45309", label="adim", label_at=(283, 812))
-    svg.arrow([(1112, 770), (1112, 800), (350, 800), (350, 854)], "#7c3aed", label="adim", label_at=(700, 794))
-    svg.arrow([(1352, 532), (1352, 800), (1284, 800), (1284, 854)], "#b45309", label="kilit + p_hit", label_at=(1352, 760))
+    # Adim komutu: P Kontrolcu -> STM32 (Dikey dogrudan inis)
+    svg.arrow([(283, 770), (283, 854)], "#b45309", label="adim (P)", label_at=(283, 812))
+    # Adim komutu: RL Kontrolcu -> STM32 (Ust yatay kanal: y=790)
+    svg.arrow([(1112, 770), (1112, 790), (360, 790), (360, 854)], "#7c3aed", label="adim (RL)", label_at=(640, 780))
+    # STM32 -> Eyleyiciler (PWM ve tetik)
     svg.arrow([(496, 953), (516, 953)], "#dc2626", label="PWM", label_at=(506, 938))
-    svg.arrow([(1352, 770), (1352, 800), (1100, 800), (1100, 854)], "#0e7490", label="UART telemetri", label_at=(1230, 794))
+    # UART Telemetrisi: STM32 -> HUD (Orta yatay kanal: y=814)
+    svg.arrow([(448, 854), (448, 814), (1100, 814), (1100, 854)], "#0e7490", label="UART telemetri", label_at=(774, 804))
+    # Kilit & Vurus Olasiligi: Kilit Yoneticisi -> HUD (Alt yatay kanal: y=836)
+    svg.arrow([(1352, 532), (1352, 836), (1284, 836), (1284, 854)], "#b45309", label="kilit + p_hit", label_at=(1318, 826))
 
-    svg.text(40, 1104, "Not: Tum sayisal degerler turret_fcs/config.py (CONFIG) ile ayni kaynaktan gelir.", size=10.5, color=MUTED)
+    svg.text(40, 1104, "Not: Tum sayisal degerler turret_fcs/config.py (CONFIG) ile ayni kaynaktan gelir.", size=10.5, color=NOTE)
     svg.save(ASSETS / "turret_fcs_architecture.svg")
 
 
 def flowchart() -> None:
     svg = SVG(1180, 1860)
-    svg.text(40, 36, "Turret FCS - Guncel Calisma Akisi", size=21, color=INK, weight="bold")
-    svg.text(40, 58, "Her kamera karesinde tekrarlanan algilama, takip, kilit ve atis zinciri", size=12, color=MUTED)
+    svg.text(40, 36, "Turret FCS - Calisma Akisi", size=21, color=INK, weight="bold")
+    svg.text(40, 58, "Her kamera karesinde tekrarlanan algilama, takip, kilit ve atis zinciri", size=12, color=NOTE)
 
     center = 590
     width = 560
@@ -354,8 +433,8 @@ def flowchart() -> None:
         svg.card(left, y, width, h, title, None, bullets, color)
 
     # Baslangic
-    svg.rect(390, 84, 400, 52, "#ecfdf5", "#059669", rx=26, sw=1.6)
-    svg.text(center, 116, "BASLANGIC: sistem ve modeller yuklenir", size=13, color="#065f46", weight="bold", anchor="middle")
+    svg.rect(390, 84, 400, 52, "#062e24", "#059669", rx=26, sw=1.6)
+    svg.text(center, 116, "BASLANGIC: sistem ve modeller yuklenir", size=13, color="#6ee7b7", weight="bold", anchor="middle")
 
     step(166, 86, "1. Donanim ve model baslatma", [
         "Kamera, STM32, LiDAR ve YOLO agirliklari hazirlanir",
@@ -369,7 +448,7 @@ def flowchart() -> None:
         "Arama / kilitli takip esikleri uygulanir",
     ], "#7c3aed")
 
-    svg.diamond(center, 540, 300, 104, ["4. Guvenilir", "hedef var mi?"], "#f5f3ff", "#7c3aed")
+    svg.diamond(center, 540, 300, 104, ["4. Guvenilir", "hedef var mi?"], "#1c142c", "#7c3aed")
     svg.arrow([(590, 252), (590, 282)], "#0ea5e9")
     svg.arrow([(590, 356), (590, 386)], "#0ea5e9")
     svg.arrow([(590, 470), (590, 488)], "#7c3aed")
@@ -382,7 +461,7 @@ def flowchart() -> None:
         "Yeni karede tekrar ara",
     ], "#b45309", tag="patrol_generator.py")
     svg.arrow([(440, 540), (364, 540)], "#b45309", label="HAYIR", label_at=(402, 526))
-    svg.arrow([(209, 492), (209, 330), (300, 330)], "#b45309", dash="6 5", label="döngü", label_at=(209, 410))
+    svg.arrow([(250, 492), (250, 310), (310, 310)], "#b45309", dash="6 5", label="döngü", label_at=(250, 410))
 
     # Hedef var -> secim ve kestirim
     step(620, 78, "5. Hedef secimi ve kimlik kapisi", [
@@ -405,20 +484,20 @@ def flowchart() -> None:
     svg.arrow([(590, 816), (590, 842)], "#0f766e")
     svg.arrow([(590, 928), (590, 954)], "#0f766e")
 
-    svg.diamond(center, 1100, 320, 112, ["9. Kilit", "dogrulandi mi?"], "#fffbeb", "#b45309")
+    svg.diamond(center, 1100, 320, 112, ["9. Kilit", "dogrulandi mi?"], "#251708", "#b45309")
     svg.arrow([(590, 1040), (590, 1044)], "#b45309")
     svg.arrow([(430, 1100), (355, 1100)], "#b45309", label="HAYIR", label_at=(392, 1086))
     svg.card(44, 1052, 300, 112, "Takibe devam", None, [
         "Kilit sayaci azaltilir",
         "Yeni karede tekrar dene",
     ], "#64748b")
-    svg.arrow([(194, 1052), (194, 330), (300, 330)], "#64748b", dash="6 5", label="döngü", label_at=(194, 690))
+    svg.arrow([(194, 1052), (194, 325), (310, 325)], "#64748b", dash="6 5", label="döngü", label_at=(194, 780))
 
     step(1214, 80, "10. Kilitli hedef - atis izni", [
         "HUD: LEAD ibresi, kilit bari, vurus olasiligi",
         "Operator [Y] ile atisi onaylar; [N] birakir",
     ], "#b45309")
-    svg.diamond(center, 1390, 300, 104, ["11. [Y] ile", "atis onayi?"], "#fffbeb", "#b45309")
+    svg.diamond(center, 1390, 300, 104, ["11. [Y] ile", "atis onayi?"], "#251708", "#b45309")
     svg.arrow([(590, 1156), (590, 1214)], "#b45309", label="EVET", label_at=(620, 1188))
     svg.arrow([(590, 1294), (590, 1338)], "#b45309")
     svg.arrow([(440, 1390), (360, 1390)], "#64748b", label="HAYIR", label_at=(400, 1376))
@@ -435,26 +514,26 @@ def flowchart() -> None:
     svg.arrow([(590, 1442), (590, 1476)], "#b45309", label="EVET", label_at=(620, 1460))
     svg.arrow([(590, 1592), (590, 1632)], "#dc2626")
 
-    svg.rect(330, 1632, 520, 64, "#f1f5f9", "#64748b", rx=16, sw=1.4)
+    svg.rect(330, 1632, 520, 64, "#151e2e", "#475569", rx=16, sw=1.4)
     svg.text(center, 1660, "Yeni kare / yeni hedef: 2. adima don", size=13, color=INK, weight="bold", anchor="middle")
-    svg.text(center, 1680, "E-STOP her asamada onceliklidir", size=11, color="#dc2626", weight="bold", anchor="middle")
-    svg.arrow([(330, 1664), (260, 1664), (260, 330), (300, 330)], "#64748b", dash="6 5", label="döngü", label_at=(260, 980))
+    svg.text(center, 1680, "E-STOP her asamada onceliklidir", size=11, color="#f87171", weight="bold", anchor="middle")
+    svg.arrow([(330, 1664), (280, 1664), (280, 340), (310, 340)], "#64748b", dash="6 5", label="döngü", label_at=(280, 1550))
 
-    svg.text(40, 1818, "Kilit olcutu: 10 kare kararlilik + dinamik esik + histerezis. Atis yalnizca kilitli, menzili dogrulanmis ve sekans bosken tetiklenir.", size=10.5, color=MUTED)
+    svg.text(40, 1818, "Kilit olcutu: 10 kare kararlilik + dinamik esik + histerezis. Atis yalnizca kilitli, menzili dogrulanmis ve sekans bosken tetiklenir.", size=10.5, color=NOTE)
     svg.save(ASSETS / "turret_fcs_flowchart.svg")
 
 
 def hardware() -> None:
-    svg = SVG(1460, 900, background="#ffffff")
+    svg = SVG(1460, 900)
     svg.text(40, 38, "Turret FCS - Guc, Haberlesme ve Eyleme Mimarisi", size=21, color=INK, weight="bold")
-    svg.text(40, 60, "12 V ana hat, 6 V motor hatti, izole solenoid surucusu ve STM32 cevre birimleri", size=12, color=MUTED)
+    svg.text(40, 60, "12 V ana hat, 6 V motor hatti, izole solenoid surucusu ve STM32 cevre birimleri", size=12, color=NOTE)
 
     # Guc katmani
-    svg.rect(28, 84, 660, 252, "#fff7ed", "#c2410c", rx=16, sw=1.3, dash="7 5")
-    svg.text(46, 110, "GUC DAGITIMI", size=13, color="#9a3412", weight="bold")
+    svg.rect(28, 84, 660, 264, "#1f1208", "#c2410c", rx=16, sw=1.3, dash="7 5")
+    svg.text(46, 110, "GUC DAGITIMI", size=13, color="#fdba74", weight="bold")
     svg.card(48, 128, 236, 88, "12 V DC Adaptor", "Ana guc girisi", ["KLD022 / 12 V hatti"], "#c2410c")
     svg.card(320, 128, 300, 88, "XL4015 DC-DC", "12 V -> 6 V buck", ["1000 uF dusuk ESR filtre"], "#ea580c")
-    svg.card(48, 236, 572, 78, "6 V motor hatti", "Servolar ve volan motorlari", [
+    svg.card(48, 236, 572, 96, "6 V motor hatti", "Servolar ve volan motorlari", [
         "Pan / tilt servolar + cift FF-180 volan",
         "Ortak ground yildiz noktasinda birlestirilir",
     ], "#ea580c")
@@ -472,8 +551,8 @@ def hardware() -> None:
     ], "#0f766e")
 
     # Haberlesme / islem
-    svg.rect(28, 360, 1384, 192, "#eff6ff", "#1d4ed8", rx=16, sw=1.3, dash="7 5")
-    svg.text(46, 386, "HABERLESME VE ISLEM", size=13, color="#1e40af", weight="bold")
+    svg.rect(28, 360, 1384, 192, "#091428", "#1d4ed8", rx=16, sw=1.3, dash="7 5")
+    svg.text(46, 386, "HABERLESME VE ISLEM", size=13, color="#93c5fd", weight="bold")
     svg.card(48, 404, 350, 122, "PC / Host", "Python 3.10-3.12", [
         "YOLOv8n + ByteTrack",
         "Kalman, balistik, P / RL",
@@ -495,8 +574,8 @@ def hardware() -> None:
     ], "#7c3aed")
 
     # Eyleme
-    svg.rect(28, 584, 1384, 246, "#f0fdf4", "#15803d", rx=16, sw=1.3, dash="7 5")
-    svg.text(46, 610, "EYLEME", size=13, color="#166534", weight="bold")
+    svg.rect(28, 584, 1384, 246, "#071e14", "#15803d", rx=16, sw=1.3, dash="7 5")
+    svg.text(46, 610, "EYLEME", size=13, color="#86efac", weight="bold")
     svg.card(48, 630, 330, 174, "Pan / Tilt Servolar", "MG996R / DS3218", [
         "50 Hz PWM (TIM3 CH1 / CH2)",
         "Pan +/-75 derece, tilt +/-25 derece",
@@ -523,24 +602,37 @@ def hardware() -> None:
     ], "#b45309")
 
     # Oklar: guc
+    # 1) 12 V DC Adaptor -> XL4015 buck girisi
     svg.arrow([(284, 172), (320, 172)], "#c2410c", label="12 V", label_at=(302, 158))
-    svg.arrow([(470, 216), (470, 236)], "#ea580c", label="6 V", label_at=(486, 228))
-    svg.arrow([(284, 172), (284, 292), (48, 292)], "#c2410c", label="12 V", label_at=(220, 286))
-    svg.arrow([(330, 292), (700, 292), (700, 276)], "#c2410c", label="12 V darbe", label_at=(600, 286))
+    # 2) XL4015 buck cikisi -> 6 V motor hatti
+    svg.arrow([(470, 216), (470, 236)], "#ea580c", label="6 V", label_at=(486, 226))
+    # 3) 12 V DC Adaptor -> Solenoid Surucu MOSFET hatti
+    svg.arrow([(284, 140), (710, 140)], "#c2410c", label="12 V", label_at=(497, 126))
+    # 4) 6 V motor hatti -> Pan/Tilt Servolar ve Cift Volan beslemesi
+    svg.arrow([(213, 332), (213, 630)], "#ea580c", label="6 V servo", label_at=(213, 365))
+    svg.arrow([(573, 332), (573, 630)], "#ea580c", label="6 V volan", label_at=(573, 365))
 
     # Oklar: haberlesme
-    svg.arrow([(398, 465), (430, 465)], "#1d4ed8", label="USB", label_at=(414, 450))
-    svg.arrow([(790, 465), (822, 465)], "#0891b2", label="UART", label_at=(806, 450))
-    svg.arrow([(1204, 465), (1050, 465), (1050, 526), (630, 526), (630, 404)], "#7c3aed", dash="6 5", label="USB video", label_at=(1000, 520))
+    # 5) PC / Host <-> STM32 cift yonlu UART (USB-CDC)
+    svg.arrow([(398, 465), (430, 465)], "#1d4ed8", label="USB UART", label_at=(414, 450))
+    # 6) TF-Luna LiDAR -> STM32 USART1 (100 Hz mesafe verisi)
+    svg.arrow([(822, 465), (790, 465)], "#0891b2", label="USART1", label_at=(806, 450))
+    # 7) C270 Kamera -> PC / Host (USB video, dogrudan bilgisayara)
+    svg.arrow([(1204, 465), (1190, 465), (1190, 385), (223, 385), (223, 404)], "#7c3aed", dash="6 5", label="USB video", label_at=(707, 372))
 
-    # Oklar: eyleme
-    svg.arrow([(630, 526), (630, 590), (213, 590), (213, 630)], "#1d4ed8", label="50 Hz PWM", label_at=(470, 584))
-    svg.arrow([(700, 526), (700, 590), (573, 590), (573, 630)], "#15803d", label="PWM + EN", label_at=(620, 584))
-    svg.arrow([(860, 526), (860, 590), (918, 590), (918, 630)], "#dc2626", label="tetik", label_at=(890, 584))
-    svg.arrow([(918, 720), (1000, 720), (1000, 292), (710, 292)], "#dc2626", label="12 V darbe", label_at=(1000, 600))
-    svg.arrow([(1350, 630), (1350, 560), (1210, 560), (1210, 526)], "#b45309", dash="6 5", label="HUD", label_at=(1350, 580))
+    # Oklar: eyleme ve arayuz
+    # 8) STM32 -> Pan/Tilt Servolar (50 Hz PWM)
+    svg.arrow([(490, 526), (490, 580), (250, 580), (250, 630)], "#1d4ed8", label="50 Hz PWM", label_at=(370, 568))
+    # 9) STM32 -> Cift Volan (PWM + Enable)
+    svg.arrow([(610, 526), (610, 630)], "#15803d", label="PWM + EN", label_at=(610, 580))
+    # 10) STM32 -> Solenoid Surucu (Optokuplor tetik sinyali)
+    svg.arrow([(730, 404), (730, 210), (710, 210)], "#dc2626", label="tetik", label_at=(745, 307))
+    # 11) Solenoid Surucu -> Solenoid (JF-0530B bobinine 12 V darbe)
+    svg.arrow([(880, 336), (880, 630)], "#dc2626", label="12 V darbe", label_at=(880, 580))
+    # 12) Operator Arayuzu (HUD & Klavye) <-> PC / Host (goruntu, kilit ve tus girdileri)
+    svg.arrow([(1246, 630), (1246, 545), (350, 545), (350, 526)], "#b45309", dash="6 5", label="HUD / Tus", label_at=(798, 532))
 
-    svg.text(40, 872, "Not: Sinyal hatlari ile guc hatlari ayri tutulur; solenoid ve volan donuslerinde ortak ground tek noktada toplanir.", size=10.5, color=MUTED)
+    svg.text(40, 872, "Not: Sinyal hatlari ile guc hatlari ayri tutulur; solenoid ve volan donuslerinde ortak ground tek noktada toplanir.", size=10.5, color=NOTE)
     svg.save(ASSETS / "turret_fcs_hardware.svg")
 
 

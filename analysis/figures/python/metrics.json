@@ -1,32 +1,32 @@
 {
   "system": "Turret FCS",
-  "timestamp": "2026-10-28",
+  "timestamp": "2026-11-02",
   "control": {
-    "kp_pan_frame": 0.1953,
-    "kp_tilt_frame": 0.1544,
-    "kv_pan_continuous_1_s": 5.859,
-    "kv_tilt_continuous_1_s": 4.632000000000001,
-    "deadband_pan_deg": 0.85,
-    "deadband_tilt_deg": 0.95,
-    "taper_pan_deg": 1.6,
-    "taper_tilt_deg": 1.6,
+    "kp_pan_frame": 0.3159,
+    "kp_tilt_frame": 0.2155,
+    "kv_pan_continuous_1_s": 9.477,
+    "kv_tilt_continuous_1_s": 6.465,
+    "deadband_pan_deg": 0.691,
+    "deadband_tilt_deg": 0.683,
+    "taper_pan_deg": 0.254,
+    "taper_tilt_deg": 0.801,
     "max_output_frame_deg": 1.5,
     "max_slew_velocity_deg_s": 45.0,
     "max_step_tilt_deg": 0.75,
     "max_slew_velocity_tilt_deg_s": 22.5,
-    "crossover_freq_w_gc_rad_s": 5.77,
-    "phase_margin_pm_deg": 50.4,
+    "crossover_freq_w_gc_rad_s": 9.14,
+    "phase_margin_pm_deg": 27.5,
     "phase_crossover_w_pc_rad_s": 13.25,
-    "gain_margin_gm_db": 7.7,
+    "gain_margin_gm_db": 3.5,
     "bode_theoretical_exact_model": {
       "model_description": "Analitik L(s): exact pure delay (90.0 ms) + 1. derece servo lag (tau = 30.0 ms); 1000 yerine 40000 nokta ile cozuldu",
-      "crossover_freq_w_gc_rad_s": 5.77,
-      "phase_margin_pm_deg": 50.4,
+      "crossover_freq_w_gc_rad_s": 9.14,
+      "phase_margin_pm_deg": 27.5,
       "phase_crossover_w_pc_rad_s": 13.25,
-      "gain_margin_gm_db": 7.7
+      "gain_margin_gm_db": 3.5
     },
     "settling_time_20deg_s": 0.49,
-    "overshoot_pct": 6.9
+    "overshoot_pct": 14.5
   },
   "ballistics": {
     "projectile_speed_v0_mps": 10.0,
@@ -44,9 +44,9 @@
   },
   "settling": {
     "pan_settle_s_20deg": 0.49,
-    "tilt_settle_s_20deg": 0.94,
-    "pan_overshoot_pct_20deg": 6.9,
-    "pan_ss_error_deg": -0.7,
-    "tilt_ss_error_deg": 0.27
+    "tilt_settle_s_20deg": 0.92,
+    "pan_overshoot_pct_20deg": 14.5,
+    "pan_ss_error_deg": 0.57,
+    "tilt_ss_error_deg": -0.62
   }
 }

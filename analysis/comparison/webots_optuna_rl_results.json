@@ -1,0 +1,442 @@
+{
+  "mode": "RL",
+  "accepted": true,
+  "baseline_cost": 71.2266885633539,
+  "best_cost": 43.77094872717866,
+  "best_trial": 12,
+  "baseline_params": {
+    "in_flight_damping": 0.35,
+    "reversal_damping": 0.2889,
+    "taper_pan_deg": 1.6,
+    "taper_tilt_deg": 1.6,
+    "deadband_pan_deg": 0.85,
+    "deadband_tilt_deg": 0.95,
+    "d_err_ema_alpha": 0.4386
+  },
+  "best_params": {
+    "in_flight_damping": 0.48620657523022837,
+    "reversal_damping": 0.5426670386765786,
+    "taper_pan_deg": 0.6346347366141073,
+    "taper_tilt_deg": 0.5642583768395746,
+    "deadband_pan_deg": 0.6734911982856392,
+    "deadband_tilt_deg": 0.969863393332029,
+    "d_err_ema_alpha": 0.27088760306229126
+  },
+  "corner_profile8_baseline": {
+    "frames": 398,
+    "tail_rms_deg": 2.374,
+    "overall_rms_deg": 7.692,
+    "max_overshoot_deg": 1.626,
+    "lock_pct": 74.67,
+    "flip_pct": 0.64,
+    "settling_jerk_deg": 0.0136,
+    "cost": 56.981
+  },
+  "corner_profile8_best": {
+    "frames": 398,
+    "tail_rms_deg": 2.137,
+    "overall_rms_deg": 7.57,
+    "max_overshoot_deg": 1.261,
+    "lock_pct": 91.11,
+    "flip_pct": 0.76,
+    "settling_jerk_deg": 0.0159,
+    "cost": 35.017
+  },
+  "figure8_profile7_baseline": {
+    "frames": 375,
+    "tail_rms_deg": 3.149,
+    "overall_rms_deg": 3.149,
+    "max_overshoot_deg": 0.0,
+    "lock_pct": 17.07,
+    "flip_pct": 1.1,
+    "settling_jerk_deg": 0.0293,
+    "cost": 43.583
+  },
+  "figure8_profile7_best": {
+    "frames": 375,
+    "tail_rms_deg": 2.861,
+    "overall_rms_deg": 2.861,
+    "max_overshoot_deg": 0.0,
+    "lock_pct": 58.67,
+    "flip_pct": 1.35,
+    "settling_jerk_deg": 0.0282,
+    "cost": 14.535
+  },
+  "trials": [
+    {
+      "trial": 0,
+      "cost": 71.2266885633539,
+      "params": {
+        "in_flight_damping": 0.35,
+        "reversal_damping": 0.2889,
+        "taper_pan_deg": 1.6,
+        "taper_tilt_deg": 1.6,
+        "deadband_pan_deg": 0.85,
+        "deadband_tilt_deg": 0.95,
+        "d_err_ema_alpha": 0.4386
+      },
+      "metrics": {
+        "prof_8": {
+          "frames": 398,
+          "tail_rms_deg": 2.374,
+          "overall_rms_deg": 7.692,
+          "max_overshoot_deg": 1.626,
+          "lock_pct": 74.67,
+          "flip_pct": 0.64,
+          "settling_jerk_deg": 0.0136,
+          "cost": 56.981
+        }
+      }
+    },
+    {
+      "trial": 1,
+      "cost": 53.90051359045636,
+      "params": {
+        "in_flight_damping": 0.5,
+        "reversal_damping": 0.5,
+        "taper_pan_deg": 0.7,
+        "taper_tilt_deg": 0.7,
+        "deadband_pan_deg": 0.75,
+        "deadband_tilt_deg": 0.85,
+        "d_err_ema_alpha": 0.45
+      },
+      "metrics": {
+        "prof_8": {
+          "frames": 398,
+          "tail_rms_deg": 2.18,
+          "overall_rms_deg": 7.605,
+          "max_overshoot_deg": 1.382,
+          "lock_pct": 91.11,
+          "flip_pct": 2.79,
+          "settling_jerk_deg": 0.0151,
+          "cost": 43.12
+        }
+      }
+    },
+    {
+      "trial": 2,
+      "cost": 50.057596281319626,
+      "params": {
+        "in_flight_damping": 0.4218944156962392,
+        "reversal_damping": 0.7241865342440112,
+        "taper_pan_deg": 0.6352996296472173,
+        "taper_tilt_deg": 0.992952955352712,
+        "deadband_pan_deg": 0.6631561220061238,
+        "deadband_tilt_deg": 0.844192566551123,
+        "d_err_ema_alpha": 0.38128986715092616
+      },
+      "metrics": {
+        "prof_8": {
+          "frames": 398,
+          "tail_rms_deg": 2.132,
+          "overall_rms_deg": 7.6,
+          "max_overshoot_deg": 1.342,
+          "lock_pct": 91.11,
+          "flip_pct": 2.11,
+          "settling_jerk_deg": 0.0154,
+          "cost": 40.046
+        }
+      }
+    },
+    {
+      "trial": 3,
+      "cost": 66.13251445074143,
+      "params": {
+        "in_flight_damping": 0.36100621601410876,
+        "reversal_damping": 0.44297748516620616,
+        "taper_pan_deg": 1.2609520289415106,
+        "taper_tilt_deg": 0.7269283676439668,
+        "deadband_pan_deg": 0.9254444489387267,
+        "deadband_tilt_deg": 0.9202113485410344,
+        "d_err_ema_alpha": 0.5669626499971601
+      },
+      "metrics": {
+        "prof_8": {
+          "frames": 398,
+          "tail_rms_deg": 2.283,
+          "overall_rms_deg": 7.642,
+          "max_overshoot_deg": 1.626,
+          "lock_pct": 89.78,
+          "flip_pct": 3.47,
+          "settling_jerk_deg": 0.0153,
+          "cost": 52.906
+        }
+      }
+    },
+    {
+      "trial": 4,
+      "cost": 99.08344474097937,
+      "params": {
+        "in_flight_damping": 0.7912457859480791,
+        "reversal_damping": 0.7057859296407674,
+        "taper_pan_deg": 1.4668087087371373,
+        "taper_tilt_deg": 1.3895904273040993,
+        "deadband_pan_deg": 0.8789057627984519,
+        "deadband_tilt_deg": 0.8876314724431238,
+        "d_err_ema_alpha": 0.5358916561442416
+      },
+      "metrics": {
+        "prof_8": {
+          "frames": 398,
+          "tail_rms_deg": 2.438,
+          "overall_rms_deg": 7.69,
+          "max_overshoot_deg": 1.869,
+          "lock_pct": 48.44,
+          "flip_pct": 0.54,
+          "settling_jerk_deg": 0.0116,
+          "cost": 79.267
+        }
+      }
+    },
+    {
+      "trial": 5,
+      "cost": 65.6287851007599,
+      "params": {
+        "in_flight_damping": 0.163824665207214,
+        "reversal_damping": 0.5835537497338787,
+        "taper_pan_deg": 0.6014812861686364,
+        "taper_tilt_deg": 1.1204189789569012,
+        "deadband_pan_deg": 0.5946085753053418,
+        "deadband_tilt_deg": 0.6520096879733229,
+        "d_err_ema_alpha": 0.41504928956123643
+      },
+      "metrics": {
+        "prof_8": {
+          "frames": 398,
+          "tail_rms_deg": 2.106,
+          "overall_rms_deg": 7.606,
+          "max_overshoot_deg": 1.707,
+          "lock_pct": 90.67,
+          "flip_pct": 3.58,
+          "settling_jerk_deg": 0.0184,
+          "cost": 52.503
+        }
+      }
+    },
+    {
+      "trial": 6,
+      "cost": 62.002182917477015,
+      "params": {
+        "in_flight_damping": 0.497955757902996,
+        "reversal_damping": 0.6769552449834079,
+        "taper_pan_deg": 1.1019914090135932,
+        "taper_tilt_deg": 1.233396430126158,
+        "deadband_pan_deg": 0.6556381372960248,
+        "deadband_tilt_deg": 0.8431851840090592,
+        "d_err_ema_alpha": 0.575151837981702
+      },
+      "metrics": {
+        "prof_8": {
+          "frames": 398,
+          "tail_rms_deg": 2.227,
+          "overall_rms_deg": 7.621,
+          "max_overshoot_deg": 1.423,
+          "lock_pct": 80.44,
+          "flip_pct": 2.09,
+          "settling_jerk_deg": 0.0137,
+          "cost": 49.602
+        }
+      }
+    },
+    {
+      "trial": 7,
+      "cost": 54.31548483713228,
+      "params": {
+        "in_flight_damping": 0.6336050442976342,
+        "reversal_damping": 0.4330790196991924,
+        "taper_pan_deg": 0.39069838360682807,
+        "taper_tilt_deg": 1.2868043623487972,
+        "deadband_pan_deg": 0.7551925117292675,
+        "deadband_tilt_deg": 0.7105785080535985,
+        "d_err_ema_alpha": 0.42264411156163917
+      },
+      "metrics": {
+        "prof_8": {
+          "frames": 398,
+          "tail_rms_deg": 2.166,
+          "overall_rms_deg": 7.602,
+          "max_overshoot_deg": 1.301,
+          "lock_pct": 85.78,
+          "flip_pct": 2.48,
+          "settling_jerk_deg": 0.0155,
+          "cost": 43.452
+        }
+      }
+    },
+    {
+      "trial": 8,
+      "cost": 62.96164457516328,
+      "params": {
+        "in_flight_damping": 0.2140523089562279,
+        "reversal_damping": 0.6804125857081672,
+        "taper_pan_deg": 0.43624390760141846,
+        "taper_tilt_deg": 0.661290587757065,
+        "deadband_pan_deg": 0.6572302535304125,
+        "deadband_tilt_deg": 0.9749022264655702,
+        "d_err_ema_alpha": 0.6399119882387188
+      },
+      "metrics": {
+        "prof_8": {
+          "frames": 398,
+          "tail_rms_deg": 2.099,
+          "overall_rms_deg": 7.591,
+          "max_overshoot_deg": 1.626,
+          "lock_pct": 90.67,
+          "flip_pct": 3.59,
+          "settling_jerk_deg": 0.0188,
+          "cost": 50.369
+        }
+      }
+    },
+    {
+      "trial": 9,
+      "cost": 59.27864966945027,
+      "params": {
+        "in_flight_damping": 0.24405840733192255,
+        "reversal_damping": 0.6683649192953077,
+        "taper_pan_deg": 0.54460314405712,
+        "taper_tilt_deg": 1.4282893879554142,
+        "deadband_pan_deg": 0.7224986079470062,
+        "deadband_tilt_deg": 0.8518520763641002,
+        "d_err_ema_alpha": 0.3046183500620245
+      },
+      "metrics": {
+        "prof_8": {
+          "frames": 398,
+          "tail_rms_deg": 2.135,
+          "overall_rms_deg": 7.583,
+          "max_overshoot_deg": 1.504,
+          "lock_pct": 86.22,
+          "flip_pct": 2.26,
+          "settling_jerk_deg": 0.018,
+          "cost": 47.423
+        }
+      }
+    },
+    {
+      "trial": 10,
+      "cost": 49.995074200753436,
+      "params": {
+        "in_flight_damping": 0.40753968865147594,
+        "reversal_damping": 0.6536092746001625,
+        "taper_pan_deg": 0.5485140731698432,
+        "taper_tilt_deg": 0.7360862066678437,
+        "deadband_pan_deg": 0.611146021934935,
+        "deadband_tilt_deg": 0.9449885064758583,
+        "d_err_ema_alpha": 0.33506894873273196
+      },
+      "metrics": {
+        "prof_8": {
+          "frames": 398,
+          "tail_rms_deg": 2.088,
+          "overall_rms_deg": 7.59,
+          "max_overshoot_deg": 1.301,
+          "lock_pct": 91.11,
+          "flip_pct": 2.79,
+          "settling_jerk_deg": 0.0164,
+          "cost": 39.996
+        }
+      }
+    },
+    {
+      "trial": 11,
+      "cost": 50.70332957522956,
+      "params": {
+        "in_flight_damping": 0.4497018118014392,
+        "reversal_damping": 0.7180054674121452,
+        "taper_pan_deg": 0.8313667106765279,
+        "taper_tilt_deg": 0.7930842989793923,
+        "deadband_pan_deg": 0.6719432467470114,
+        "deadband_tilt_deg": 0.9746091531081877,
+        "d_err_ema_alpha": 0.39922590467481195
+      },
+      "metrics": {
+        "prof_8": {
+          "frames": 398,
+          "tail_rms_deg": 2.177,
+          "overall_rms_deg": 7.588,
+          "max_overshoot_deg": 1.382,
+          "lock_pct": 87.56,
+          "flip_pct": 0.7,
+          "settling_jerk_deg": 0.0153,
+          "cost": 40.563
+        }
+      }
+    },
+    {
+      "trial": 12,
+      "cost": 43.77094872717866,
+      "params": {
+        "in_flight_damping": 0.48620657523022837,
+        "reversal_damping": 0.5426670386765786,
+        "taper_pan_deg": 0.6346347366141073,
+        "taper_tilt_deg": 0.5642583768395746,
+        "deadband_pan_deg": 0.6734911982856392,
+        "deadband_tilt_deg": 0.969863393332029,
+        "d_err_ema_alpha": 0.27088760306229126
+      },
+      "metrics": {
+        "prof_8": {
+          "frames": 398,
+          "tail_rms_deg": 2.137,
+          "overall_rms_deg": 7.57,
+          "max_overshoot_deg": 1.261,
+          "lock_pct": 91.11,
+          "flip_pct": 0.76,
+          "settling_jerk_deg": 0.0159,
+          "cost": 35.017
+        }
+      }
+    },
+    {
+      "trial": 13,
+      "cost": 47.72330855516572,
+      "params": {
+        "in_flight_damping": 0.5729519270704384,
+        "reversal_damping": 0.5400898621151002,
+        "taper_pan_deg": 0.4185376592673449,
+        "taper_tilt_deg": 0.7525293530935975,
+        "deadband_pan_deg": 0.5992654167788658,
+        "deadband_tilt_deg": 0.8909059950114278,
+        "d_err_ema_alpha": 0.3539376030606576
+      },
+      "metrics": {
+        "prof_8": {
+          "frames": 398,
+          "tail_rms_deg": 2.119,
+          "overall_rms_deg": 7.601,
+          "max_overshoot_deg": 1.22,
+          "lock_pct": 91.11,
+          "flip_pct": 2.71,
+          "settling_jerk_deg": 0.0159,
+          "cost": 38.179
+        }
+      }
+    },
+    {
+      "trial": 14,
+      "cost": 46.6674512133545,
+      "params": {
+        "in_flight_damping": 0.4407544123647872,
+        "reversal_damping": 0.5643385714301463,
+        "taper_pan_deg": 0.7161486540294313,
+        "taper_tilt_deg": 0.6204054798152747,
+        "deadband_pan_deg": 0.776528388209549,
+        "deadband_tilt_deg": 1.0345804720996792,
+        "d_err_ema_alpha": 0.28229420857868254
+      },
+      "metrics": {
+        "prof_8": {
+          "frames": 398,
+          "tail_rms_deg": 2.154,
+          "overall_rms_deg": 7.603,
+          "max_overshoot_deg": 1.342,
+          "lock_pct": 91.11,
+          "flip_pct": 0.75,
+          "settling_jerk_deg": 0.0157,
+          "cost": 37.334
+        }
+      }
+    }
+  ]
+}

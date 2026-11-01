@@ -57,8 +57,7 @@ def run_episode(env, controller_type, rl_ctrl=None, p_ctrl=None):
         total_err_deg = math.hypot(pan_err_deg, tilt_err_deg)
         errors_deg.append(total_err_deg)
 
-        if (abs(pan_err_deg) <= CONFIG.control.deadband_pan_deg and
-                abs(tilt_err_deg) <= CONFIG.control.deadband_tilt_deg):
+        if total_err_deg <= CONFIG.lock.gate_slow_deg:
             locked_steps += 1
         total_steps += 1
 
@@ -230,7 +229,7 @@ def generate_plots(data):
     bp2['boxes'][1].set_facecolor(c_rl)
     bp2['boxes'][1].set_alpha(0.65)
 
-    ax2.set_title("Kilitlenme Basari Orani Dagitimi (% Zamansal Kilit)", fontsize=11, fontweight="bold")
+    ax2.set_title(f"Kilitlenme Basari Orani Dagitimi (Esik <= {CONFIG.lock.gate_slow_deg:.2f}°)", fontsize=11, fontweight="bold")
     ax2.set_ylabel("Kilit Orani (%)", fontsize=10)
     ax2.grid(True, ls=":", alpha=0.6)
 
@@ -239,7 +238,7 @@ def generate_plots(data):
     q3_lock_p = float(np.percentile(data["p_lock"], 75))
     q3_lock_rl = float(np.percentile(data["rl_lock"], 75))
     max_lock = max(max(data["p_lock"]), max(data["rl_lock"]))
-    ax2.set_ylim(-0.5, max(12.0, max_lock * 1.25))
+    ax2.set_ylim(-0.5, min(100.0, max(60.0, max_lock * 1.20)))
 
     ax2.text(1, q3_lock_p + 1.2, f"Medyan: %{l_med_p:.1f}", ha='center', va='bottom',
              bbox=dict(boxstyle='round,pad=0.35', fc='white', ec=c_p, lw=1.2, alpha=0.95),

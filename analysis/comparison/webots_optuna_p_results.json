@@ -1,0 +1,459 @@
+{
+  "mode": "P",
+  "accepted": true,
+  "baseline_cost": 120.80696691196269,
+  "best_cost": 82.83382915075549,
+  "best_trial": 14,
+  "baseline_params": {
+    "kp_pan": 0.2439,
+    "kp_tilt": 0.1487,
+    "in_flight_damping": 0.35,
+    "deadband_pan_deg": 0.85,
+    "deadband_tilt_deg": 0.95,
+    "cmd_accel_pan_deg_s2": 472.67,
+    "cmd_accel_tilt_deg_s2": 242.91,
+    "alpha_filter": 0.8845
+  },
+  "best_params": {
+    "kp_pan": 0.275412128830965,
+    "kp_tilt": 0.15115553075987093,
+    "in_flight_damping": 0.8426774727312508,
+    "deadband_pan_deg": 0.7577942599794314,
+    "deadband_tilt_deg": 0.9208967291871326,
+    "cmd_accel_pan_deg_s2": 416.96301255957025,
+    "cmd_accel_tilt_deg_s2": 292.9301826984106,
+    "alpha_filter": 0.8003085109011225
+  },
+  "corner_profile8_baseline": {
+    "frames": 398,
+    "tail_rms_deg": 2.435,
+    "overall_rms_deg": 7.678,
+    "max_overshoot_deg": 2.638,
+    "lock_pct": 59.11,
+    "flip_pct": 2.6,
+    "settling_jerk_deg": 0.0145,
+    "cost": 96.646
+  },
+  "corner_profile8_best": {
+    "frames": 398,
+    "tail_rms_deg": 2.35,
+    "overall_rms_deg": 7.713,
+    "max_overshoot_deg": 2.233,
+    "lock_pct": 87.11,
+    "flip_pct": 1.47,
+    "settling_jerk_deg": 0.0122,
+    "cost": 66.267
+  },
+  "figure8_profile7_baseline": {
+    "frames": 375,
+    "tail_rms_deg": 3.46,
+    "overall_rms_deg": 3.46,
+    "max_overshoot_deg": 0.0,
+    "lock_pct": 16.0,
+    "flip_pct": 1.01,
+    "settling_jerk_deg": 0.0152,
+    "cost": 48.504
+  },
+  "figure8_profile7_best": {
+    "frames": 375,
+    "tail_rms_deg": 3.574,
+    "overall_rms_deg": 3.574,
+    "max_overshoot_deg": 0.0,
+    "lock_pct": 14.93,
+    "flip_pct": 0.99,
+    "settling_jerk_deg": 0.0133,
+    "cost": 50.872
+  },
+  "trials": [
+    {
+      "trial": 0,
+      "cost": 120.80696691196269,
+      "params": {
+        "kp_pan": 0.2439,
+        "kp_tilt": 0.1487,
+        "in_flight_damping": 0.35,
+        "deadband_pan_deg": 0.85,
+        "deadband_tilt_deg": 0.95,
+        "cmd_accel_pan_deg_s2": 472.67,
+        "cmd_accel_tilt_deg_s2": 242.91,
+        "alpha_filter": 0.8845
+      },
+      "metrics": {
+        "prof_8": {
+          "frames": 398,
+          "tail_rms_deg": 2.435,
+          "overall_rms_deg": 7.678,
+          "max_overshoot_deg": 2.638,
+          "lock_pct": 59.11,
+          "flip_pct": 2.6,
+          "settling_jerk_deg": 0.0145,
+          "cost": 96.646
+        }
+      }
+    },
+    {
+      "trial": 1,
+      "cost": 105.43004161944592,
+      "params": {
+        "kp_pan": 0.245,
+        "kp_tilt": 0.155,
+        "in_flight_damping": 0.55,
+        "deadband_pan_deg": 0.75,
+        "deadband_tilt_deg": 0.85,
+        "cmd_accel_pan_deg_s2": 450.0,
+        "cmd_accel_tilt_deg_s2": 250.0,
+        "alpha_filter": 0.9
+      },
+      "metrics": {
+        "prof_8": {
+          "frames": 398,
+          "tail_rms_deg": 2.422,
+          "overall_rms_deg": 7.675,
+          "max_overshoot_deg": 2.355,
+          "lock_pct": 65.33,
+          "flip_pct": 2.01,
+          "settling_jerk_deg": 0.0138,
+          "cost": 84.344
+        }
+      }
+    },
+    {
+      "trial": 2,
+      "cost": 116.04853379451868,
+      "params": {
+        "kp_pan": 0.23019589212853647,
+        "kp_tilt": 0.21432103753368248,
+        "in_flight_damping": 0.3426498148236087,
+        "deadband_pan_deg": 0.7478316785700653,
+        "deadband_tilt_deg": 0.7631561220061238,
+        "cmd_accel_pan_deg_s2": 455.934796585786,
+        "cmd_accel_tilt_deg_s2": 245.64493357546309,
+        "alpha_filter": 0.8351862411113823
+      },
+      "metrics": {
+        "prof_8": {
+          "frames": 398,
+          "tail_rms_deg": 2.519,
+          "overall_rms_deg": 7.681,
+          "max_overshoot_deg": 2.719,
+          "lock_pct": 66.67,
+          "flip_pct": 1.5,
+          "settling_jerk_deg": 0.0177,
+          "cost": 92.839
+        }
+      }
+    },
+    {
+      "trial": 3,
+      "cost": 122.618806188304,
+      "params": {
+        "kp_pan": 0.22631459643988946,
+        "kp_tilt": 0.1870805562950509,
+        "in_flight_damping": 0.38846418382198344,
+        "deadband_pan_deg": 0.9254444489387267,
+        "deadband_tilt_deg": 0.9202113485410344,
+        "cmd_accel_pan_deg_s2": 541.873854998012,
+        "cmd_accel_tilt_deg_s2": 377.30639567633204,
+        "alpha_filter": 0.9349672160778608
+      },
+      "metrics": {
+        "prof_8": {
+          "frames": 398,
+          "tail_rms_deg": 2.557,
+          "overall_rms_deg": 7.619,
+          "max_overshoot_deg": 2.355,
+          "lock_pct": 43.11,
+          "flip_pct": 1.56,
+          "settling_jerk_deg": 0.014,
+          "cost": 98.095
+        }
+      }
+    },
+    {
+      "trial": 4,
+      "cost": 104.40231862349948,
+      "params": {
+        "kp_pan": 0.28309003465265886,
+        "kp_tilt": 0.19796534384880843,
+        "in_flight_damping": 0.7344718645474844,
+        "deadband_pan_deg": 0.7876314724431237,
+        "deadband_tilt_deg": 0.9358916561442416,
+        "cmd_accel_pan_deg_s2": 338.4564063851856,
+        "cmd_accel_tilt_deg_s2": 264.18640814645835,
+        "alpha_filter": 0.8538218733018266
+      },
+      "metrics": {
+        "prof_8": {
+          "frames": 398,
+          "tail_rms_deg": 2.507,
+          "overall_rms_deg": 7.798,
+          "max_overshoot_deg": 2.314,
+          "lock_pct": 67.11,
+          "flip_pct": 1.89,
+          "settling_jerk_deg": 0.0145,
+          "cost": 83.522
+        }
+      }
+    },
+    {
+      "trial": 5,
+      "cost": 126.17464101106242,
+      "params": {
+        "kp_pan": 0.2876626989374146,
+        "kp_tilt": 0.21327104335115432,
+        "in_flight_damping": 0.5752756076929895,
+        "deadband_pan_deg": 0.9253200181945168,
+        "deadband_tilt_deg": 0.9809988330583459,
+        "cmd_accel_pan_deg_s2": 373.97382417922415,
+        "cmd_accel_tilt_deg_s2": 224.04127760082574,
+        "alpha_filter": 0.849054354932686
+      },
+      "metrics": {
+        "prof_8": {
+          "frames": 398,
+          "tail_rms_deg": 2.612,
+          "overall_rms_deg": 7.792,
+          "max_overshoot_deg": 2.476,
+          "lock_pct": 46.22,
+          "flip_pct": 1.69,
+          "settling_jerk_deg": 0.0154,
+          "cost": 100.94
+        }
+      }
+    },
+    {
+      "trial": 6,
+      "cost": 108.29735683891288,
+      "params": {
+        "kp_pan": 0.23545746887184732,
+        "kp_tilt": 0.1913433413544005,
+        "in_flight_damping": 0.7990542679267473,
+        "deadband_pan_deg": 0.8043907668686696,
+        "deadband_tilt_deg": 0.6874065395377017,
+        "cmd_accel_pan_deg_s2": 423.7134373345833,
+        "cmd_accel_tilt_deg_s2": 181.85081444362885,
+        "alpha_filter": 0.7825553404166989
+      },
+      "metrics": {
+        "prof_8": {
+          "frames": 398,
+          "tail_rms_deg": 2.59,
+          "overall_rms_deg": 7.723,
+          "max_overshoot_deg": 2.112,
+          "lock_pct": 52.44,
+          "flip_pct": 1.31,
+          "settling_jerk_deg": 0.0128,
+          "cost": 86.638
+        }
+      }
+    },
+    {
+      "trial": 7,
+      "cost": 112.6609501575485,
+      "params": {
+        "kp_pan": 0.26496441751071576,
+        "kp_tilt": 0.13519418478997058,
+        "in_flight_damping": 0.45968868051793055,
+        "deadband_pan_deg": 0.7770125336900262,
+        "deadband_tilt_deg": 1.0392195024572473,
+        "cmd_accel_pan_deg_s2": 346.1264708888311,
+        "cmd_accel_tilt_deg_s2": 290.8873469853268,
+        "alpha_filter": 0.8264337774859807
+      },
+      "metrics": {
+        "prof_8": {
+          "frames": 398,
+          "tail_rms_deg": 2.384,
+          "overall_rms_deg": 7.82,
+          "max_overshoot_deg": 2.76,
+          "lock_pct": 72.0,
+          "flip_pct": 1.79,
+          "settling_jerk_deg": 0.0147,
+          "cost": 90.129
+        }
+      }
+    },
+    {
+      "trial": 8,
+      "cost": 93.59191699192249,
+      "params": {
+        "kp_pan": 0.2991698409636554,
+        "kp_tilt": 0.13245572328226746,
+        "in_flight_damping": 0.8198780373679498,
+        "deadband_pan_deg": 0.7438805780668011,
+        "deadband_tilt_deg": 0.679812624128851,
+        "cmd_accel_pan_deg_s2": 329.46060612882053,
+        "cmd_accel_tilt_deg_s2": 269.4626636785824,
+        "alpha_filter": 0.8254498940222992
+      },
+      "metrics": {
+        "prof_8": {
+          "frames": 398,
+          "tail_rms_deg": 2.373,
+          "overall_rms_deg": 7.831,
+          "max_overshoot_deg": 2.395,
+          "lock_pct": 80.0,
+          "flip_pct": 1.24,
+          "settling_jerk_deg": 0.0138,
+          "cost": 74.874
+        }
+      }
+    },
+    {
+      "trial": 9,
+      "cost": 120.53315220586217,
+      "params": {
+        "kp_pan": 0.2991109488826151,
+        "kp_tilt": 0.11101362567104235,
+        "in_flight_damping": 0.4367758600471065,
+        "deadband_pan_deg": 0.7457827594500381,
+        "deadband_tilt_deg": 0.6628596142708798,
+        "cmd_accel_pan_deg_s2": 338.6077193143986,
+        "cmd_accel_tilt_deg_s2": 230.22983925108304,
+        "alpha_filter": 0.874493348837829
+      },
+      "metrics": {
+        "prof_8": {
+          "frames": 398,
+          "tail_rms_deg": 2.361,
+          "overall_rms_deg": 7.857,
+          "max_overshoot_deg": 3.083,
+          "lock_pct": 73.78,
+          "flip_pct": 1.5,
+          "settling_jerk_deg": 0.0161,
+          "cost": 96.427
+        }
+      }
+    },
+    {
+      "trial": 10,
+      "cost": 102.35113724825521,
+      "params": {
+        "kp_pan": 0.298829565975536,
+        "kp_tilt": 0.14022214990775056,
+        "in_flight_damping": 0.6995454369914423,
+        "deadband_pan_deg": 0.8060826126446465,
+        "deadband_tilt_deg": 0.9067341975672518,
+        "cmd_accel_pan_deg_s2": 518.5665564184303,
+        "cmd_accel_tilt_deg_s2": 193.5579494942524,
+        "alpha_filter": 0.781866349608229
+      },
+      "metrics": {
+        "prof_8": {
+          "frames": 398,
+          "tail_rms_deg": 2.377,
+          "overall_rms_deg": 7.697,
+          "max_overshoot_deg": 2.476,
+          "lock_pct": 72.0,
+          "flip_pct": 1.54,
+          "settling_jerk_deg": 0.014,
+          "cost": 81.881
+        }
+      }
+    },
+    {
+      "trial": 11,
+      "cost": 110.58177222686048,
+      "params": {
+        "kp_pan": 0.2780189812554984,
+        "kp_tilt": 0.15972931671840165,
+        "in_flight_damping": 0.7062755541500094,
+        "deadband_pan_deg": 0.8258902081031791,
+        "deadband_tilt_deg": 0.7603218748002194,
+        "cmd_accel_pan_deg_s2": 551.4456249174782,
+        "cmd_accel_tilt_deg_s2": 215.70236743304386,
+        "alpha_filter": 0.7940187356028464
+      },
+      "metrics": {
+        "prof_8": {
+          "frames": 398,
+          "tail_rms_deg": 2.465,
+          "overall_rms_deg": 7.629,
+          "max_overshoot_deg": 2.355,
+          "lock_pct": 58.22,
+          "flip_pct": 1.79,
+          "settling_jerk_deg": 0.0139,
+          "cost": 88.465
+        }
+      }
+    },
+    {
+      "trial": 12,
+      "cost": 105.03048243960654,
+      "params": {
+        "kp_pan": 0.29931956700257123,
+        "kp_tilt": 0.15025449172625746,
+        "in_flight_damping": 0.7256771668300221,
+        "deadband_pan_deg": 0.779430919624435,
+        "deadband_tilt_deg": 0.7992875053085193,
+        "cmd_accel_pan_deg_s2": 345.8800957309255,
+        "cmd_accel_tilt_deg_s2": 314.4698288299119,
+        "alpha_filter": 0.8152683759663469
+      },
+      "metrics": {
+        "prof_8": {
+          "frames": 398,
+          "tail_rms_deg": 2.413,
+          "overall_rms_deg": 7.789,
+          "max_overshoot_deg": 2.476,
+          "lock_pct": 71.56,
+          "flip_pct": 2.01,
+          "settling_jerk_deg": 0.0149,
+          "cost": 84.024
+        }
+      }
+    },
+    {
+      "trial": 13,
+      "cost": 89.22612582996315,
+      "params": {
+        "kp_pan": 0.29776318387921213,
+        "kp_tilt": 0.15582979776964004,
+        "in_flight_damping": 0.8285127791069498,
+        "deadband_pan_deg": 0.7818716441249477,
+        "deadband_tilt_deg": 0.9436952236731022,
+        "cmd_accel_pan_deg_s2": 423.3471587085331,
+        "cmd_accel_tilt_deg_s2": 247.98691863008202,
+        "alpha_filter": 0.7947356826448746
+      },
+      "metrics": {
+        "prof_8": {
+          "frames": 398,
+          "tail_rms_deg": 2.366,
+          "overall_rms_deg": 7.717,
+          "max_overshoot_deg": 2.355,
+          "lock_pct": 84.44,
+          "flip_pct": 1.57,
+          "settling_jerk_deg": 0.0132,
+          "cost": 71.381
+        }
+      }
+    },
+    {
+      "trial": 14,
+      "cost": 82.83382915075549,
+      "params": {
+        "kp_pan": 0.275412128830965,
+        "kp_tilt": 0.15115553075987093,
+        "in_flight_damping": 0.8426774727312508,
+        "deadband_pan_deg": 0.7577942599794314,
+        "deadband_tilt_deg": 0.9208967291871326,
+        "cmd_accel_pan_deg_s2": 416.96301255957025,
+        "cmd_accel_tilt_deg_s2": 292.9301826984106,
+        "alpha_filter": 0.8003085109011225
+      },
+      "metrics": {
+        "prof_8": {
+          "frames": 398,
+          "tail_rms_deg": 2.35,
+          "overall_rms_deg": 7.713,
+          "max_overshoot_deg": 2.233,
+          "lock_pct": 87.11,
+          "flip_pct": 1.47,
+          "settling_jerk_deg": 0.0122,
+          "cost": 66.267
+        }
+      }
+    }
+  ]
+}

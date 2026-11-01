@@ -295,15 +295,15 @@ Vuruş olasılığında hedefin yalnızca %60'lık ölümcül çekirdeği kullan
 
 #### `p_controller.py` — Hassas kilit kontrolcüsü
 
-Tek EMA (alpha = 0.9306) ile ölçüm gürültüsünü yumuşatır. Yumuşak ölü bölge (pan 0.85°, tilt 0.95°) içinde motoru sıfırlar; dışında `Kp * (|e| - db)` ile oransal komut üretir. Pan `Kp = 0.1953`, tilt `Kp = 0.1544` değerindedir. Komut, pan 353.1°/s² ve tilt 213.6°/s² ivme sınırına ve kare başına 1.50°/0.75° adım sınırına tabidir. Ki ve Kd yoktur; Kalman hızı motor komutuna girmez.
+Tek EMA (alpha = 0.9323) ile olcum gurultusunu yumusatir. Yumusak olu bolge (pan 0.691 deg, tilt 0.683 deg) icinde motoru sifirlar; disinda Kp * (|e| - db) ile oransal komut uretir. Pan Kp = 0.3159, tilt Kp = 0.2155 degerindedir. Komut, pan 601.7 deg/s^2 ve tilt 255.2 deg/s^2 ivme sinirina ve kare basina 1.50 deg / 0.75 deg adim sinirina tabidir. Ki ve Kd yoktur; asimetrik frenleme (asymmetric braking) ve ucus suresi tahmincisi (in-flight damping = 0.6242) ile asim ve salinim engellenir.
 
 **Ne sağlar:** Statik ve yavaş hedeflerde düşük titreşimli, öngörülebilir ve mekanik olarak nazik bir kilit sağlar.
 
 #### `rl_controller.py` — Çevik takip kontrolcüsü
 
-PPO politikasını Stable-Baselines3 veya PyTorch gerektirmeyen 11-64-64-2 NumPy MLP ile çalıştırır. Gözlem 11 boyuttadır: normalize hata (x, y), EMA ile filtrelenmiş hata türevi (x, y), hız (x, y), normalize mesafe ve son iki adımın normalize eylem geçmişi. Hata türevi ölçeği 0.05, EMA katsayısı 0.4386'dır. Çalışma zamanında hız gözlemi sıfırlanır; politika konum hatası, hata türevi ve eylem geçmişiyle kararlı kalır.
+PPO politikasini Stable-Baselines3 veya PyTorch gerektirmeyen 11-64-64-2 NumPy MLP ile calistirir. Gozlem 11 boyuttadir: normalize hata (x, y), EMA ile filtrelenmis hata turevi (x, y), hiz (x, y), normalize mesafe ve son iki adimin normalize eylem gecmisi. Hata turevi olcegi 0.05, EMA katsayisi 0.3361'dir. Calisma zamaninda hiz gozlemi sifirlanir; politika konum hatasi, hata turevi ve eylem gecmisiyle kararli kalir.
 
-Çıkışta açısal yumuşak ölü bölge (pan 0.85°, tilt 0.95°), 1.60° Hermite taper, 2 karelik (~66 ms) yön değiştirme sönümü (katsayı 0.2889), tilt ekseninde 0.75° donanımsal tavan ve P ile uyumlu ivme/adım sınırları uygulanır. P harmanı yoktur; politika doğrudan motor adımı üretir.
+Cikista bagimsiz acisal yumusak olu bolge (pan 0.490 deg, tilt 0.656 deg), Hermite taper (pan 0.254 deg, tilt 0.801 deg), 3 karelik (~90 ms) yon degistirme sonumu (katsayi 0.7716), tilt ekseninde 0.75 deg donanimsal tavan ve P ile uyumlu ivme/adim sinirlari uygulanir. P harmani yoktur; politika dogrudan motor adimi uretir.
 
 **Ne sağlar:** Hızlı manevralarda taşıma gecikmesini eylem geçmişiyle telafi ederek kilidi korur; merkezde mikro titreşimi sönümler.
 
@@ -573,7 +573,7 @@ Aşağıdaki değerler, P ve RL modlarının birlikte kullanıldığı 4.383 kar
 
 ![P Kontrolcü vs PPO RL Benchmark](analysis/figures/python/python_fig11_p_vs_rl_final_benchmark.png)
 
-Benzetim, 1-3 kare arasında rastgeleleştirilmiş taşıma gecikmesi ve dinamik eyleyici lag'i altında dört tohumla çalıştırılır. Güncel figürde P kontrolcü %60.4, PPO RL %91.8 kilit oranı üretir. Pan RMS hatası P için 2.59°, RL için 1.56°; tilt RMS hatası P için 1.47°, RL için 1.22°'dir. RL, pan RMS hatasında %39.7 iyileşme sağlar.
+Benzetim, 1-3 kare arasinda rastgelelestirilmis tasima gecikmesi ve dinamik eyleyici lag'i altinda dort tohumla calistirilir. Guncel figurde FCS kilit kapisi (<= 1.70 deg) altinda P kontrolcu %36.8, PPO RL %50.2 kilit orani uretir (RL %13.4 onde). Genis takip kapisinda (<= 2.95 deg) basari P icin %60.4, RL icin %64.0'tur. Pan RMS hatasi P icin 4.02 deg, RL icin 4.06 deg; tilt RMS hatasi P icin 1.97 deg, RL icin 1.74 deg'dir (RL tilt ekseninde %12.0 iyilesme saglar).
 
 ### 9.4 Kontrol ve kararlılık figürleri (Python & MATLAB)
 
@@ -583,9 +583,9 @@ Tüm analiz grafikleri `analysis/figures/` altında `python/` ve `matlab/` olara
 
 | Figür | Gösterdiği |
 | :--- | :--- |
-| `python_fig1_tuned_step_and_control_effort.png` | 20° basamak yanıtı; 0.54 s yerleşme, %9.3 aşım, ivme sınırlı kalkış |
+| python_fig1_tuned_step_and_control_effort.png | 20 deg basamak yaniti; 0.49 s yerlesme, %14.5 asim, ivme sinirli kalkis ve asimetrik frenleme |
 | `python_fig2_tuned_phase_plane_portrait.png` | Faz düzlemi; yumuşak ölü bölgeye asimptotik yakınlaşma |
-| `python_fig3_tuned_bode_stability.png` | Açık çevrim Bode; 5.77 rad/s geçiş, 50.4° faz marjı, 7.7 dB kazanç marjı |
+| python_fig3_tuned_bode_stability.png | Acik cevrim Bode; 9.14 rad/s gecis, 27.5 deg faz marji, 3.5 dB kazanc marji |
 | `python_fig4_tuned_dynamic_tracking.png` | Sinüzoidal hedefte pan/tilt dinamik takip ve hata |
 | `python_fig5_tuned_lissajous_coverage.png` | Figure-8 devriye yörüngesi ve 3B tarama hacmi |
 | `python_fig6_tuned_ballistic_characteristics.png` | Mesafeye göre uçuş süresi ve süper-elevasyon |

@@ -92,9 +92,9 @@ def simulate_controllers():
             err_tilt.append(tilt_deg)
             cmd_pan.append(applied_pan)
             cmd_tilt.append(applied_tilt)
-            # Kilit olcutu CONFIG.control olu bolgeleri (iki eksen birlikte)
-            locked.append(1 if (abs(pan_deg) <= CONFIG.control.deadband_pan_deg
-                                and abs(tilt_deg) <= CONFIG.control.deadband_tilt_deg) else 0)
+            # Kilit olcutu: FCS LockManager atis/kilit kapisi (CONFIG.lock.gate_slow_deg = 1.70 deg)
+            tot_e = math.hypot(pan_deg, tilt_deg)
+            locked.append(1 if tot_e <= CONFIG.lock.gate_slow_deg else 0)
             t_acc += env.dt
             if env.step_count >= env.max_steps:
                 break
@@ -150,11 +150,11 @@ def generate_plots():
 
     ax1.plot(data_p["time"][idx_p], data_p["tot_err"][idx_p], color=c_p, lw=1.6, alpha=0.85, label="P Kontrolcu (Hassas Kilit)")
     ax1.plot(data_rl["time"][idx_rl], data_rl["tot_err"][idx_rl], color=c_rl, lw=1.6, alpha=0.85, label="RL Kontrolcu (PPO Cevik Takip)")
-    ax1.axhline(1.60, color=c_lock, ls="--", lw=1.2,
-                label="Eski/grafik tolerans bandi (1.60 deg) - kilit olcutu DEGIL")
-    ax1.axhline(0.85, color="gray", ls=":", lw=1.0,
-                label="Pan soft deadband (0.85 deg) - kilit pan esigi")
-    ax1.fill_between([0, t_len], 0, 1.60, color=c_lock, alpha=0.08)
+    ax1.axhline(CONFIG.lock.gate_slow_deg, color=c_lock, ls="--", lw=1.2,
+                label=f"FCS Kilit/Atis Kapisi ({CONFIG.lock.gate_slow_deg:.2f} deg)")
+    ax1.axhline(CONFIG.control.deadband_pan_deg, color="gray", ls=":", lw=1.0,
+                label=f"Pan Motor Olu Bolgesi ({CONFIG.control.deadband_pan_deg:.3f} deg)")
+    ax1.fill_between([0, t_len], 0, CONFIG.lock.gate_slow_deg, color=c_lock, alpha=0.08)
 
     ax1.set_title("Zaman Duzleminde Bileske Acisal Takip Hatasi Karsilastirmasi (Benzetim)", fontsize=12, fontweight="bold", pad=8)
     ax1.set_xlabel("Zaman (saniye)", fontsize=10)
@@ -211,8 +211,8 @@ def generate_plots():
     p_tilt_rms = float(np.sqrt(np.mean(data_p["err_t"] ** 2)))
     rl_tilt_rms = float(np.sqrt(np.mean(data_rl["err_t"] ** 2)))
 
-    p_success_pct = float(np.mean(data_p["tot_err"] < 2.50) * 100.0)
-    rl_success_pct = float(np.mean(data_rl["tot_err"] < 2.50) * 100.0)
+    p_success_pct = float(np.mean(data_p["tot_err"] <= CONFIG.lock.gate_fast_deg) * 100.0)
+    rl_success_pct = float(np.mean(data_rl["tot_err"] <= CONFIG.lock.gate_fast_deg) * 100.0)
 
     # Isaretli kazanc: pozitif = RL daha iyi, negatif = P daha iyi (kirpma yok)
     pan_impr = ((p_pan_rms - rl_pan_rms) / max(1e-9, p_pan_rms)) * 100.0
@@ -258,10 +258,11 @@ def generate_plots():
     table_data = [
         ["Metrik", "P Kontrolcu", "PPO RL", "Karsilastirma"],
         ["Mimari Tip", "Tip-1 P (Saf Oransal)", "PPO Derin RL", "Deterministik / Ogrenilmis"],
-        ["Kilit Orani", f"%{p_lock_pct:.1f}", f"%{rl_lock_pct:.1f}", lock_verdict],
+        ["Kilit Orani (<= 1.70 deg)", f"%{p_lock_pct:.1f}", f"%{rl_lock_pct:.1f}", lock_verdict],
+        ["Takip Basarisi (<= 2.95 deg)", f"%{p_success_pct:.1f}", f"%{rl_success_pct:.1f}", _verdict(rl_success_pct - p_success_pct, "RL onde", "P onde")],
         ["Pan RMS Hatasi", f"{p_pan_rms:.2f} deg", f"{rl_pan_rms:.2f} deg", table_gain],
         ["Tilt RMS Hatasi", f"{p_tilt_rms:.2f} deg", f"{rl_tilt_rms:.2f} deg", table_tilt],
-        ["Olu Bolge", "Motor Sessiz", "Taper Sonumlu", "Mekanik Koruma"],
+        ["Olu Bolge (Pan)", f"{CONFIG.control.deadband_pan_deg:.3f} deg", f"{CONFIG.rl.deadband_pan_deg:.3f} deg", "Mekanik Koruma"],
         ["Cikarim (CPU)", "< 0.02 ms", "< 0.18 ms", "30 FPS Uyumlu"],
     ]
 

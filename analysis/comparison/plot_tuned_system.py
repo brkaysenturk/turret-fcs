@@ -425,7 +425,7 @@ from turret_fcs.config import CONFIG as _CFG  # noqa: E402
 
 ax_d2.fill_between(t_dyn, -_CFG.control.deadband_tilt_deg, _CFG.control.deadband_tilt_deg,
                    color="#D5F5E3", alpha=0.45,
-                   label=f"Lock Tolerance (±{_CFG.control.deadband_pan_deg}° Pan / ±{_CFG.control.deadband_tilt_deg}° Tilt)")
+                   label=f"Motor Olu Bolgesi (±{DEADBAND_PAN:.3f}° Pan / ±{DEADBAND_TILT:.3f}° Tilt)")
 ax_d2.axhline(DEADBAND_PAN, color="#27AE60", linestyle=":", linewidth=1.2, label=f"Pan Soft Deadband (±{DEADBAND_PAN}°)")
 ax_d2.axhline(-DEADBAND_PAN, color="#27AE60", linestyle=":", linewidth=1.2)
 ax_d2.axhline(0, color="k", linestyle="-", linewidth=0.8, alpha=0.5)
@@ -608,7 +608,7 @@ for i in range(N_still):
     cur_tilt += tilt_vel
 
     # Kilit histerezisi (Tolerans ±1.6°)
-    if abs(meas_pan_err) <= 1.60 and abs(meas_tilt_err) <= 1.60:
+    if np.hypot(meas_pan_err, meas_tilt_err) <= CONFIG.lock.gate_slow_deg:
         lock_counter += 1
     else:
         lock_counter = max(0, lock_counter - 2)
@@ -624,7 +624,7 @@ fig7, (ax_s1, ax_s2) = plt.subplots(2, 1, figsize=(10, 6.8), sharex=True, gridsp
 
 ax_s1.plot(t_still, pan_err_sim, color=COLOR_PRIMARY, linewidth=1.8, label="Pan Acisal Takip Hatasi (derece)")
 ax_s1.plot(t_still, tilt_err_sim, color=COLOR_TILT, linewidth=1.8, label="Tilt Acisal Takip Hatasi (derece)")
-ax_s1.fill_between(t_still, -1.6, 1.6, color="#D5F5E3", alpha=0.5, label="Kilit Toleransi (±1.6°)")
+ax_s1.fill_between(t_still, -CONFIG.lock.gate_slow_deg, CONFIG.lock.gate_slow_deg, color="#D5F5E3", alpha=0.5, label=f"Kilit Kapisi (±{CONFIG.lock.gate_slow_deg:.2f}°)")
 ax_s1.axhline(DEADBAND_PAN, color="#27AE60", linestyle=":", linewidth=1.2, label=f"Pan Soft Deadband (±{DEADBAND_PAN}°)")
 ax_s1.axhline(-DEADBAND_PAN, color="#27AE60", linestyle=":", linewidth=1.2)
 ax_s1.set_ylabel("Aci Hatasi (derece)", fontsize=11)
@@ -703,7 +703,7 @@ for i in range(N_dyn):
     cur_turret_pan_px = cur_turret_pan_deg / DEG_PER_PX
     pan_err_dyn[i] = err_deg
 
-    if abs(err_deg) <= 1.60:
+    if abs(err_deg) <= CONFIG.lock.gate_slow_deg:
         lock_cnt_dyn += 1
     else:
         lock_cnt_dyn = max(0, lock_cnt_dyn - 1)
@@ -722,7 +722,7 @@ ax_m1.legend(loc="upper right", framealpha=0.92, fontsize=8.8)
 ax_m1.set_ylim(-480, 480)
 
 ax_m2.plot(t_dyn_sim, pan_err_dyn, color=COLOR_PRIMARY, linewidth=1.8, label="Pan Acisal Takip Hatasi (derece)")
-ax_m2.fill_between(t_dyn_sim, -1.6, 1.6, color="#D5F5E3", alpha=0.45, label="Kilit Tolerans Bolgesi (±1.6°)")
+ax_m2.fill_between(t_dyn_sim, -CONFIG.lock.gate_slow_deg, CONFIG.lock.gate_slow_deg, color="#D5F5E3", alpha=0.45, label=f"Kilit Kapisi (±{CONFIG.lock.gate_slow_deg:.2f}°)")
 ax_m2.fill_between(t_dyn_sim, 0, is_locked_dyn * 2.0, color="#2ECC71", alpha=0.25, label="Kesintisiz Kilit Donemleri")
 ax_m2.axhline(0, color="k", linestyle=":", linewidth=0.8)
 ax_m2.set_xlabel("Zaman (saniye)", fontsize=11)
