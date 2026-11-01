@@ -47,19 +47,23 @@ class OpticsConfig:
 @dataclass(frozen=True)
 class ControlConfig:
     """P kontrolcu ve filtre parametreleri."""
-    kp_pan: float = 0.2439      # P: 30 FPS bazinda Optuna TPE optimal kare basi kazanc
-    kp_tilt: float = 0.1487     # P: 30 FPS bazinda Optuna TPE optimal kare basi kazanc
-    deadband_pan_deg: float = 0.85
-    deadband_tilt_deg: float = 0.95
+    kp_pan: float = 0.3159      # P: 30 FPS bazinda Coklu Profil Optuna optimal kazanc
+    kp_tilt: float = 0.2155     # P: 30 FPS bazinda Coklu Profil Optuna optimal kazanc
+    deadband_pan_deg: float = 0.691
+    deadband_tilt_deg: float = 0.683
     max_output_deg: float = 1.50
     max_command_step_deg: float = 1.50  # Firmware Servo_ApplyCorrection ust siniri
-    cmd_accel_pan_deg_s2: float = 472.67  # P/RL pan komut ivme siniri (Optuna TPE optimal)
-    cmd_accel_tilt_deg_s2: float = 242.91  # P/RL tilt komut ivme siniri (Optuna TPE optimal)
+    cmd_accel_pan_deg_s2: float = 601.74  # P/RL pan komut ivme siniri (Coklu Profil Optuna optimal)
+    cmd_accel_tilt_deg_s2: float = 255.19  # P/RL tilt komut ivme siniri (Coklu Profil Optuna optimal)
+    asymmetric_braking: bool = True      # Oneri 1: Hedefe varista/yavaslamada ivme sinirini kaldir (sifir overshoot)
+    in_flight_damping: float = 0.6242      # Oneri 2: Yoldaki (in-flight) 3-kare komut yaklasim sonumlemesi
     lead_time_offset_s: float = 0.015    # Balistik lead'e eklenen sabit pay
     lead_time_min_s: float = 0.03        # Lead sure alt siniri
     lead_time_max_s: float = 0.40        # Lead sure ust siniri (dart ucus suresi olcegi)
-    alpha_filter: float = 0.8845         # P giris EMA'sinda yeni deger agirligi (Optuna TPE optimal)
+    alpha_filter: float = 0.9323         # P giris EMA'sinda yeni deger agirligi (Coklu Profil Optuna optimal)
     ego_tau_s: float = 0.0300            # Ego icin komut adimi servo zaman sabiti (30 ms fiziksel taret)
+    ego_motion_uncertainty_ratio: float = 0.35  # Olculmeyen servo hareketi bagil standart sapmasi
+    ego_backlash_uncertainty_ratio: float = 0.25  # Disli boslugu alimi sirasindaki belirsizlik orani
 
 
 @dataclass(frozen=True)
@@ -73,9 +77,13 @@ class ActuatorConfig:
 
 @dataclass(frozen=True)
 class KalmanConfig:
-    """Sabit hizli (CV) Kalman filtresi: tek Q/R cifti ve 100 px tekil-sicrama kapisi."""
+    """Sabit hizli (CV) Kalman filtresi: CWNA Q/R cifti, NIS ve 100 px tekil-sicrama kapisi."""
     r_var: float = 63.21                 # Olcum gurultusu varyansi (px^2), Bayesyen Optuna TPE optimal
     sigma_a: float = 478.19              # Surec ivme gurultusu (px/s^2), Bayesyen Optuna TPE optimal
+    noise_reference_dt_s: float = 1.0 / 30.0  # CWNA spektral yogunluk referans periyodu (sigma_a^2 * dt_ref)
+    innovation_gate_chi2: float = 13.81551056  # 2 serbestlik derecesi, %99.9 istatistiksel inovasyon kapisi
+    max_prediction_step_s: float = 0.10  # Uzun dt araliklarinda maksimum alt-adim (sub-step) suresi
+    reacquire_window_s: float = 0.35     # Aykiri adaylarin gecerlilik zaman penceresi (saniye)
     initial_velocity_var: float = 90000.0  # Ilk hiz kovaryansi (px/s)^2, hizli yakinsama icin
     velocity_deadband_low_px_s: float = 30.0   # Bu hizin altinda cikis hizi sifir
     velocity_deadband_high_px_s: float = 60.0  # Bu hizdan itibaren cikis hizi tam gecerli
@@ -115,13 +123,15 @@ class BallisticsConfig:
 class RLConfig:
     """RL cikarim ve egitim ortaminin ortak sabitleri (tek kaynak)."""
     soft_deadband_enabled: bool = True   # Acisal yumusak olu bolge + taper anahtari
-    reversal_damping: float = 0.2889        # Yon degistiren aksiyonun sonum orani (Optuna TPE optimal)
+    reversal_damping: float = 0.7716        # Yon degistiren aksiyonun sonum orani (Coklu Profil Optuna optimal)
     reversal_hold_frames: int = 3        # Yon degisim sonumunu 3 kare (~90ms, gecikme+backlash) koru
-    taper_pan_deg: float = 1.60           # Soft deadband gecis genisligi (pan - 1.61 deg backlash uyumlu)
-    taper_tilt_deg: float = 1.60          # Soft deadband gecis genisligi (tilt - 1.61 deg backlash ile simetrik)
+    taper_pan_deg: float = 0.254           # Soft deadband gecis genisligi (pan)
+    taper_tilt_deg: float = 0.801          # Soft deadband gecis genisligi (tilt)
+    deadband_pan_deg: float = 0.490      # RL acisal olu bolge (pan)
+    deadband_tilt_deg: float = 0.656     # RL acisal olu bolge (tilt)
     nominal_dt_s: float = 0.03333        # Egitim kare periyodu (adim limiti olcekleme referansi)
     d_err_scale: float = 0.05            # Hata turevi gozlem olcegi (egitimle ayni)
-    d_err_ema_alpha: float = 0.4386        # Hata turevi EMA katsayisi (Optuna TPE optimal)
+    d_err_ema_alpha: float = 0.3361        # Hata turevi EMA katsayisi (Coklu Profil Optuna optimal)
     v_max_px_s: float = 300.0            # Hiz gozlemi Bryson olcegi
     dist_min_m: float = 0.5              # Mesafe gozlemi alt siniri
     dist_max_m: float = 5.0              # Mesafe gozlemi ust siniri
@@ -200,6 +210,11 @@ class SelectorConfig:
     max_aspect_ratio: float = 2.50
     yolo_imgsz: int = 640
     tracker_config: str = "bytetrack.yaml"
+    acquisition_frames: int = 1
+    handoff_min_iou: float = 0.60
+    handoff_max_size_ratio: float = 1.35
+    handoff_max_center_fraction: float = 0.25
+    target_class_name: str = "balloon"
 
 
 @dataclass(frozen=True)
@@ -254,4 +269,3 @@ class TurretConfig:
 
 
 CONFIG = TurretConfig()
-

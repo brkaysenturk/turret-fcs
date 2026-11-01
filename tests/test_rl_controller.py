@@ -142,3 +142,22 @@ def test_rl_reset_and_rate_scaling():
     slow = rate_scaled_step_limits(0.80, 0.50, 0.06666)
     assert slow[0] <= CONFIG.control.max_output_deg
     assert slow[1] <= CONFIG.control.max_output_deg
+
+
+
+def test_rl_asymmetric_braking_eliminates_overshoot():
+    """Oneri 1: RL kontrolcu tam hizla giderken hedef olu bolgeye girdiginde aninda 0.0 urettigini dogrular."""
+    fake = _FakeModel([1.0, 1.0])
+    rl = RLController(auto_load=False, soft_deadband_enabled=True, asymmetric_braking=True)
+    rl.model = fake
+    rl.is_loaded = True
+
+    # Tam hiza cikana kadar 5 kare ilerle
+    for _ in range(5):
+        d_pan, _ = rl.predict_angles(800.0, 360.0, 640.0, 360.0, 1280.0, 720.0, 0, 0, 2.0, 10.0, 0.0, 0.03333)
+    assert d_pan == pytest.approx(CONFIG.actuator.max_step_pan_deg, abs=1e-4)
+
+    # Hedef merkeze (0.40 deg <= 0.85 deg deadband) girdigi anda aninda durmali (sifir overshoot)
+    d_stop, _ = rl.predict_angles(642.0, 360.0, 640.0, 360.0, 1280.0, 720.0, 0, 0, 2.0, 0.40, 0.0, 0.03333)
+    assert d_stop == 0.0
+    assert rl.command_speed_pan_deg_s == 0.0

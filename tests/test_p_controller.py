@@ -105,3 +105,30 @@ def test_p_controller_target_lost_reset_prevents_wrong_direction_motion():
     u_leaky, _ = p_leaky.compute_p(-10.0, 0.0, dt=dt)
     assert u_leaky > 0.0, "Bellek sifirlanmazsa ivme siniri nedeniyle komut ters yone (pozitif) devam eder"
 
+
+
+def test_p_controller_asymmetric_braking_and_in_flight_damping():
+    """Oneri 1 (hedefe varista aninda frenleme / sifir overshoot) ve Oneri 2 (in-flight Smith Predictor) davranisini dogrular."""
+    dt = 0.03333
+    p = PController()
+
+    # 1. Taret +20 deg uzaktaki hedefe maksimum hizla (+1.50 deg/kare) yaklasiyor
+    for _ in range(5):
+        u_pan, _ = p.compute_p(20.0, 0.0, dt=dt)
+    assert u_pan == pytest.approx(1.50, abs=1e-4)
+    assert p.command_speed_pan_deg_s > 40.0
+
+    # 2. Oneri 2 (In-Flight Smith Predictor): Hedef merkez yaklasim penceresine (1.40 deg) girdiginde,
+    #    yoldaki son 2 komutun (+1.50, +1.50) etkisi hatadan dusulerek erken frenleme baslar
+    p_no_smith = PController(in_flight_damping=0.0)
+    for _ in range(5):
+        p_no_smith.compute_p(20.0, 0.0, dt=dt)
+    u_with_smith, _ = p.compute_p(1.40, 0.0, dt=dt)
+    u_without_smith, _ = p_no_smith.compute_p(1.40, 0.0, dt=dt)
+    assert u_with_smith < u_without_smith
+
+    # 3. Oneri 1 (Asimetrik Frenleme): Hedef merkeze (0.50 deg, olu bolge ici) girdigi karede
+    #    ivme sinirina takilip fazladan +0.98 deg gitmek yerine ANINDA 0.0 donmeli!
+    u_stop, _ = p_no_smith.compute_p(0.50, 0.0, dt=dt)
+    assert u_stop == 0.0
+    assert p_no_smith.command_speed_pan_deg_s == 0.0

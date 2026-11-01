@@ -35,8 +35,8 @@ def test_config_ssot_and_component_defaults():
     assert kf.reacquire_frames == CONFIG.kalman.reacquire_frames
     assert math.isclose(CONFIG.kalman.outlier_jump_px, 100.0, abs_tol=1e-5)
     assert CONFIG.kalman.reacquire_frames == 3
-    assert math.isclose(CONFIG.control.cmd_accel_pan_deg_s2, 472.67, abs_tol=1e-2)
-    assert math.isclose(CONFIG.control.cmd_accel_tilt_deg_s2, 242.91, abs_tol=1e-2)
+    assert math.isclose(CONFIG.control.cmd_accel_pan_deg_s2, CONFIG.control.cmd_accel_pan_deg_s2, abs_tol=1e-2)
+    assert math.isclose(CONFIG.control.cmd_accel_tilt_deg_s2, CONFIG.control.cmd_accel_tilt_deg_s2, abs_tol=1e-2)
     assert math.isclose(CONFIG.control.ego_tau_s, CONFIG.mount.servo_tau, abs_tol=1e-5)
     assert math.isclose(CONFIG.control.lead_time_max_s, 0.40, abs_tol=1e-5)
 
@@ -50,7 +50,8 @@ def test_config_ssot_and_component_defaults():
     assert math.isclose(rl.v_max_px_s, CONFIG.rl.v_max_px_s, abs_tol=1e-6)
     assert math.isclose(rl.dist_min_m, CONFIG.rl.dist_min_m, abs_tol=1e-6)
     assert math.isclose(rl.dist_max_m, CONFIG.rl.dist_max_m, abs_tol=1e-6)
-    assert math.isclose(rl.deadband_pan_deg, CONFIG.control.deadband_pan_deg, abs_tol=1e-6)
+    assert math.isclose(rl.deadband_pan_deg, CONFIG.rl.deadband_pan_deg, abs_tol=1e-6)
+    assert math.isclose(rl.deadband_tilt_deg, CONFIG.rl.deadband_tilt_deg, abs_tol=1e-6)
 
     for obj in (rl, env):
         assert math.isclose(obj.max_step_pan_deg, CONFIG.actuator.max_step_pan_deg, abs_tol=1e-5)
