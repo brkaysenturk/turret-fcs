@@ -1,0 +1,9 @@
+{
+    "deadband_pan_deg": 0.12654775061557585,
+    "deadband_tilt_deg": 0.12703588698059484,
+    "taper_pan_deg": 0.11130682222763452,
+    "taper_tilt_deg": 0.14506606615265288,
+    "in_flight_damping": 0.3749047803602669,
+    "reversal_damping": 0.3085396127095584,
+    "aim_mouth_ratio": 0.4486212527455788
+}

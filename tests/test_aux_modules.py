@@ -13,7 +13,7 @@ from turret_fcs.config import FCSState
 from turret_fcs.fcs_manager import FCSManager
 from turret_fcs.lock_manager import LockManager
 from turret_fcs.telemetry import TelemetryLogger
-from turret_fcs.turret_hud import TurretHUD
+from turret_fcs.fcs_hud import TurretHUD
 
 
 def test_lock_hysteresis_and_firmware_states():

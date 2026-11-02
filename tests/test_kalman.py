@@ -162,8 +162,7 @@ def test_kalman_outlier_gating_and_reacquire():
 
 def test_kalman_cwna_substep_and_ego_variance_nis_gate():
     """CWNA alt-adimlama (sub-step) degismezligini, 3B pinhole ego kaymasini ve ego_var NIS kapisini dogrular."""
-    from turret_fcs.ego_motion import ServoMotionEstimator
-    from turret_fcs.geometry import rotated_pixel_shift
+    from turret_fcs.kalman_filter import ServoMotionEstimator, rotated_pixel_shift
 
     # 1. CWNA: 0.20 sn adim 2 alt-adima bolundugunde tek adim integrasyonla ayni Q kovaryansini uretmeli
     kf_sub = KalmanFilter()

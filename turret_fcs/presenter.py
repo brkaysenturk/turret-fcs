@@ -3,7 +3,7 @@
 MODUL: BAS-USTU GOSTERGE SUNUCUSU (HUD PRESENTER)
 ================================================================================
 Bu modul, Turret FCS ve Angajman durumunu OpenCV gorsel katmanina (`TurretHUD`)
-aktaran yuksek seviyeli sunum motorudur (Presenter). `main.py` ve `webots_main.py`
+aktaran yuksek seviyeli sunum motorudur (Presenter). `main.py` ve `turret_fcs.py`
 arasindaki tum gorsel render siralamasini ve renk sozlesmesini tek yerde toplar.
 ================================================================================
 """

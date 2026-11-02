@@ -1,0 +1,58 @@
+{
+  "mode": "P",
+  "accepted": false,
+  "baseline_cost": 1000000.0,
+  "best_cost": 1000000.0,
+  "best_trial": 0,
+  "baseline_params": {
+    "kp_pan": 0.1921,
+    "kp_tilt": 0.1669,
+    "in_flight_damping": 0.6875,
+    "deadband_pan_deg": 0.766,
+    "deadband_tilt_deg": 0.53,
+    "cmd_accel_pan_deg_s2": 556.58,
+    "cmd_accel_tilt_deg_s2": 211.81,
+    "alpha_filter": 0.9475
+  },
+  "best_params": {
+    "kp_pan": 0.1921,
+    "kp_tilt": 0.1669,
+    "in_flight_damping": 0.6875,
+    "deadband_pan_deg": 0.766,
+    "deadband_tilt_deg": 0.53,
+    "cmd_accel_pan_deg_s2": 556.58,
+    "cmd_accel_tilt_deg_s2": 211.81,
+    "alpha_filter": 0.9475
+  },
+  "baseline_metrics": {
+    "failure": "Telemetry file missing: C:\\Users\\BERKAY\\AppData\\Local\\Temp\\turret_webots_multiprof\\tlm_P_p_base_p8_100cm.csv",
+    "prof": 8,
+    "dist_m": 1.0
+  },
+  "best_metrics": {
+    "failure": "Telemetry file missing: C:\\Users\\BERKAY\\AppData\\Local\\Temp\\turret_webots_multiprof\\tlm_P_trial_000_p8_100cm.csv",
+    "prof": 8,
+    "dist_m": 1.0
+  },
+  "trials": [
+    {
+      "trial": 0,
+      "cost": 1000000.0,
+      "params": {
+        "kp_pan": 0.1921,
+        "kp_tilt": 0.1669,
+        "in_flight_damping": 0.6875,
+        "deadband_pan_deg": 0.766,
+        "deadband_tilt_deg": 0.53,
+        "cmd_accel_pan_deg_s2": 556.58,
+        "cmd_accel_tilt_deg_s2": 211.81,
+        "alpha_filter": 0.9475
+      },
+      "metrics": {
+        "failure": "Telemetry file missing: C:\\Users\\BERKAY\\AppData\\Local\\Temp\\turret_webots_multiprof\\tlm_P_trial_000_p8_100cm.csv",
+        "prof": 8,
+        "dist_m": 1.0
+      }
+    }
+  ]
+}

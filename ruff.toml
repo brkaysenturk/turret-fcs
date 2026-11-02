@@ -2,6 +2,7 @@
 # Yalniz pyflakes (F) kurallari acik: davranis degistirmeyen, dusuk gurultulu kapi.
 target-version = "py310"
 extend-exclude = ["venv", "weights", "build", "*.egg-info"]
+cache-dir = "~/.cache/ruff"
 
 [lint]
 select = ["F"]

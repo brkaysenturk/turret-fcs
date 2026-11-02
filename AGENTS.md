@@ -25,7 +25,7 @@
 - **Geliştirilenler:**
   - C++ tabanlı yüksek FPS HSV renk uzayı filtreleme ve morfolojik hedef yakalama hattı (`hsv/`).
   - Daha sonra askeri sınıfta genel nesne tespiti için **YOLOv8n derin öğrenme modeli** ve çoklu hedef takibi için **ByteTrack (kalıcı kilit kimliği / lock persistence)** mimarisine geçildi.
-  - Video akışında donma ve USB tampon yığılmasını engellemek için `threading` tabanlı sıfır gecikmeli kamera sürücüsü ([camera_thread.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/camera_thread.py)) yazıldı.
+  - Video akışında donma ve USB tampon yığılmasını engellemek için `threading` tabanlı sıfır gecikmeli kamera sürücüsü ([camera_thread.py](file:///c:/YTU/turret-fcs/turret_fcs/camera_thread.py)) yazıldı.
 
 ### FAZ 2: Sensör Füzyonu ve TF-Luna ToF LiDAR Entegrasyonu
 
@@ -38,7 +38,7 @@
 
 - **Problem:** PC tarafı kilitlendiğinde ya da seri iletişim koptuğunda servoların ve fırlatıcıların kontrolden çıkma riski vardı.
 - **Geliştirilenler:**
-  - STM32F401RE Nucleo üzerinde 100 Hz ikili (binary) haberleşme paketi ve ters kayan pencereli (sliding window) ayrıştırıcı geliştirildi ([fcs_comm.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/fcs_comm.py)).
+  - STM32F401RE Nucleo üzerinde 100 Hz ikili (binary) haberleşme paketi ve ters kayan pencereli (sliding window) ayrıştırıcı geliştirildi ([fcs_comm.py](file:///c:/YTU/turret-fcs/turret_fcs/fcs_comm.py)).
   - **300 ms Heartbeat Watchdog:** PC 300 ms boyunca yeni komut göndermezse STM32 acil duruma geçer ve `Launcher_EmergencyStop()` ile volan motorlarını ve solenoidi anında keser.
   - **Mandallı E-Stop (Space Tuşu):** Operatör acil frene bastığında taret donanımsal mekanik merkezine (90°, 90°) kilitlenir.
   - **80 ms Kenar Tetiklemeli Solenoid Darbe Protokolü:** Çift dart atılmasını ve solenoid bobininin aşırı ısınıp yanmasını önleyen donanımsal darbe sınırlaması protokolü tasarlandı (firmware ve config ile uyumlu; masaüstü ve güvenlik testlerinde fiziksel ateşleme yolu yazılımsal/donanımsal olarak izole edilmektedir).
@@ -120,7 +120,7 @@
   | Zigzag (5) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
   | Step/hold (4) | ⚠️ | – | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 
-  - **Metodolojik Not (Tez ve Karşılaştırma):** Bu tarama tablosu, önceki kazanç planlaması (`far_gain = 1.6`) ve eski ivme sınırı (120/80 derece/s^2) koşullarında ölçülmüştür. FAZ 14 ile birlikte kazanç planlaması tamamen kaldırılmış ve ivme sınırları fiziksel servo kabiliyetine (pan 400.0, tilt 267.0 derece/s^2) güncellenmiştir. Tez çalışmasında güncel doğrusal Tip-1 P mimarisi sınırları kullanılacaksa [p_profile_sweep.py](file:///c:/YTU/bitirme_projesi/turret_fcs/analysis/p_profile_sweep.py) yeni parametrelerle yeniden koşulabilir.
+  - **Metodolojik Not (Tez ve Karşılaştırma):** Bu tarama tablosu, önceki kazanç planlaması (`far_gain = 1.6`) ve eski ivme sınırı (120/80 derece/s^2) koşullarında ölçülmüştür. FAZ 14 ile birlikte kazanç planlaması tamamen kaldırılmış ve ivme sınırları fiziksel servo kabiliyetine (pan 400.0, tilt 267.0 derece/s^2) güncellenmiştir. Tez çalışmasında güncel doğrusal Tip-1 P mimarisi sınırları kullanılacaksa [p_profile_sweep.py](file:///c:/YTU/turret-fcs/turret_fcs/analysis/controllers/p/p_profile_sweep.py) yeni parametrelerle yeniden koşulabilir.
   - Kararlılık ölçütü: komut yön değiştirme oranı ve doyum (komut adımının 1.35 dereceyi aşma yüzdesi). Limit cycle'da yön değiştirme %8'e, doyum %50'ye çıkıyor; kararlı koşularda %0.8-1.9.
   - Standart sinüste sınır 0.35-0.39 arasında. Zigzag'de 0.27 hâlâ %89.6 kilit, 0.30 sınır, 0.34 çöküş. Step/hold'da 0.20 bile %25 doyumda, 0.30'da kilit %0.
   - **Tek bir evrensel Kp yok.** Taban 0.22/0.11; `webots_tuning.py` profil bazlı tavan uygular (standart/figure-8 0.32, zigzag 0.27, hızlı sinüs 0.25, step/hold 0.15).
@@ -243,6 +243,18 @@
      - **Tip-1 P Kontrolcüsü (`PController`):** 100 TPE denemesi x 30 tohum (Deneme #60: `kp_pan = 0.1953`, `kp_tilt = 0.1544`, `alpha_filter = 0.9306`, `cmd_accel_pan_deg_s2 = 353.1`, `cmd_accel_tilt_deg_s2 = 213.6`) ile kilitlenme oranı 2.6 kat artırıldı, yön değiştirme (`flip_rate`) düşürüldü ve canlı donanımda doğrulandı.
      - Tüm SSOT sabitleri `CONFIG` üzerinden bağlandı ve sürüm `v2.1` olarak etiketlendi.
 
+### FAZ 16: Bardak İçi Dart Basket Görevi (Cup Basket Challenge), 2-Aşamalı Hiyerarşik Yapay Zeka ve Webots Temas Fiziği Kusursuzlaştırması
+
+- **Görev Tanımı:** Masanın üzerindeki dar ağızlı bardağın içine micro-dart fırlatılarak basket sokulması görevi (`turret_basket/`, `webots/worlds/turret_basket.wbt`).
+- **2-Aşamalı Hiyerarşik Yapay Zeka Mimarisi:**
+  1. **1. Aşama (Cup Mouth Tracker):** Bardağın gövde/taban merkezine değil, ağız çemberine odaklanan `aim_mouth_ratio = 0.12` hedefleme noktası ve Optuna TPE ile optimize edilmiş çevik optik takip.
+  2. **2. Aşama (Ballistic AI Policy Network):** Analitik denklem yerine tez/danışman kısıtlarına uygun olarak 10.000 yörüngeli fizik güdümlü PPO/MLP sinir ağı politikası (`basket/models/cup_ballistic_policy.npz`). ToF LiDAR menziline göre gereken süper-elevasyon açısını (+21.8° - +22.6°) ve volan hızını (4.4 m/s) kestirir.
+- **Düzeltilen Kritik Hatalar ve Fizik Motoru Düzeltmesi:**
+  1. **Webots Trambolin Etkisi (ODE Contact Matrix):** Dart bardağın tam göbeğine girmesine rağmen `bounce = 0.5` kaldığı için 25 cm havaya geri sekiyordu. `WorldInfo -> contactProperties` içinde `cup_ceramic` ve `dart_foam` için `bounce 0.01`, `bounceVelocity 0.5` ve açısal sönümleme `0.35` yapılarak kinetik enerji emildi ve dart bardağın içinde kalarak resmen basket sağlandı.
+  2. **Optik Açı Üzerine Balistik Ekleme Karmaşası:** Kamera bardağın ağzını `-1.5°` açıda gördüğü için, balistik açı bu ofsetin üstüne eklendiğinde (`-1.5° + 21.8° = +20.3°`) dart ön dudağa takılıyordu. Mutlak açıya ve `+0.8°` dikey paralaks telafisine geçilerek namlu tam `+22.6°`ye oturtuldu.
+  3. **Servo Tırmanma ve Oturma Süresi (Settling):** 24 derecelik tırmanışta erken atışı önlemek için açı sensörü kontrolü (`tilt_settled < 0.25°`) ve `0.50 saniye` taban bekleme süresi getirildi.
+  4. **Firmware Hız Limiti ve Güvenlik Doğrulaması:** STM32'deki `45.0 derece/saniye` hız limitinin ana direct-fire FCS'deki 2-4 derecelik küçük balistik düzeltmeler için `400 ms`lik spin-up+settle süresiyle %400 güvenlik marjına sahip olduğu ve optik görsel servomekanizmanın enkodersiz tam kararlılık sağladığı matematiksel ve deneysel olarak doğrulandı.
+
 ---
 
 ## 3. "Neden Böyle Yaptık?" Arşivi (Jürinin Sorabileceği Kritik Savunmalar)
@@ -262,32 +274,32 @@
 
 ## 4. Temel Kod Dosyaları ve İşlev Haritası
 
-- [config.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/config.py): SSOT (Single Source of Truth) merkezi konfigürasyon; optik, aktüatör, kontrolcü ve yol parametreleri.
-- [main.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/main.py): Ana atış kontrol döngüsü, OpenCV video işleme, klavye kontrolleri.
-- [telemetry.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/telemetry.py): v2 Telemetri kaydedicisi (35 kolon, hedef kutu boyutu, angajman evresi ve LiDAR ToF menzil kapılama dahil, gerçek kamera hatası ve kalıcı dosya tanıtıcılı I/O), oturum özeti (`.meta.json`) ve taktiksel olay günlüğü (`_events.csv`).
-- [fcs_manager.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/fcs_manager.py): Durum makinesi (Arama, Tespit, Takip, Kilit, Ateşleme), balistik motoru, A/B mod yönetimi (`P` vs `RL`), menzil kapılama, 1. derece aktüatör gözlemcili ego-hareket telafisi (`tau = 0.0300 s`, geri Euler ayrıklaştırması, ego için komut modeli), hedef kaybında kontrolcü komut belleği temizleme (`on_target_lost`).
-- [p_controller.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/p_controller.py): Üretim P; tek EMA (`alpha_filter = 0.9306`), saf oransal (`Kp_pan=0.1953, Kp_tilt=0.1544`, `Kv_pan=5.859 s^-1`), pan 353.1 / tilt 213.6 derece/s^2 komut ivme sınırı (`a * dt^2`), hedef kaybında komut sıfırlaması (`on_target_lost`), FF/Ki/Kd yok.
-- [kalman_filter.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/kalman_filter.py): Ego-hareket telafili sabit hızlı (CV) Kalman; tek `sigma_a`/`r_var`, Joseph formu, 150 px robust tekil-sıçrama kapısı (tekil sıçramada R * 100 sönümleme, 3 karede yeniden yakalama reset), 30-60 px/s yumuşak ölü bölge ve 0.40 s tavanlı lead kestirimi.
-- [rl_controller.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/rl_controller.py): Üretim RL; saf PPO, 11-64-64-2 NumPy MLP çıkarımı (SB3/torch bağımsız), ölçülen bbox gözlemi, çalışma zamanında kapalı çevrim osilasyonunu önlemek için sıfırlanmış hız gözlemi (hata türevi ve eylem geçmişi ile stabil takip), pan 0.85° / tilt 0.95° açısal yumuşak ölü bölge (`soft_deadband_enabled` anahtarlı), 353.1/213.6 derece/s^2 komut ivme sınırı ve yön değişim sönümlemesi; P harmanı yok. Tüm eşikler `CONFIG.rl` / `CONFIG.control` içinden gelir.
-- [export_rl_policy.py](file:///c:/YTU/bitirme_projesi/turret_fcs/analysis/export_rl_policy.py): PPO zip modelini SB3'ten bağımsız `turret_ppo_v14_policy.npz` artifact'ine aktarır ve ileri geçişi doğrular.
-- [rl_diagnose.py](file:///c:/YTU/bitirme_projesi/turret_fcs/analysis/rl_diagnose.py): Aynı tohumlarda üretim RL yolu (sıfır hız gözlemi) ile ham politikayı karşılaştıran teşhis aracı.
-- [p_profile_sweep.py](file:///c:/YTU/bitirme_projesi/turret_fcs/analysis/p_profile_sweep.py): 6 profil x 8 kazanç Webots taraması ve limit-cycle sınıflandırması.
-- [turret_hud.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/turret_hud.py): Askeri standartta dinamik taktiksel HUD arayüzü ve renk disiplini (Yeşil, Mavi, Kırmızı).
-- [lock_manager.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/lock_manager.py): Dinamik kilit toleransı ve kademeli Gauss vuruş olasılığı (`hit_probability`).
-- [fcs_comm.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/fcs_comm.py): STM32 ile 115200 Baud ikili (binary) UART paketi alışverişi, 0.1° altı kuantalama biriktiricisi.
-- [camera_thread.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/camera_thread.py): Watchdog korumalı, sıfır gecikmeli kamera iş parçacığı.
-- [patrol_generator.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/patrol_generator.py): Lissajous eğrisi parametrik hava sahası tarama devriyesi.
-- [turret_env.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/rl/turret_env.py): 11 boyutlu simülasyon ortamı; 1.20 derece backlash, 1.50 derece/kare adım, progress ödülü, gecikmeli sensör kuyruğu (7D) + taze eylem geçmişi (4D).
-- [train_rl.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/rl/train_rl.py): 250k adımlık saf PPO eğitim motoru; `turret_ppo_v14.zip` üretir.
-- [webots_main.py](file:///c:/YTU/bitirme_projesi/turret_fcs/webots/controllers/webots_main/webots_main.py): Webots dijital ikiz ana döngüsü; üretim FCS/HUD modüllerini kullanır, kademeli SPINUP/SETTLE/FIRING sekansı içerir. P FF kapalıdır; lead/HUD canlıdır.
-- [webots_tuning.py](file:///c:/YTU/bitirme_projesi/turret_fcs/webots/controllers/webots_main/webots_tuning.py): Webots-only Kp/max_output override, profil tavanı ve telemetri metadata'sı; varsayılan P kazançları `CONFIG.control.kp_pan/kp_tilt` ile aynıdır.
-- [system_identification.py](file:///c:/YTU/bitirme_projesi/turret_fcs/analysis/system_identification.py): Sentetik nominal SOPDT/FOPDT analizi; gerçek telemetriye fit yapmaz, ölçülmüş tau/backlash üretmez.
-- [weights.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/weights.py): GitHub Releases varlıklarından (Release Assets) model ağırlıklarını (`best.pt`, `yolov8n.pt`) otomatik indiren yardımcı modül.
-- [engagement.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/engagement.py): Ayrıştırılmış 5 aşamalı atış ve hedef angajman durum makinesi (`SPINUP`, `SETTLE`, `FIRING`, `RECOVER`, `EVAL`).
-- [presenter.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/presenter.py): Ayrıştırılmış taktiksel HUD çizim ve sunum katmanı.
-- [keymap.py](file:///c:/YTU/bitirme_projesi/turret_fcs/turret_fcs/keymap.py): Operatör klavye kontrolleri ve mod geçişleri işleyicisi.
-- [firmware.md](file:///c:/YTU/bitirme_projesi/turret_fcs/docs/firmware.md): CubeIDE derleme, ST-Link flaşlama, pinout ve bekçi köpeği kılavuzu.
-- [reproducibility.md](file:///c:/YTU/bitirme_projesi/turret_fcs/docs/reproducibility.md): Test, RL eğitim ve tekrar üretilebilirlik kılavuzu.
+- [config.py](file:///c:/YTU/turret-fcs/turret_fcs/config.py): SSOT (Single Source of Truth) merkezi konfigürasyon; optik, aktüatör, kontrolcü ve yol parametreleri.
+- [main.py](file:///c:/YTU/turret-fcs/turret_fcs/main.py): Ana atış kontrol döngüsü, OpenCV video işleme, klavye kontrolleri.
+- [telemetry.py](file:///c:/YTU/turret-fcs/turret_fcs/telemetry.py): v2 Telemetri kaydedicisi (35 kolon, hedef kutu boyutu, angajman evresi ve LiDAR ToF menzil kapılama dahil, gerçek kamera hatası ve kalıcı dosya tanıtıcılı I/O), oturum özeti (`.meta.json`) ve taktiksel olay günlüğü (`_events.csv`).
+- [fcs_manager.py](file:///c:/YTU/turret-fcs/turret_fcs/fcs_manager.py): Durum makinesi (Arama, Tespit, Takip, Kilit, Ateşleme), balistik motoru, A/B mod yönetimi (`P` vs `RL`), menzil kapılama, 1. derece aktüatör gözlemcili ego-hareket telafisi (`tau = 0.0300 s`, geri Euler ayrıklaştırması, ego için komut modeli), hedef kaybında kontrolcü komut belleği temizleme (`on_target_lost`).
+- [p_controller.py](file:///c:/YTU/turret-fcs/turret_fcs/p_controller.py): Üretim P; tek EMA (`alpha_filter = 0.9306`), saf oransal (`Kp_pan=0.1953, Kp_tilt=0.1544`, `Kv_pan=5.859 s^-1`), pan 353.1 / tilt 213.6 derece/s^2 komut ivme sınırı (`a * dt^2`), hedef kaybında komut sıfırlaması (`on_target_lost`), FF/Ki/Kd yok.
+- [kalman_filter.py](file:///c:/YTU/turret-fcs/turret_fcs/kalman_filter.py): Hedef durum kestirimi ve ego-hareket modeli; CV Kalman filtresi, `ServoMotionEstimator` (aktüatör gecikmesi/backlash) ve `rotated_pixel_shift` (3B pinhole kamera dönme geometrisi) birleşik yapısı.
+- [rl_controller.py](file:///c:/YTU/turret-fcs/turret_fcs/rl_controller.py): Üretim RL; saf PPO, 11-64-64-2 NumPy MLP çıkarımı (SB3/torch bağımsız), ölçülen bbox gözlemi, çalışma zamanında kapalı çevrim osilasyonunu önlemek için sıfırlanmış hız gözlemi (hata türevi ve eylem geçmişi ile stabil takip), pan 0.85° / tilt 0.95° açısal yumuşak ölü bölge (`soft_deadband_enabled` anahtarlı), 353.1/213.6 derece/s^2 komut ivme sınırı ve yön değişim sönümlemesi; P harmanı yok. Tüm eşikler `CONFIG.rl` / `CONFIG.control` içinden gelir.
+- [export_rl_policy.py](file:///c:/YTU/turret-fcs/turret_fcs/analysis/controllers/rl/export_rl_policy.py): PPO zip modelini SB3'ten bağımsız `turret_ppo_v14_policy.npz` artifact'ine aktarır ve ileri geçişi doğrular.
+- [rl_diagnose.py](file:///c:/YTU/turret-fcs/turret_fcs/analysis/controllers/rl/rl_diagnose.py): Aynı tohumlarda üretim RL yolu (sıfır hız gözlemi) ile ham politikayı karşılaştıran teşhis aracı.
+- [p_profile_sweep.py](file:///c:/YTU/turret-fcs/turret_fcs/analysis/controllers/p/p_profile_sweep.py): 6 profil x 8 kazanç Webots taraması ve limit-cycle sınıflandırması.
+- [fcs_hud.py](file:///c:/YTU/turret-fcs/turret_fcs/fcs_hud.py): Askeri standartta dinamik taktiksel HUD arayüzü ve renk disiplini (Yeşil, Mavi, Kırmızı).
+- [lock_manager.py](file:///c:/YTU/turret-fcs/turret_fcs/lock_manager.py): Dinamik kilit toleransı ve kademeli Gauss vuruş olasılığı (`hit_probability`).
+- [fcs_comm.py](file:///c:/YTU/turret-fcs/turret_fcs/fcs_comm.py): STM32 ile 115200 Baud ikili (binary) UART paketi alışverişi, 0.1° altı kuantalama biriktiricisi.
+- [camera_thread.py](file:///c:/YTU/turret-fcs/turret_fcs/camera_thread.py): Watchdog korumalı, sıfır gecikmeli kamera iş parçacığı.
+- [patrol_generator.py](file:///c:/YTU/turret-fcs/turret_fcs/patrol_generator.py): Lissajous eğrisi parametrik hava sahası tarama devriyesi.
+- [turret_env.py](file:///c:/YTU/turret-fcs/turret_fcs/rl/turret_env.py): 11 boyutlu simülasyon ortamı; 1.20 derece backlash, 1.50 derece/kare adım, progress ödülü, gecikmeli sensör kuyruğu (7D) + taze eylem geçmişi (4D).
+- [train_rl.py](file:///c:/YTU/turret-fcs/turret_fcs/rl/train_rl.py): 250k adımlık saf PPO eğitim motoru; `turret_ppo_v14.zip` üretir.
+- [webots_turret_fcs.py](file:///c:/YTU/turret-fcs/webots/controllers/webots_turret_fcs/webots_turret_fcs.py): Webots dijital ikiz ana döngüsü; üretim FCS/HUD modüllerini kullanır, kademeli SPINUP/SETTLE/FIRING sekansı içerir .
+- [webots_tuning.py](file:///c:/YTU/turret-fcs/webots/controllers/webots_turret_fcs/webots_tuning.py): Webots-only Kp/max_output override, profil tavanı ve telemetri metadata'sı; varsayılan P kazançları `CONFIG.control.kp_pan/kp_tilt` ile aynıdır.
+- [system_identification.py](file:///c:/YTU/turret-fcs/turret_fcs/analysis/system/python/system_identification.py): Sentetik nominal SOPDT/FOPDT analizi; gerçek telemetriye fit yapmaz, ölçülmüş tau/backlash üretmez.
+- [weights.py](file:///c:/YTU/turret-fcs/turret_fcs/weights.py): GitHub Releases varlıklarından (Release Assets) model ağırlıklarını (`best.pt`, `yolov8n.pt`) otomatik indiren yardımcı modül.
+- [engagement.py](file:///c:/YTU/turret-fcs/turret_fcs/engagement.py): Ayrıştırılmış 5 aşamalı atış ve hedef angajman durum makinesi (`SPINUP`, `SETTLE`, `FIRING`, `RECOVER`, `EVAL`).
+- [presenter.py](file:///c:/YTU/turret-fcs/turret_fcs/presenter.py): Ayrıştırılmış taktiksel HUD çizim ve sunum katmanı.
+- [keymap.py](file:///c:/YTU/turret-fcs/turret_fcs/keymap.py): Operatör klavye kontrolleri ve mod geçişleri işleyicisi.
+- [firmware.md](file:///c:/YTU/turret-fcs/turret_fcs/docs/firmware.md): CubeIDE derleme, ST-Link flaşlama, pinout ve bekçi köpeği kılavuzu.
+- [reproducibility.md](file:///c:/YTU/turret-fcs/turret_fcs/docs/reproducibility.md): Test, RL eğitim ve tekrar üretilebilirlik kılavuzu.
 
 ---
 

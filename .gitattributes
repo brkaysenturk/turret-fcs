@@ -17,8 +17,8 @@
 
 # GitHub Linguist language statistics
 # Treat vendor HAL / CMSIS drivers as third-party vendored code
-stm32/turret_main/Drivers/** linguist-vendored
+turret_fcs/stm32/turret_fcs/Drivers/** linguist-vendored
 
 # STM32CubeIDE generated startup/linker files: keep in repo, exclude from language stats
-stm32/turret_main/Core/Startup/*.s linguist-generated
-stm32/turret_main/*.ld linguist-generated
+turret_fcs/stm32/turret_fcs/Core/Startup/*.s linguist-generated
+turret_fcs/stm32/turret_fcs/*.ld linguist-generated

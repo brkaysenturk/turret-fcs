@@ -82,9 +82,9 @@ def test_config_ssot_and_component_defaults():
     from pathlib import Path
 
     root = Path(__file__).resolve().parents[1]
-    webots_main = root / "webots" / "controllers" / "webots_main"
-    if str(webots_main) not in sys.path:
-        sys.path.insert(0, str(webots_main))
+    webots_fcs_ctrl = root / "webots" / "controllers" / "webots_turret_fcs"
+    if str(webots_fcs_ctrl) not in sys.path:
+        sys.path.insert(0, str(webots_fcs_ctrl))
     import webots_virtual_ballistics as vball
 
     evaluator = vball.VirtualBallisticsEvaluator(bullet_speed=10.0)

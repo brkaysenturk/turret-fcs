@@ -101,4 +101,16 @@ def process_key_event(
         engagement.abort()
         log("[LOCK] TARGET DISENGAGED BY OPERATOR", color=(180, 180, 180))
 
+    # 7. Manuel Takipci ve Filtre Bellek Sifirlama (R)
+    elif key_code in (ord("r"), ord("R")):
+        fcs.reset()
+        if hasattr(fcs, "tracker") and fcs.tracker is not None:
+            fcs.tracker.reset()
+        if hasattr(fcs, "p_controller") and fcs.p_controller is not None:
+            fcs.p_controller.reset()
+        if hasattr(fcs, "rl_controller") and fcs.rl_controller is not None:
+            fcs.rl_controller.reset()
+        engagement.abort()
+        log("[TRACKER] SYSTEM FILTERS FLUSHED", color=(0, 215, 255))
+
     return False, is_estop

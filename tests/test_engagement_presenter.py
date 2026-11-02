@@ -4,7 +4,7 @@ import numpy as np
 from turret_fcs.engagement import EngagementManager
 from turret_fcs.keymap import process_key_event
 from turret_fcs.presenter import HUDPresenter
-from turret_fcs.turret_hud import TurretHUD
+from turret_fcs.fcs_hud import TurretHUD
 from turret_fcs.config import FCSState
 from turret_fcs.fcs_manager import FCSManager
 
@@ -103,7 +103,7 @@ def test_keymap_events_and_entrypoint_contracts():
     assert estop is False
     assert fcs.is_locked is False
 
-    # 5. webots_main.py (-1 idle) ve tanimsiz tus ('y') cagri sozlesmesi
+    # 5. turret_fcs.py (-1 idle) ve tanimsiz tus ('y') cagri sozlesmesi
     should_exit_idle, is_estop_idle = process_key_event(
         key_code=-1, fcs=fcs, engagement=em, is_estop=False, now=12.0,
         is_range_valid=True, is_flywheel_idle=False, log_event_cb=log_cb,
@@ -120,13 +120,13 @@ def test_keymap_events_and_entrypoint_contracts():
     should_exit, _ = process_key_event(ord("q"), fcs, em, estop, 10.0, True, True, log_cb)
     assert should_exit is True
 
-    # 7. main.py ve webots_main.py AST cagri imzasi analizi
+    # 7. main.py ve turret_fcs.py AST cagri imzasi analizi
     project_root = Path(__file__).resolve().parents[1]
     required_kws = {
         "key_code", "fcs", "engagement", "is_estop", "now",
         "is_range_valid", "is_flywheel_idle", "log_event_cb",
     }
-    for rel_path in ["turret_fcs/main.py", "webots/controllers/webots_main/webots_main.py"]:
+    for rel_path in ["turret_fcs/main.py", "webots/controllers/webots_turret_fcs/webots_turret_fcs.py"]:
         file_path = project_root / rel_path
         tree = ast.parse(file_path.read_text(encoding="utf-8"))
         call_found = False

@@ -23,9 +23,7 @@ from collections import deque
 import numpy as np
 
 from .target_selector import TargetSelector
-from .kalman_filter import KalmanFilter
-from .ego_motion import ServoMotionEstimator
-from .geometry import rotated_pixel_shift
+from .kalman_filter import KalmanFilter, ServoMotionEstimator, rotated_pixel_shift
 from .lock_manager import LockManager
 from .p_controller import PController
 from .patrol_generator import PatrolGenerator

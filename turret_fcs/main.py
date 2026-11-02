@@ -26,7 +26,7 @@ from ultralytics import YOLO
 from .camera_thread import CameraThread
 from .fcs_comm import FCSCommunicator
 from .fcs_manager import FCSManager
-from .turret_hud import TurretHUD
+from .fcs_hud import TurretHUD
 from .telemetry import TelemetryLogger
 from .config import CONFIG, FCSState
 from .weights import ensure_weight_file

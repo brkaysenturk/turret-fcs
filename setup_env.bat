@@ -73,13 +73,13 @@ if errorlevel 1 goto :deps_failed
 
 echo.
 echo [Dogrulama] Temel importlar kontrol ediliyor...
-"%VENV_PY%" -c "import numpy, cv2, torch, ultralytics, serial, turret_fcs; print('[OK] numpy', numpy.__version__, 'opencv', cv2.__version__, 'torch', torch.__version__)"
+"%VENV_PY%" -c "import numpy, cv2, torch, ultralytics, serial, turret_fcs, turret_basket; print('[OK] numpy', numpy.__version__, 'opencv', cv2.__version__, 'torch', torch.__version__)"
 if errorlevel 1 goto :verify_failed
 
 echo.
 echo ==============================================================
 echo  [TAMAMLANDI] Tum kutuphaneler basariyla kuruldu!
-echo  Simdi 'main.bat' ile sistemi calistirabilirsiniz.
+echo  Simdi 'turret_fcs\main.bat' veya 'turret_basket\main.bat' ile sistemi calistirabilirsiniz.
 echo  Testler icin: venv\Scripts\python.exe -m pytest -q
 echo ==============================================================
 goto :done

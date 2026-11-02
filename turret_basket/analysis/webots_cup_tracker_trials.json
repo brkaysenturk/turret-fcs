@@ -1,0 +1,737 @@
+{
+  "best_trial": 9,
+  "best_value": 14.099958539747021,
+  "baseline_value": 14.983389891325817,
+  "improvement_pct": 5.896071302864728,
+  "best_params": {
+    "deadband_pan_deg": 0.12654775061557585,
+    "deadband_tilt_deg": 0.12703588698059484,
+    "taper_pan_deg": 0.11130682222763452,
+    "taper_tilt_deg": 0.14506606615265288,
+    "in_flight_damping": 0.3749047803602669,
+    "reversal_damping": 0.3085396127095584,
+    "aim_mouth_ratio": 0.4486212527455788
+  },
+  "trials": [
+    {
+      "trial": 0,
+      "cost": 14.983389891325817,
+      "avg_rms": 1.7106666666666668,
+      "avg_lock": 67.11666666666666,
+      "avg_flip": 11.173333333333332,
+      "params": {
+        "deadband_pan_deg": 0.1948,
+        "deadband_tilt_deg": 0.1522,
+        "taper_pan_deg": 0.1844,
+        "taper_tilt_deg": 0.1222,
+        "in_flight_damping": 0.3907,
+        "reversal_damping": 0.3351,
+        "aim_mouth_ratio": 0.3518
+      },
+      "metrics": {
+        "100cm": {
+          "settling_time": 0.412,
+          "tail_rms": 0.608,
+          "flip_rate": 1.26,
+          "tail_lock_pct": 100.0,
+          "cost": 1.982
+        },
+        "140cm": {
+          "settling_time": 0.352,
+          "tail_rms": 0.295,
+          "flip_rate": 0.0,
+          "tail_lock_pct": 100.0,
+          "cost": 1.09
+        },
+        "180cm": {
+          "settling_time": 0.74,
+          "tail_rms": 2.83,
+          "flip_rate": 14.16,
+          "tail_lock_pct": 2.7,
+          "cost": 11.302
+        },
+        "220cm": {
+          "settling_time": 0.304,
+          "tail_rms": 0.462,
+          "flip_rate": 0.0,
+          "tail_lock_pct": 100.0,
+          "cost": 1.46
+        },
+        "260cm": {
+          "settling_time": 1.8,
+          "tail_rms": 5.521,
+          "flip_rate": 50.57,
+          "tail_lock_pct": 0.0,
+          "cost": 20.625
+        },
+        "300cm": {
+          "settling_time": 0.228,
+          "tail_rms": 0.548,
+          "flip_rate": 1.05,
+          "tail_lock_pct": 100.0,
+          "cost": 1.639
+        }
+      }
+    },
+    {
+      "trial": 1,
+      "cost": 14.617579733929439,
+      "avg_rms": 1.7203333333333333,
+      "avg_lock": 73.98333333333333,
+      "avg_flip": 10.116666666666667,
+      "params": {
+        "deadband_pan_deg": 0.21236203565420878,
+        "deadband_tilt_deg": 0.3081714335383799,
+        "taper_pan_deg": 0.2829984854528512,
+        "taper_tilt_deg": 0.19973169683940734,
+        "in_flight_damping": 0.2702083881990964,
+        "reversal_damping": 0.26239780813448105,
+        "aim_mouth_ratio": 0.21742508365045984
+      },
+      "metrics": {
+        "100cm": {
+          "settling_time": 0.416,
+          "tail_rms": 0.827,
+          "flip_rate": 1.15,
+          "tail_lock_pct": 100.0,
+          "cost": 2.53
+        },
+        "140cm": {
+          "settling_time": 0.36,
+          "tail_rms": 0.625,
+          "flip_rate": 0.0,
+          "tail_lock_pct": 100.0,
+          "cost": 1.922
+        },
+        "180cm": {
+          "settling_time": 0.412,
+          "tail_rms": 1.881,
+          "flip_rate": 8.6,
+          "tail_lock_pct": 43.9,
+          "cost": 7.143
+        },
+        "220cm": {
+          "settling_time": 0.3,
+          "tail_rms": 0.706,
+          "flip_rate": 0.0,
+          "tail_lock_pct": 100.0,
+          "cost": 2.066
+        },
+        "260cm": {
+          "settling_time": 1.8,
+          "tail_rms": 5.521,
+          "flip_rate": 50.57,
+          "tail_lock_pct": 0.0,
+          "cost": 20.625
+        },
+        "300cm": {
+          "settling_time": 0.228,
+          "tail_rms": 0.762,
+          "flip_rate": 0.38,
+          "tail_lock_pct": 100.0,
+          "cost": 2.149
+        }
+      }
+    },
+    {
+      "trial": 2,
+      "cost": 15.817962672535256,
+      "avg_rms": 1.9221666666666666,
+      "avg_lock": 66.39999999999999,
+      "avg_flip": 10.873333333333333,
+      "params": {
+        "deadband_pan_deg": 0.3598528437324806,
+        "deadband_tilt_deg": 0.2242676028183701,
+        "taper_pan_deg": 0.27701814444901135,
+        "taper_tilt_deg": 0.08411689885916049,
+        "in_flight_damping": 0.6364594334728975,
+        "reversal_damping": 0.5329770563201687,
+        "aim_mouth_ratio": 0.26370173320348284
+      },
+      "metrics": {
+        "100cm": {
+          "settling_time": 0.432,
+          "tail_rms": 1.0,
+          "flip_rate": 0.99,
+          "tail_lock_pct": 98.4,
+          "cost": 3.02
+        },
+        "140cm": {
+          "settling_time": 0.376,
+          "tail_rms": 0.588,
+          "flip_rate": 0.0,
+          "tail_lock_pct": 100.0,
+          "cost": 1.846
+        },
+        "180cm": {
+          "settling_time": 1.8,
+          "tail_rms": 2.816,
+          "flip_rate": 13.68,
+          "tail_lock_pct": 0.0,
+          "cost": 12.387
+        },
+        "220cm": {
+          "settling_time": 0.308,
+          "tail_rms": 0.769,
+          "flip_rate": 0.0,
+          "tail_lock_pct": 100.0,
+          "cost": 2.23
+        },
+        "260cm": {
+          "settling_time": 1.8,
+          "tail_rms": 5.521,
+          "flip_rate": 50.57,
+          "tail_lock_pct": 0.0,
+          "cost": 20.625
+        },
+        "300cm": {
+          "settling_time": 0.228,
+          "tail_rms": 0.839,
+          "flip_rate": 0.0,
+          "tail_lock_pct": 100.0,
+          "cost": 2.324
+        }
+      }
+    },
+    {
+      "trial": 3,
+      "cost": 15.391640116130205,
+      "avg_rms": 1.7636666666666667,
+      "avg_lock": 63.95000000000001,
+      "avg_flip": 11.665000000000001,
+      "params": {
+        "deadband_pan_deg": 0.1545474901621302,
+        "deadband_tilt_deg": 0.12401708236482412,
+        "taper_pan_deg": 0.1760605607398844,
+        "taper_tilt_deg": 0.18495128632644758,
+        "in_flight_damping": 0.3943752583889521,
+        "reversal_damping": 0.31649165607921675,
+        "aim_mouth_ratio": 0.38355586841671385
+      },
+      "metrics": {
+        "100cm": {
+          "settling_time": 0.408,
+          "tail_rms": 1.113,
+          "flip_rate": 4.14,
+          "tail_lock_pct": 82.9,
+          "cost": 3.869
+        },
+        "140cm": {
+          "settling_time": 0.352,
+          "tail_rms": 0.295,
+          "flip_rate": 0.0,
+          "tail_lock_pct": 100.0,
+          "cost": 1.09
+        },
+        "180cm": {
+          "settling_time": 1.092,
+          "tail_rms": 2.826,
+          "flip_rate": 13.22,
+          "tail_lock_pct": 0.8,
+          "cost": 11.66
+        },
+        "220cm": {
+          "settling_time": 0.3,
+          "tail_rms": 0.347,
+          "flip_rate": 0.0,
+          "tail_lock_pct": 100.0,
+          "cost": 1.168
+        },
+        "260cm": {
+          "settling_time": 1.8,
+          "tail_rms": 5.521,
+          "flip_rate": 50.57,
+          "tail_lock_pct": 0.0,
+          "cost": 20.625
+        },
+        "300cm": {
+          "settling_time": 0.228,
+          "tail_rms": 0.48,
+          "flip_rate": 2.06,
+          "tail_lock_pct": 100.0,
+          "cost": 1.51
+        }
+      }
+    },
+    {
+      "trial": 4,
+      "cost": 15.115560979390544,
+      "avg_rms": 1.7506666666666666,
+      "avg_lock": 66.11666666666667,
+      "avg_flip": 11.456666666666665,
+      "params": {
+        "deadband_pan_deg": 0.14184815819561256,
+        "deadband_tilt_deg": 0.15011471564845236,
+        "taper_pan_deg": 0.1915904608234229,
+        "taper_tilt_deg": 0.1712139968434072,
+        "in_flight_damping": 0.5533291826268562,
+        "reversal_damping": 0.2798695128633439,
+        "aim_mouth_ratio": 0.3542703315240835
+      },
+      "metrics": {
+        "100cm": {
+          "settling_time": 0.424,
+          "tail_rms": 0.937,
+          "flip_rate": 2.53,
+          "tail_lock_pct": 95.8,
+          "cost": 2.993
+        },
+        "140cm": {
+          "settling_time": 0.372,
+          "tail_rms": 0.295,
+          "flip_rate": 0.0,
+          "tail_lock_pct": 100.0,
+          "cost": 1.11
+        },
+        "180cm": {
+          "settling_time": 0.416,
+          "tail_rms": 2.819,
+          "flip_rate": 13.39,
+          "tail_lock_pct": 0.9,
+          "cost": 10.973
+        },
+        "220cm": {
+          "settling_time": 0.304,
+          "tail_rms": 0.409,
+          "flip_rate": 0.0,
+          "tail_lock_pct": 100.0,
+          "cost": 1.327
+        },
+        "260cm": {
+          "settling_time": 1.8,
+          "tail_rms": 5.521,
+          "flip_rate": 50.57,
+          "tail_lock_pct": 0.0,
+          "cost": 20.625
+        },
+        "300cm": {
+          "settling_time": 0.228,
+          "tail_rms": 0.523,
+          "flip_rate": 2.25,
+          "tail_lock_pct": 100.0,
+          "cost": 1.624
+        }
+      }
+    },
+    {
+      "trial": 5,
+      "cost": 14.265498014810104,
+      "avg_rms": 1.5923333333333332,
+      "avg_lock": 74.26666666666667,
+      "avg_flip": 10.188333333333333,
+      "params": {
+        "deadband_pan_deg": 0.2777243706586128,
+        "deadband_tilt_deg": 0.09114809905279946,
+        "taper_pan_deg": 0.25188621297535957,
+        "taper_tilt_deg": 0.11410482473745831,
+        "in_flight_damping": 0.2292732168433758,
+        "reversal_damping": 0.5795542149013333,
+        "aim_mouth_ratio": 0.4896896099223678
+      },
+      "metrics": {
+        "100cm": {
+          "settling_time": 0.396,
+          "tail_rms": 0.95,
+          "flip_rate": 3.22,
+          "tail_lock_pct": 94.0,
+          "cost": 3.08
+        },
+        "140cm": {
+          "settling_time": 0.368,
+          "tail_rms": 0.364,
+          "flip_rate": 0.0,
+          "tail_lock_pct": 100.0,
+          "cost": 1.278
+        },
+        "180cm": {
+          "settling_time": 0.408,
+          "tail_rms": 1.601,
+          "flip_rate": 5.86,
+          "tail_lock_pct": 51.6,
+          "cost": 6.1
+        },
+        "220cm": {
+          "settling_time": 0.3,
+          "tail_rms": 0.514,
+          "flip_rate": 0.0,
+          "tail_lock_pct": 100.0,
+          "cost": 1.586
+        },
+        "260cm": {
+          "settling_time": 1.8,
+          "tail_rms": 5.521,
+          "flip_rate": 50.57,
+          "tail_lock_pct": 0.0,
+          "cost": 20.625
+        },
+        "300cm": {
+          "settling_time": 0.228,
+          "tail_rms": 0.604,
+          "flip_rate": 1.48,
+          "tail_lock_pct": 100.0,
+          "cost": 1.798
+        }
+      }
+    },
+    {
+      "trial": 6,
+      "cost": 14.584876567479299,
+      "avg_rms": 1.6903333333333332,
+      "avg_lock": 72.38333333333334,
+      "avg_flip": 9.743333333333334,
+      "params": {
+        "deadband_pan_deg": 0.3425192044349384,
+        "deadband_tilt_deg": 0.15310730460160896,
+        "taper_pan_deg": 0.12441802850159597,
+        "taper_tilt_deg": 0.21684660530243138,
+        "in_flight_damping": 0.3980686221828206,
+        "reversal_damping": 0.24881529393791155,
+        "aim_mouth_ratio": 0.34855307303338107
+      },
+      "metrics": {
+        "100cm": {
+          "settling_time": 0.432,
+          "tail_rms": 0.756,
+          "flip_rate": 1.84,
+          "tail_lock_pct": 94.0,
+          "cost": 2.576
+        },
+        "140cm": {
+          "settling_time": 0.352,
+          "tail_rms": 0.462,
+          "flip_rate": 0.0,
+          "tail_lock_pct": 100.0,
+          "cost": 1.508
+        },
+        "180cm": {
+          "settling_time": 0.396,
+          "tail_rms": 2.086,
+          "flip_rate": 6.05,
+          "tail_lock_pct": 40.3,
+          "cost": 7.643
+        },
+        "220cm": {
+          "settling_time": 0.304,
+          "tail_rms": 0.588,
+          "flip_rate": 0.0,
+          "tail_lock_pct": 100.0,
+          "cost": 1.774
+        },
+        "260cm": {
+          "settling_time": 1.8,
+          "tail_rms": 5.521,
+          "flip_rate": 50.57,
+          "tail_lock_pct": 0.0,
+          "cost": 20.625
+        },
+        "300cm": {
+          "settling_time": 0.228,
+          "tail_rms": 0.729,
+          "flip_rate": 0.0,
+          "tail_lock_pct": 100.0,
+          "cost": 2.051
+        }
+      }
+    },
+    {
+      "trial": 7,
+      "cost": 14.539147430095102,
+      "avg_rms": 1.698166666666667,
+      "avg_lock": 74.58333333333333,
+      "avg_flip": 10.073333333333332,
+      "params": {
+        "deadband_pan_deg": 0.11031655633456552,
+        "deadband_tilt_deg": 0.29823689649890767,
+        "taper_pan_deg": 0.1646949954000042,
+        "taper_tilt_deg": 0.2125044568707964,
+        "in_flight_damping": 0.3402699842402349,
+        "reversal_damping": 0.4080272084711243,
+        "aim_mouth_ratio": 0.3640130838029839
+      },
+      "metrics": {
+        "100cm": {
+          "settling_time": 0.408,
+          "tail_rms": 0.805,
+          "flip_rate": 1.14,
+          "tail_lock_pct": 100.0,
+          "cost": 2.466
+        },
+        "140cm": {
+          "settling_time": 0.356,
+          "tail_rms": 0.581,
+          "flip_rate": 0.0,
+          "tail_lock_pct": 100.0,
+          "cost": 1.809
+        },
+        "180cm": {
+          "settling_time": 0.428,
+          "tail_rms": 1.985,
+          "flip_rate": 7.69,
+          "tail_lock_pct": 47.5,
+          "cost": 7.273
+        },
+        "220cm": {
+          "settling_time": 0.3,
+          "tail_rms": 0.612,
+          "flip_rate": 0.0,
+          "tail_lock_pct": 100.0,
+          "cost": 1.831
+        },
+        "260cm": {
+          "settling_time": 1.8,
+          "tail_rms": 5.521,
+          "flip_rate": 50.57,
+          "tail_lock_pct": 0.0,
+          "cost": 20.625
+        },
+        "300cm": {
+          "settling_time": 0.228,
+          "tail_rms": 0.685,
+          "flip_rate": 1.04,
+          "tail_lock_pct": 100.0,
+          "cost": 1.982
+        }
+      }
+    },
+    {
+      "trial": 8,
+      "cost": 14.620950960835199,
+      "avg_rms": 1.75,
+      "avg_lock": 75.93333333333334,
+      "avg_flip": 9.76,
+      "params": {
+        "deadband_pan_deg": 0.15545633665765812,
+        "deadband_tilt_deg": 0.3127003106634941,
+        "taper_pan_deg": 0.2937832058402786,
+        "taper_tilt_deg": 0.26789978831283784,
+        "in_flight_damping": 0.6026723076924421,
+        "reversal_damping": 0.4391599915244341,
+        "aim_mouth_ratio": 0.47656227050693506
+      },
+      "metrics": {
+        "100cm": {
+          "settling_time": 0.42,
+          "tail_rms": 0.876,
+          "flip_rate": 1.08,
+          "tail_lock_pct": 100.0,
+          "cost": 2.653
+        },
+        "140cm": {
+          "settling_time": 0.372,
+          "tail_rms": 0.682,
+          "flip_rate": 0.0,
+          "tail_lock_pct": 100.0,
+          "cost": 2.076
+        },
+        "180cm": {
+          "settling_time": 0.428,
+          "tail_rms": 1.91,
+          "flip_rate": 5.35,
+          "tail_lock_pct": 55.6,
+          "cost": 6.748
+        },
+        "220cm": {
+          "settling_time": 0.304,
+          "tail_rms": 0.733,
+          "flip_rate": 0.0,
+          "tail_lock_pct": 100.0,
+          "cost": 2.138
+        },
+        "260cm": {
+          "settling_time": 1.8,
+          "tail_rms": 5.521,
+          "flip_rate": 50.57,
+          "tail_lock_pct": 0.0,
+          "cost": 20.625
+        },
+        "300cm": {
+          "settling_time": 0.228,
+          "tail_rms": 0.778,
+          "flip_rate": 1.56,
+          "tail_lock_pct": 100.0,
+          "cost": 2.234
+        }
+      }
+    },
+    {
+      "trial": 9,
+      "cost": 14.099958539747021,
+      "avg_rms": 1.5255,
+      "avg_lock": 73.5,
+      "avg_flip": 10.248333333333333,
+      "params": {
+        "deadband_pan_deg": 0.12654775061557585,
+        "deadband_tilt_deg": 0.12703588698059484,
+        "taper_pan_deg": 0.11130682222763452,
+        "taper_tilt_deg": 0.14506606615265288,
+        "in_flight_damping": 0.3749047803602669,
+        "reversal_damping": 0.3085396127095584,
+        "aim_mouth_ratio": 0.4486212527455788
+      },
+      "metrics": {
+        "100cm": {
+          "settling_time": 0.416,
+          "tail_rms": 0.607,
+          "flip_rate": 0.92,
+          "tail_lock_pct": 100.0,
+          "cost": 1.97
+        },
+        "140cm": {
+          "settling_time": 0.356,
+          "tail_rms": 0.26,
+          "flip_rate": 0.0,
+          "tail_lock_pct": 100.0,
+          "cost": 1.005
+        },
+        "180cm": {
+          "settling_time": 0.404,
+          "tail_rms": 1.943,
+          "flip_rate": 7.83,
+          "tail_lock_pct": 41.0,
+          "cost": 7.345
+        },
+        "220cm": {
+          "settling_time": 0.3,
+          "tail_rms": 0.347,
+          "flip_rate": 0.0,
+          "tail_lock_pct": 100.0,
+          "cost": 1.167
+        },
+        "260cm": {
+          "settling_time": 1.8,
+          "tail_rms": 5.521,
+          "flip_rate": 50.57,
+          "tail_lock_pct": 0.0,
+          "cost": 20.625
+        },
+        "300cm": {
+          "settling_time": 0.228,
+          "tail_rms": 0.475,
+          "flip_rate": 2.17,
+          "tail_lock_pct": 100.0,
+          "cost": 1.503
+        }
+      }
+    },
+    {
+      "trial": 10,
+      "cost": 15.138997082696314,
+      "avg_rms": 1.7668333333333333,
+      "avg_lock": 65.66666666666667,
+      "avg_flip": 11.301666666666668,
+      "params": {
+        "deadband_pan_deg": 0.16117581732475594,
+        "deadband_tilt_deg": 0.22847009372174867,
+        "taper_pan_deg": 0.22246901359878904,
+        "taper_tilt_deg": 0.15821356398649983,
+        "in_flight_damping": 0.3156442463092598,
+        "reversal_damping": 0.40412639442123016,
+        "aim_mouth_ratio": 0.483540963269116
+      },
+      "metrics": {
+        "100cm": {
+          "settling_time": 0.424,
+          "tail_rms": 0.691,
+          "flip_rate": 1.13,
+          "tail_lock_pct": 100.0,
+          "cost": 2.197
+        },
+        "140cm": {
+          "settling_time": 0.368,
+          "tail_rms": 0.367,
+          "flip_rate": 0.0,
+          "tail_lock_pct": 100.0,
+          "cost": 1.285
+        },
+        "180cm": {
+          "settling_time": 0.432,
+          "tail_rms": 2.809,
+          "flip_rate": 13.73,
+          "tail_lock_pct": 0.9,
+          "cost": 10.979
+        },
+        "220cm": {
+          "settling_time": 0.3,
+          "tail_rms": 0.524,
+          "flip_rate": 0.0,
+          "tail_lock_pct": 100.0,
+          "cost": 1.61
+        },
+        "260cm": {
+          "settling_time": 1.8,
+          "tail_rms": 5.521,
+          "flip_rate": 50.57,
+          "tail_lock_pct": 0.0,
+          "cost": 20.625
+        },
+        "300cm": {
+          "settling_time": 0.228,
+          "tail_rms": 0.689,
+          "flip_rate": 2.38,
+          "tail_lock_pct": 93.1,
+          "cost": 2.255
+        }
+      }
+    },
+    {
+      "trial": 11,
+      "cost": 15.556752489177534,
+      "avg_rms": 1.8923333333333334,
+      "avg_lock": 64.76666666666667,
+      "avg_flip": 11.216666666666667,
+      "params": {
+        "deadband_pan_deg": 0.33821127425918784,
+        "deadband_tilt_deg": 0.16983411039525712,
+        "taper_pan_deg": 0.18462610396466467,
+        "taper_tilt_deg": 0.14619121571912186,
+        "in_flight_damping": 0.2182108823183828,
+        "reversal_damping": 0.5128353415540121,
+        "aim_mouth_ratio": 0.44665786695826504
+      },
+      "metrics": {
+        "100cm": {
+          "settling_time": 0.4,
+          "tail_rms": 1.233,
+          "flip_rate": 3.91,
+          "tail_lock_pct": 87.7,
+          "cost": 4.008
+        },
+        "140cm": {
+          "settling_time": 0.36,
+          "tail_rms": 0.462,
+          "flip_rate": 0.0,
+          "tail_lock_pct": 100.0,
+          "cost": 1.516
+        },
+        "180cm": {
+          "settling_time": 0.408,
+          "tail_rms": 2.822,
+          "flip_rate": 12.82,
+          "tail_lock_pct": 0.9,
+          "cost": 10.95
+        },
+        "220cm": {
+          "settling_time": 0.3,
+          "tail_rms": 0.588,
+          "flip_rate": 0.0,
+          "tail_lock_pct": 100.0,
+          "cost": 1.77
+        },
+        "260cm": {
+          "settling_time": 1.8,
+          "tail_rms": 5.521,
+          "flip_rate": 50.57,
+          "tail_lock_pct": 0.0,
+          "cost": 20.625
+        },
+        "300cm": {
+          "settling_time": 0.228,
+          "tail_rms": 0.728,
+          "flip_rate": 0.0,
+          "tail_lock_pct": 100.0,
+          "cost": 2.048
+        }
+      }
+    }
+  ]
+}

@@ -4,7 +4,9 @@
   "extraPaths": [
     ".",
     "turret_fcs",
-    "webots/controllers/webots_main"
+    "turret_basket",
+    "webots/controllers/webots_turret_fcs",
+    "webots/controllers/webots_turret_basket"
   ],
   "reportMissingImports": "none",
   "typeCheckingMode": "off"

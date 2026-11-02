@@ -47,20 +47,20 @@ class OpticsConfig:
 @dataclass(frozen=True)
 class ControlConfig:
     """P kontrolcu ve filtre parametreleri."""
-    kp_pan: float = 0.3159      # P: 30 FPS bazinda Coklu Profil Optuna optimal kazanc
-    kp_tilt: float = 0.2155     # P: 30 FPS bazinda Coklu Profil Optuna optimal kazanc
-    deadband_pan_deg: float = 0.691
-    deadband_tilt_deg: float = 0.683
+    kp_pan: float = 0.1921      # P: Coklu Mesafe (1m, 2m, 3m) & Coklu Profil Optuna optimal kazanc
+    kp_tilt: float = 0.1669     # P: Coklu Mesafe (1m, 2m, 3m) & Coklu Profil Optuna optimal kazanc
+    deadband_pan_deg: float = 0.766
+    deadband_tilt_deg: float = 0.530
     max_output_deg: float = 1.50
     max_command_step_deg: float = 1.50  # Firmware Servo_ApplyCorrection ust siniri
-    cmd_accel_pan_deg_s2: float = 601.74  # P/RL pan komut ivme siniri (Coklu Profil Optuna optimal)
-    cmd_accel_tilt_deg_s2: float = 255.19  # P/RL tilt komut ivme siniri (Coklu Profil Optuna optimal)
+    cmd_accel_pan_deg_s2: float = 556.58  # P/RL pan komut ivme siniri (Coklu Mesafe Optuna optimal)
+    cmd_accel_tilt_deg_s2: float = 211.81  # P/RL tilt komut ivme siniri (Coklu Mesafe Optuna optimal)
     asymmetric_braking: bool = True      # Oneri 1: Hedefe varista/yavaslamada ivme sinirini kaldir (sifir overshoot)
-    in_flight_damping: float = 0.6242      # Oneri 2: Yoldaki (in-flight) 3-kare komut yaklasim sonumlemesi
+    in_flight_damping: float = 0.6875      # Oneri 2: Yoldaki (in-flight) 3-kare komut yaklasim sonumlemesi
     lead_time_offset_s: float = 0.015    # Balistik lead'e eklenen sabit pay
     lead_time_min_s: float = 0.03        # Lead sure alt siniri
     lead_time_max_s: float = 0.40        # Lead sure ust siniri (dart ucus suresi olcegi)
-    alpha_filter: float = 0.9323         # P giris EMA'sinda yeni deger agirligi (Coklu Profil Optuna optimal)
+    alpha_filter: float = 0.9475         # P giris EMA'sinda yeni deger agirligi (Coklu Mesafe Optuna optimal)
     ego_tau_s: float = 0.0300            # Ego icin komut adimi servo zaman sabiti (30 ms fiziksel taret)
     ego_motion_uncertainty_ratio: float = 0.35  # Olculmeyen servo hareketi bagil standart sapmasi
     ego_backlash_uncertainty_ratio: float = 0.25  # Disli boslugu alimi sirasindaki belirsizlik orani
@@ -123,15 +123,15 @@ class BallisticsConfig:
 class RLConfig:
     """RL cikarim ve egitim ortaminin ortak sabitleri (tek kaynak)."""
     soft_deadband_enabled: bool = True   # Acisal yumusak olu bolge + taper anahtari
-    reversal_damping: float = 0.7716        # Yon degistiren aksiyonun sonum orani (Coklu Profil Optuna optimal)
+    reversal_damping: float = 0.6637        # Yon degistiren aksiyonun sonum orani (Coklu Mesafe Optuna optimal)
     reversal_hold_frames: int = 3        # Yon degisim sonumunu 3 kare (~90ms, gecikme+backlash) koru
-    taper_pan_deg: float = 0.254           # Soft deadband gecis genisligi (pan)
-    taper_tilt_deg: float = 0.801          # Soft deadband gecis genisligi (tilt)
+    taper_pan_deg: float = 0.400           # Soft deadband gecis genisligi (pan - Coklu Mesafe Optuna optimal)
+    taper_tilt_deg: float = 0.469          # Soft deadband gecis genisligi (tilt - Coklu Mesafe Optuna optimal)
     deadband_pan_deg: float = 0.490      # RL acisal olu bolge (pan)
-    deadband_tilt_deg: float = 0.656     # RL acisal olu bolge (tilt)
+    deadband_tilt_deg: float = 0.621     # RL acisal olu bolge (tilt - Coklu Mesafe Optuna optimal)
     nominal_dt_s: float = 0.03333        # Egitim kare periyodu (adim limiti olcekleme referansi)
     d_err_scale: float = 0.05            # Hata turevi gozlem olcegi (egitimle ayni)
-    d_err_ema_alpha: float = 0.3361        # Hata turevi EMA katsayisi (Coklu Profil Optuna optimal)
+    d_err_ema_alpha: float = 0.4675        # Hata turevi EMA katsayisi (Coklu Mesafe Optuna optimal)
     v_max_px_s: float = 300.0            # Hiz gozlemi Bryson olcegi
     dist_min_m: float = 0.5              # Mesafe gozlemi alt siniri
     dist_max_m: float = 5.0              # Mesafe gozlemi ust siniri

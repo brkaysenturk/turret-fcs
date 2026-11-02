@@ -8,7 +8,7 @@ Bitirme Çalışması ve Tasarım Projesi
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10-3.12](https://img.shields.io/badge/Python-3.10--3.12-blue.svg)](https://www.python.org/)
 [![CI](https://github.com/brkaysenturk/turret-fcs/actions/workflows/ci.yml/badge.svg)](https://github.com/brkaysenturk/turret-fcs/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/Tests-28%20passed-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-40%20passed-brightgreen.svg)](tests/)
 [![Hardware](https://img.shields.io/badge/Hardware-STM32F401RE-002B49.svg)](https://www.st.com/)
 [![LiDAR](https://img.shields.io/badge/LiDAR-TF--Luna%20ToF-blueviolet.svg)](https://en.benewake.com/)
 [![Simulation](https://img.shields.io/badge/Simulation-Webots%20R2025a-red.svg)](https://cyberbotics.com/)
@@ -26,7 +26,7 @@ Turret FCS; mini/mikro İnsansız Hava Araçları ve asimetrik hava hedeflerine 
 3. [Güncel Sistem Mimarisi](#3-güncel-sistem-mimarisi)
 4. [Çalışma Akışı ve Durum Makinesi](#4-çalışma-akışı-ve-durum-makinesi)
 5. [Donanım ve Elektriksel Mimari](#5-donanım-ve-elektriksel-mimari)
-6. [Yazılım Modülleri](#6-yazılım-modülleri--nedir-ne-işe-yarar)
+6. [Yazılım Modülleri](#6-yazılım-modülleri)
 7. [Kontrol ve Kestirim Teorisi](#7-kontrol-ve-kestirim-teorisi)
 8. [Güvenlik ve Fail-Safe Mimarisi](#8-güvenlik-ve-fail-safe-mimarisi)
 9. [Performans ve Doğrulama](#9-performans-ve-doğrulama)
@@ -86,7 +86,7 @@ Sistem, tek bir operatörün hava sahasını izlemesine ve yalnızca güvenli ki
 
 Sistem dört katmandan oluşur. Üst katmanlar karar üretir, alt katmanlar bu kararı fiziksel eyleme dönüştürür.
 
-![Turret FCS Sistem Mimarisi](docs/assets/turret_fcs_architecture.svg?v=2)
+![Turret FCS Sistem Mimarisi](turret_fcs/docs/assets/turret_fcs_architecture.svg?v=2)
 
 *Şema, katmanların ve veri akışının görsel özetidir; sayısal parametrelerde tek kaynak `turret_fcs/config.py` içindeki `CONFIG`'dir.*
 
@@ -101,7 +101,7 @@ Sistem dört katmandan oluşur. Üst katmanlar karar üretir, alt katmanlar bu k
 
 ## 4. Çalışma Akışı ve Durum Makinesi
 
-![Turret FCS Algoritmik Akış Şeması](docs/assets/turret_fcs_flowchart.svg)
+![Turret FCS Algoritmik Akış Şeması](turret_fcs/docs/assets/turret_fcs_flowchart.svg)
 
 ### Durumlar ve geçişler
 
@@ -140,9 +140,9 @@ Sistem dört katmandan oluşur. Üst katmanlar karar üretir, alt katmanlar bu k
 
 ## 5. Donanım ve Elektriksel Mimari
 
-![Turret FCS Donanım ve Güç Dağıtım Şeması](docs/assets/turret_fcs_hardware.svg)
+![Turret FCS Donanım ve Güç Dağıtım Şeması](turret_fcs/docs/assets/turret_fcs_hardware.svg)
 
-*Şema bağlantı topolojisini özetler; pin ve güç katı ayrıntılarında [firmware kılavuzu](docs/firmware.md) ve aşağıdaki tablolar esastır.*
+*Şema bağlantı topolojisini özetler; pin ve güç katı ayrıntılarında [firmware kılavuzu](turret_fcs/docs/firmware.md) ve aşağıdaki tablolar esastır.*
 
 ### Temel bileşenler
 
@@ -181,15 +181,15 @@ Sistem dört katmandan oluşur. Üst katmanlar karar üretir, alt katmanlar bu k
 
 ### Mekanik tasarım
 
-![Turret FCS Elektromekanik Donanım Yerleşimi](docs/assets/mechanical_design.jpg)
+![Turret FCS Elektromekanik Donanım Yerleşimi](turret_fcs/docs/assets/mechanical_design.jpg)
 
-![Turret FCS 3D Mekanik Montaj](docs/assets/turret_cad_render_annotated.jpg)
+![Turret FCS 3D Mekanik Montaj](turret_fcs/docs/assets/turret_cad_render_annotated.jpg)
 
 Taret; 3D baskı açık beşik, doğrudan tahrikli pan/tilt servolar ve minimum optik paralaks yerleşimiyle kurulmuştur. Kamera ve LiDAR aynı yönelimde monte edilir; namlu ekseni optik merkezle hizalanır.
 
 ---
 
-## 6. Yazılım Modülleri — Nedir, Ne İşe Yarar?
+## 6. Yazılım Modülleri
 
 Bu bölüm, her modülün **ne olduğunu ve sistem içinde hangi işi yaptığını** açıklar. Modüllerin tamamı `turret_fcs/` paketi altında yer alır; ortak parametreler `CONFIG` üzerinden okunur.
 
@@ -211,14 +211,14 @@ Bu bölüm, her modülün **ne olduğunu ve sistem içinde hangi işi yaptığı
 | **Kontrol** | `config.py` | Tüm alt sistemlerin tek doğruluk kaynağı | `CONFIG` |
 | **İletişim** | `protocol.py` | PC-STM32 çerçeve uzunluğu, başlık, ölçek ve durum kodları | Ortak protokol sözleşmesi |
 | **İletişim** | `fcs_comm.py` | STM32 ile 115200 Baud ikili protokol | TX/RX paketleri |
-| **Arayüz** | `turret_hud.py` | Nişangah, kilit bari, LEAD, vuruş olasılığı çizer | HUD katmanı |
+| **Arayüz** | `fcs_hud.py` | Nişangah, kilit bari, LEAD, vuruş olasılığı çizer | HUD katmanı |
 | **Arayüz** | `presenter.py` | HUD çizim sırasını ve durum metinlerini yönetir | Tam kare |
 | **Arayüz** | `telemetry.py` | 35 kolonlu CSV, meta.json ve olay günlüğü yazar | Oturum kaydı |
 | **Davranış** | `patrol_generator.py` | Hedef yokken bekleme, merkeze dönüş ve figure-8 tarama | Devriye adımı |
 | **RL eğitimi** | `rl/turret_env.py` | Gerçek plant kısıtlarıyla Gymnasium ortamı | 11-D gözlem |
 | **RL eğitimi** | `rl/train_rl.py` | PPO politikasını eğitir | `.zip` + `.npz` model |
-| **Webots** | `webots/controllers/webots_main/` | Üretim kodunu dijital ikizde çalıştırır | Simülasyon oturumu |
-| **Gömülü** | `stm32/turret_main/` | Servo, LiDAR, volan ve solenoidin gerçek zamanlı denetimi | PWM / UART / GPIO |
+| **Webots** | `webots/controllers/webots_turret_fcs/` | Üretim kodunu dijital ikizde çalıştırır | Simülasyon oturumu |
+| **Gömülü** | `turret_fcs/stm32/turret_fcs/` | Servo, LiDAR, volan ve solenoidin gerçek zamanlı denetimi | PWM / UART / GPIO |
 
 ### 6.2 Çalışma zamanı ve orkestrasyon
 
@@ -332,9 +332,9 @@ Her kare için 35 kolonlu CSV yazar: kare kimliği, zaman, dt, işlem gecikmesi,
 
 **Ne sağlar:** Sahadaki her kararın ve sensör değerinin sonradan analizle incelenebilmesini sağlar.
 
-#### `turret_hud.py` ve `presenter.py` — Taktik arayüz
+#### `fcs_hud.py` ve `presenter.py` — Taktik arayüz
 
-`turret_hud.py` düşük seviyeli çizim ilkellerini (köşe kutusu, nişangah, kilit bari, LEAD oku, vuruş olasılığı, olay günlüğü, mod bannerı) sağlar. `presenter.py` bu ilkelleri doğru sırayla çağırır: hedef kutusu → takip çizgisi → LEAD → nişangah → telemetri → kilit göstergesi → banner/footer. E-stop, angajman ve arama durumlarında renk ve metinler değişir.
+`fcs_hud.py` düşük seviyeli çizim ilkellerini (köşe kutusu, nişangah, kilit bari, LEAD oku, vuruş olasılığı, olay günlüğü, mod bannerı) sağlar. `presenter.py` bu ilkelleri doğru sırayla çağırır: hedef kutusu → takip çizgisi → LEAD → nişangah → telemetri → kilit göstergesi → banner/footer. E-stop, angajman ve arama durumlarında renk ve metinler değişir.
 
 **Ne sağlar:** Operatörün tek bakışta hedef, kilit, menzil, mod ve atış iznini görmesini sağlar.
 
@@ -390,7 +390,7 @@ Gerçek plant kısıtlarını modeller: 1.61° ölçülmüş dişli boşluğu, 0
 
 | Modül | Ne işe yarar? |
 | :--- | :--- |
-| `webots_main.py` | Üretim `FCSManager`, `EngagementManager`, HUD ve telemetri kodunu Webots'ta çalıştırır |
+| `turret_fcs.py` | Üretim `FCSManager`, `EngagementManager`, HUD ve telemetri kodunu Webots'ta çalıştırır |
 | `webots_hardware_interface.py` | Motor, enkoder, kamera ve LiDAR cihazlarını üretim arayüzüne bağlar; 66.7 ms gözlem gecikmesi, 68.2 ms servo lag, 1.61° backlash ve 0.1° kuantalama uygular |
 | `webots_flywheel_launcher.py` | Volan spin-up, boşta dönüş ve solenoid tetiklemesini simüle eder |
 | `webots_virtual_ballistics.py` | Sanal mermi uçuşu ve namlu ofsetli isabet değerlendirmesi üretir |
@@ -571,7 +571,7 @@ Aşağıdaki değerler, P ve RL modlarının birlikte kullanıldığı 4.383 kar
 
 ### 9.3 P ve PPO RL benzetim karşılaştırması
 
-![P Kontrolcü vs PPO RL Benchmark](analysis/figures/python/python_fig11_p_vs_rl_final_benchmark.png)
+![P Kontrolcü vs PPO RL Benchmark](turret_fcs/analysis/figures/python/python_fig11_p_vs_rl_final_benchmark.png)
 
 Benzetim, 1-3 kare arasinda rastgelelestirilmis tasima gecikmesi ve dinamik eyleyici lag'i altinda dort tohumla calistirilir. Guncel figurde FCS kilit kapisi (<= 1.70 deg) altinda P kontrolcu %36.8, PPO RL %50.2 kilit orani uretir (RL %13.4 onde). Genis takip kapisinda (<= 2.95 deg) basari P icin %60.4, RL icin %64.0'tur. Pan RMS hatasi P icin 4.02 deg, RL icin 4.06 deg; tilt RMS hatasi P icin 1.97 deg, RL icin 1.74 deg'dir (RL tilt ekseninde %12.0 iyilesme saglar).
 
@@ -613,53 +613,53 @@ Tüm analiz grafikleri `analysis/figures/` altında `python/` ve `matlab/` olara
 | `matlab_fig5_simulink_simulation_result.png` | Simulink dijital ikiz kapalı çevrim doğrulaması |
 | `matlab_fig6_hil_test_result.png` | Hardware-in-the-Loop canlı STM32 takip testi |
 
-![20 Derece Basamak Yanıtı](analysis/figures/python/python_fig1_tuned_step_and_control_effort.png)
+![20 Derece Basamak Yanıtı](turret_fcs/analysis/figures/python/python_fig1_tuned_step_and_control_effort.png)
 
-![Faz Düzlemi Portresi](analysis/figures/python/python_fig2_tuned_phase_plane_portrait.png)
+![Faz Düzlemi Portresi](turret_fcs/analysis/figures/python/python_fig2_tuned_phase_plane_portrait.png)
 
-![Bode Kararlılık Analizi](analysis/figures/python/python_fig3_tuned_bode_stability.png)
+![Bode Kararlılık Analizi](turret_fcs/analysis/figures/python/python_fig3_tuned_bode_stability.png)
 
-![Dinamik Takip](analysis/figures/python/python_fig4_tuned_dynamic_tracking.png)
+![Dinamik Takip](turret_fcs/analysis/figures/python/python_fig4_tuned_dynamic_tracking.png)
 
-![Lissajous Devriye](analysis/figures/python/python_fig5_tuned_lissajous_coverage.png)
+![Lissajous Devriye](turret_fcs/analysis/figures/python/python_fig5_tuned_lissajous_coverage.png)
 
-![Balistik Karakteristik](analysis/figures/python/python_fig6_tuned_ballistic_characteristics.png)
+![Balistik Karakteristik](turret_fcs/analysis/figures/python/python_fig6_tuned_ballistic_characteristics.png)
 
-![Sabit Hedef Kilit Kararlılığı](analysis/figures/python/python_fig7_sim_still_lock.png)
+![Sabit Hedef Kilit Kararlılığı](turret_fcs/analysis/figures/python/python_fig7_sim_still_lock.png)
 
-![Manevralı Hedef Takibi](analysis/figures/python/python_fig8_sim_moving_tracking.png)
+![Manevralı Hedef Takibi](turret_fcs/analysis/figures/python/python_fig8_sim_moving_tracking.png)
 
-![Sistem Tanımlama](analysis/figures/python/python_fig9_system_identification.png)
+![Sistem Tanımlama](turret_fcs/analysis/figures/python/python_fig9_system_identification.png)
 
-![Kalman Doğrulama](analysis/figures/python/python_fig10_kalman_tracking_performance.png)
+![Kalman Doğrulama](turret_fcs/analysis/figures/python/python_fig10_kalman_tracking_performance.png)
 
-![P vs RL Final Benchmark](analysis/figures/python/python_fig11_p_vs_rl_final_benchmark.png)
+![P vs RL Final Benchmark](turret_fcs/analysis/figures/python/python_fig11_p_vs_rl_final_benchmark.png)
 
-![Hedef Güven Eşiği EVT Optimizasyonu](analysis/figures/python/python_fig12_selector_evt_optimization.png)
+![Hedef Güven Eşiği EVT Optimizasyonu](turret_fcs/analysis/figures/python/python_fig12_selector_evt_optimization.png)
 
-![Gerçek Donanım Sistem Tanılaması](analysis/figures/python/python_fig13_system_id_real_hardware.png)
+![Gerçek Donanım Sistem Tanılaması](turret_fcs/analysis/figures/python/python_fig13_system_id_real_hardware.png)
 
-![Balistik ROC Eğrisi](analysis/figures/python/python_fig14_ballistics_roc_optimization.png)
+![Balistik ROC Eğrisi](turret_fcs/analysis/figures/python/python_fig14_ballistics_roc_optimization.png)
 
-![Kinematik Devriye Telemetrisi](analysis/figures/python/python_fig15_patrol_kinematic_telemetry.png)
+![Kinematik Devriye Telemetrisi](turret_fcs/analysis/figures/python/python_fig15_patrol_kinematic_telemetry.png)
 
-![Monte Carlo Dayanıklılık Analizi](analysis/figures/python/python_fig16_robustness_monte_carlo.png)
+![Monte Carlo Dayanıklılık Analizi](turret_fcs/analysis/figures/python/python_fig16_robustness_monte_carlo.png)
 
-![Boru Hattı Gecikme Dağılımı](analysis/figures/python/python_fig17_pipeline_latency_breakdown.png)
+![Boru Hattı Gecikme Dağılımı](turret_fcs/analysis/figures/python/python_fig17_pipeline_latency_breakdown.png)
 
-![Gerçek Zaman Sabiti Karşılaştırması](analysis/figures/python/python_fig18_real_tau_comparison.png)
+![Gerçek Zaman Sabiti Karşılaştırması](turret_fcs/analysis/figures/python/python_fig18_real_tau_comparison.png)
 
-![MATLAB Sistem Tanımlama](analysis/figures/matlab/matlab_fig1_system_id_result.png)
+![MATLAB Sistem Tanımlama](turret_fcs/analysis/figures/matlab/matlab_fig1_system_id_result.png)
 
-![MATLAB Kök-Yer Eğrisi](analysis/figures/matlab/matlab_fig2_stability_root_locus.png)
+![MATLAB Kök-Yer Eğrisi](turret_fcs/analysis/figures/matlab/matlab_fig2_stability_root_locus.png)
 
-![MATLAB Bode ve Nyquist Analizi](analysis/figures/matlab/matlab_fig3_stability_bode_nyquist.png)
+![MATLAB Bode ve Nyquist Analizi](turret_fcs/analysis/figures/matlab/matlab_fig3_stability_bode_nyquist.png)
 
-![MATLAB Adım Tepkisi](analysis/figures/matlab/matlab_fig4_stability_step_response.png)
+![MATLAB Adım Tepkisi](turret_fcs/analysis/figures/matlab/matlab_fig4_stability_step_response.png)
 
-![MATLAB Simulink Dijital İkiz Doğrulaması](analysis/figures/matlab/matlab_fig5_simulink_simulation_result.png)
+![MATLAB Simulink Dijital İkiz Doğrulaması](turret_fcs/analysis/figures/matlab/matlab_fig5_simulink_simulation_result.png)
 
-![MATLAB HIL Testi](analysis/figures/matlab/matlab_fig6_hil_test_result.png)
+![MATLAB HIL Testi](turret_fcs/analysis/figures/matlab/matlab_fig6_hil_test_result.png)
 
 ---
 
@@ -690,7 +690,7 @@ setup_env.bat
 venv\Scripts\python.exe -m pytest -q
 ```
 
-28 test; P kontrolcü, Kalman aday geri oynatma, kilit/vuruş olasılığı, LiDAR kapılama, RL sarmalayıcı, Webots tuning, ağırlık yöneticisi ve `CONFIG` tutarlılığını donanım olmadan doğrular.
+40 test; P kontrolcü, Kalman aday geri oynatma, kilit/vuruş olasılığı, LiDAR kapılama, RL sarmalayıcı, Webots tuning, ağırlık yöneticisi, `CONFIG` tutarlılığı ve `turret_basket` (RK4 balistik, CupTracker, UART comm) sözleşmelerini donanım olmadan doğrular.
 
 ### 10.4 Sistemi başlatma
 
@@ -708,7 +708,7 @@ venv\Scripts\python.exe -m turret_fcs.main
 
 ### 10.5 Webots dijital ikizi
 
-1. Webots R2025a ile `webots/worlds/webots_turret_fcs.wbt` dosyasını açın.
+1. Webots R2025a ile `webots/worlds/turret_fcs.wbt` dosyasını açın.
 2. Başlangıç modunu seçin:
 
    ```text
@@ -833,11 +833,11 @@ turret_fcs/
 │   ├── firmware.md                   # CubeIDE, pinout ve flaşlama kılavuzu
 │   └── reproducibility.md            # Test, eğitim ve figür üretim kılavuzu
 ├── logs/                             # Telemetri CSV, meta.json ve olay günlükleri
-├── stm32/turret_main/                # STM32CubeIDE projesi
+├── turret_fcs/stm32/turret_fcs/                # STM32CubeIDE projesi
 │   └── Core/
 │       ├── Inc/                      # protocol.h, servo_driver.h, fcs_comm.h, luna_read.h, flywheel_solenoid.h
 │       └── Src/                      # main.c, servo_driver.c, fcs_comm.c, luna_read.c, flywheel_solenoid.c
-├── tests/                            # 28 Pytest birim/entegrasyon testi
+├── tests/                            # 40 Pytest birim/entegrasyon testi
 ├── turret_fcs/                       # PC çalışma zamanı
 │   ├── config.py                     # SSOT
 │   ├── protocol.py                   # PC-STM32 protokol sözleşmesi
@@ -854,14 +854,14 @@ turret_fcs/
 │   ├── patrol_generator.py           # Figure-8 devriye
 │   ├── fcs_comm.py                   # STM32 UART
 │   ├── telemetry.py                  # Telemetri şeması 2.1
-│   ├── turret_hud.py                 # HUD ilkelleri
+│   ├── fcs_hud.py                 # HUD ilkelleri
 │   ├── presenter.py                  # HUD sunumu
 │   ├── weights.py                    # Ağırlık indirici
 │   ├── rl/                           # Gymnasium ortamı, eğitim ve modeller
 │   └── yolo/                         # YOLO veri toplama, etiketleme ve eğitim
 ├── webots/
-│   ├── worlds/webots_turret_fcs.wbt  # Dijital ikiz dünyası
-│   ├── controllers/webots_main/      # Üretim kodunu çalıştıran HAL
+│   ├── worlds/turret_fcs.wbt  # Dijital ikiz dünyası
+│   ├── controllers/webots_turret_fcs/      # Üretim kodunu çalıştıran HAL
 │   ├── balloon_profile.json          # Hedef profilleri
 │   └── tuning_params.json            # Webots-only P kazancı
 ├── weights/                          # best.pt ve yolov8n.pt
@@ -876,9 +876,9 @@ turret_fcs/
 
 ## 14. Dokümantasyon
 
-- [Firmware kılavuzu](docs/firmware.md): STM32CubeIDE kurulumu, pinout, flaşlama ve güvenlik bekçileri.
-- [Tekrar üretilebilirlik kılavuzu](docs/reproducibility.md): testler, RL eğitimi, benchmark ve figür üretimi.
-- [Analiz araçları](analysis/README.md): betikler, dizin hiyerarşisi ve ürettikleri çıktılar.
+- [Firmware kılavuzu](turret_fcs/docs/firmware.md): STM32CubeIDE kurulumu, pinout, flaşlama ve güvenlik bekçileri.
+- [Tekrar üretilebilirlik kılavuzu](turret_fcs/docs/reproducibility.md): testler, RL eğitimi, benchmark ve figür üretimi.
+- [Analiz araçları](turret_fcs/analysis/README.md): betikler, dizin hiyerarşisi ve ürettikleri çıktılar.
 
 ---
 

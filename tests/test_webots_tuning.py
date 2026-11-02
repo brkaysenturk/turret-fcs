@@ -7,7 +7,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-sys.path.insert(0, str(ROOT / "webots" / "controllers" / "webots_main"))
+sys.path.insert(0, str(ROOT / "webots" / "controllers" / "webots_turret_fcs"))
 
 from turret_fcs.fcs_manager import FCSManager
 from webots_tuning import LIMITS, apply_tuning, load_tuning

@@ -11,7 +11,7 @@ _LAZY_IMPORTS = {
     "FCSManager": ".fcs_manager",
     "FCSCommunicator": ".fcs_comm",
     "CameraThread": ".camera_thread",
-    "TurretHUD": ".turret_hud",
+    "TurretHUD": ".fcs_hud",
     "TelemetryLogger": ".telemetry",
     "EngagementManager": ".engagement",
     "EngagementState": ".engagement",
