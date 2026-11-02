@@ -1,39 +1,40 @@
 """
 ================================================================================
-BASKET CHALLENGE: 1. MODEL - KUPA KILITLENME VE TAKIP MOTORU (CUP TRACKER)
+BASKET CHALLENGE: 1. MODEL - KUPA KILITLENME VE TAKIP MOTORU (RL TRACKER)
 ================================================================================
 turret-fcs projesinde egitilen ve Webots donaniminda dogrulanmis RLController
 (PPO 9-64-64-2 NumPy MLP) mimarisini birebir kullanan 1. Asama Gorsel Takip Motoru.
-- Bardağı optik eksenin tam merkezine (err_x -> 0, err_y -> 0) kilitler.
+- Bardagi optik eksenin tam merkezine (err_x -> 0, err_y -> 0) kilitler.
 - In-flight komut sonumleme, soft deadband taper ve ivme sinirlayici icerir.
 ================================================================================
 """
 
 from pathlib import Path
 import json
+from typing import Optional, Tuple
 
 from turret_fcs.rl_controller import RLController
 
 
-class CupTracker:
+class RLTracker:
     """1. Model: Kupaya gorsel servo ile kilitlenen RL takip kontrolcusu."""
 
-    def __init__(self, model_path: str = None, params_path: str = None):
+    def __init__(self, model_path: Optional[str] = None, params_path: Optional[str] = None):
         if model_path is None:
             model_path = str(Path(__file__).resolve().parent / "rl" / "models" / "cup_tracker_policy.npz")
-        
+
         # Optuna tarafindan statik kupa icin optimize edilmis hiperparametreler
         if params_path is None:
-            params_path = Path(__file__).resolve().parent / "rl" / "models" / "cup_tracker_params.json"
+            params_file = Path(__file__).resolve().parent / "rl" / "models" / "cup_tracker_params.json"
         else:
-            params_path = Path(params_path)
+            params_file = Path(params_path)
 
         params = {}
-        if params_path.exists():
+        if params_file.exists():
             try:
-                with open(params_path, "r", encoding="utf-8") as f:
+                with open(params_file, "r", encoding="utf-8") as f:
                     params = json.load(f)
-                print(f"[TRACKER] Optuna parametreleri yuklendi: {params_path.name}")
+                print(f"[TRACKER] Optuna parametreleri yuklendi: {params_file.name}")
             except Exception as e:
                 print(f"[WARN] Optuna parametreleri okunamadi: {e}")
 
@@ -54,7 +55,7 @@ class CupTracker:
             taper_tilt_deg=self.taper_tilt_deg,
             in_flight_damping=self.in_flight_damping,
             reversal_damping=self.reversal_damping,
-            soft_deadband_enabled=True
+            soft_deadband_enabled=True,
         )
 
     def reset(self):
@@ -74,8 +75,8 @@ class CupTracker:
         screen_w: float,
         screen_h: float,
         distance_m: float = 1.45,
-        dt: float = 0.033
-    ) -> tuple[float, float, bool]:
+        dt: float = 0.033,
+    ) -> Tuple[float, float, bool]:
         """
         Kupa merkez koordinatina gore taret Pan ve Tilt motor adimlarini hesaplar.
         Donus: (delta_pan_deg, delta_tilt_deg, is_locked)
@@ -90,7 +91,7 @@ class CupTracker:
             vx=0.0,
             vy=0.0,
             dist_m=float(distance_m),
-            dt=float(dt)
+            dt=float(dt),
         )
 
         # Hedefe kilitlenme kriteri: Ekran merkezine acisal yakinlik (Pan < 1.5 deg, Tilt < 1.6 deg)

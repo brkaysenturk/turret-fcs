@@ -14,7 +14,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Tuple
 import numpy as np
-from ultralytics import YOLO
+
+try:
+    from ultralytics import YOLO
+except ImportError:
+    YOLO = None
 
 from turret_basket.config import CONFIG
 
@@ -38,8 +42,13 @@ class CupDetector:
 
     def __init__(self, model_path: Optional[str] = None):
         path = model_path or CONFIG.cup.yolo_model_path
-        print(f"[VISION] YOLOv8 modeli yukleniyor: {path}")
-        self.model = YOLO(path)
+        if YOLO is not None:
+            print(f"[VISION] YOLOv8 modeli yukleniyor: {path}")
+            self.model = YOLO(path)
+        else:
+            self.model = None
+            print("[VISION] Ultralytics kutuphanesi bulunamadi, simule tespit modu devrede.")
+
         self.target_classes = CONFIG.cup.target_classes
         self.conf_thresh = CONFIG.cup.confidence_threshold
         self.alpha = CONFIG.cup.ema_alpha
@@ -60,81 +69,90 @@ class CupDetector:
             except Exception:
                 pass
 
-    def detect(self, frame_bgr: np.ndarray) -> CupDetection:
-        """Kare uzerinde kupayi tespit eder ve normalize acisal hatalari doner."""
-        if frame_bgr is None:
+    def reset(self):
+        """Filtre belleğini sıfırlar."""
+        self.smooth_box = None
+        self.lost_frames = 0
+
+    def detect(self, frame: np.ndarray) -> CupDetection:
+        """Kare uzerinde kupa tespiti yapar, kutuyu EMA ile filtreler ve nisan hatalarini hesaplar."""
+        if self.model is None or frame is None or frame.size == 0:
             return CupDetection()
 
-        h, w = frame_bgr.shape[:2]
-        center_x, center_y = w // 2, h // 2
-        fx = CONFIG.camera.fx
-        fy = CONFIG.camera.fy
+        h, w = frame.shape[:2]
+        cx_screen, cy_screen = w / 2.0, h / 2.0
 
-        # Takip histerezisi (Kilitliyken 0.12, ararken 0.18)
-        current_conf = 0.12 if self.smooth_box is not None else 0.18
-
-        # YOLOv8 Cikarimi (verbose=False)
+        # YOLOv8 çıkarımı
         results = self.model.predict(
-            source=frame_bgr,
+            source=frame,
+            conf=self.conf_thresh,
             classes=self.target_classes,
-            conf=current_conf,
             verbose=False,
-            imgsz=w if w in (640, 1280) else 640
+            imgsz=CONFIG.camera.width
         )
 
         best_box = None
         best_conf = 0.0
-        best_cls = "cup"
 
-        if results and len(results[0].boxes) > 0:
+        if len(results) > 0 and len(results[0].boxes) > 0:
             boxes = results[0].boxes
             for i in range(len(boxes)):
-                conf = float(boxes.conf[i].cpu().numpy())
-                cls_id = int(boxes.cls[i].cpu().numpy())
-                xyxy = boxes.xyxy[i].cpu().numpy().astype(int)
-
+                conf = float(boxes.conf[i].cpu().item())
                 if conf > best_conf:
                     best_conf = conf
+                    xyxy = boxes.xyxy[i].cpu().numpy().tolist()
                     best_box = xyxy
-                    best_cls = self.model.names.get(cls_id, "cup")
 
+        # Tespit varsa EMA ile pürüzsüzleştir
         if best_box is not None:
             self.lost_frames = 0
+            curr_box = np.array(best_box, dtype=np.float32)
             if self.smooth_box is None:
-                self.smooth_box = best_box.astype(float)
+                self.smooth_box = curr_box
             else:
-                # Kutu koselerine EMA uygulayarak piksellerin titresimini yok et
-                self.smooth_box = self.alpha * self.smooth_box + (1.0 - self.alpha) * best_box.astype(float)
+                self.smooth_box = self.alpha * curr_box + (1.0 - self.alpha) * self.smooth_box
 
-            final_box = self.smooth_box.astype(int)
-            x1, y1, x2, y2 = final_box
-            cx = int((x1 + x2) / 2)
-            # Dartin girecegi kupa agiz seviyesi (Optuna ile optimize edilmis oran)
-            cy = int(y1 + (y2 - y1) * self.aim_mouth_ratio)
-
-            # Normalize Hatalar [-1.0, 1.0]
-            err_x_norm = float((cx - center_x) / (w / 2.0))
-            err_y_norm = float((cy - center_y) / (h / 2.0))
-
-            # Açısal Hatalar (Pinhole Kamera Modeli)
-            err_pan_deg = math.degrees(math.atan2(cx - center_x, fx))
-            err_tilt_deg = math.degrees(math.atan2(cy - center_y, fy))
-
-            return CupDetection(
-                detected=True,
-                bbox=(x1, y1, x2, y2),
-                center_px=(cx, cy),
-                confidence=best_conf,
-                err_x_norm=err_x_norm,
-                err_y_norm=err_y_norm,
-                err_pan_deg=err_pan_deg,
-                err_tilt_deg=err_tilt_deg,
-                class_name=best_cls
-            )
+            x1, y1, x2, y2 = self.smooth_box.tolist()
+            conf = best_conf
+            detected = True
         else:
+            # Geçici kaçışlarda önceki kutuyu bir miktar koru (hysteresis)
             self.lost_frames += 1
-            if self.lost_frames > self.MAX_LOST_FRAMES:
+            if self.smooth_box is not None and self.lost_frames <= self.MAX_LOST_FRAMES:
+                x1, y1, x2, y2 = self.smooth_box.tolist()
+                conf = self.conf_thresh
+                detected = True
+            else:
                 self.smooth_box = None
+                return CupDetection(detected=False)
 
-            return CupDetection(detected=False)
+        # ---------------------------------------------------------------------
+        # Kupa Agzi Elipsinin Merkez Koordinati
+        # ---------------------------------------------------------------------
+        # Kulplu kupanın ağzı kutunun en üstünden (y1) belirli bir oranda (aim_mouth_ratio) aşağıdadır
+        cup_w = x2 - x1
+        cup_h = y2 - y1
+        aim_x = x1 + (cup_w / 2.0)
+        aim_y = y1 + (cup_h * self.aim_mouth_ratio)
 
+        # Ekran merkezine göre normalize hata [-1.0, 1.0]
+        err_x_norm = (aim_x - cx_screen) / cx_screen
+        err_y_norm = (aim_y - cy_screen) / cy_screen
+
+        # Açısal hata (pinhole kamera modeli: theta = atan(err_px / f))
+        fx = CONFIG.camera.fx
+        fy = CONFIG.camera.fy
+        err_pan_deg = math.degrees(math.atan((aim_x - cx_screen) / fx))
+        err_tilt_deg = math.degrees(math.atan((aim_y - cy_screen) / fy))
+
+        return CupDetection(
+            detected=detected,
+            bbox=(int(round(x1)), int(round(y1)), int(round(x2)), int(round(y2))),
+            center_px=(int(round(aim_x)), int(round(aim_y))),
+            confidence=conf,
+            err_x_norm=float(err_x_norm),
+            err_y_norm=float(err_y_norm),
+            err_pan_deg=float(err_pan_deg),
+            err_tilt_deg=float(err_tilt_deg),
+            class_name="cup"
+        )

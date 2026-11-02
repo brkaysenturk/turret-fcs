@@ -3,18 +3,31 @@ import struct
 import numpy as np
 
 from turret_basket.config import CONFIG
-from turret_basket.basket_comm import (
-    FCSCommunicator,
-    CMD_FRAME_LEN,
-    TLM_FRAME_LEN,
-    CMD_FORMAT,
-    TLM_FORMAT,
+from turret_basket.protocol import (
     PC_TO_STM_HEADER,
     STM_TO_PC_HEADER,
+    LUNA_HEADER,
+    CMD_FRAME_LEN,
+    TLM_FRAME_LEN,
+    LUNA_FRAME_LEN,
+    ANGLE_SCALE,
+    ANGLE_OFFSET_DEG,
+    CMD_FORMAT,
+    TLM_FORMAT,
+    STATE_TRACKING,
     STATE_LOCKED,
+    STATE_FIRING,
+    STATE_ESTOP,
 )
-from turret_basket.cup_tracker import CupTracker
+from turret_basket.basket_comm import FCSCommunicator
+from turret_basket.rl_tracker import RLTracker
+from turret_basket.rl_ballistics import RLBallistics, LaunchParameters
+from turret_basket.engagement import BasketEngagement, EngagementStep
+from turret_basket.basket_manager import BasketManager, BasketStatus
 from turret_basket.rl.cup_env import BallisticBasketEnv, solve_rk4_trajectory
+from turret_basket.basket_hud import BasketHUD
+from turret_basket.presenter import BasketPresenter
+from turret_basket.keymap import process_key_event
 
 
 def test_basket_config_ssot():
@@ -35,6 +48,25 @@ def test_basket_config_ssot():
 
     ballistics = CONFIG.ballistics
     assert ballistics.firing_pulse_s == 0.080
+
+
+def test_basket_protocol_constants():
+    """turret_basket.protocol ikili protokol sozlesmesini dogrular."""
+    assert PC_TO_STM_HEADER == 0xAA
+    assert STM_TO_PC_HEADER == 0x55
+    assert LUNA_HEADER == 0x59
+
+    assert CMD_FRAME_LEN == 7
+    assert TLM_FRAME_LEN == 10
+    assert LUNA_FRAME_LEN == 9
+
+    assert ANGLE_SCALE == 10.0
+    assert ANGLE_OFFSET_DEG == 90.0
+
+    assert STATE_TRACKING == 0
+    assert STATE_LOCKED == 1
+    assert STATE_FIRING == 2
+    assert STATE_ESTOP == 3
 
 
 def test_basket_comm_packet_serialization_and_checksum():
@@ -67,9 +99,9 @@ def test_basket_comm_packet_serialization_and_checksum():
     assert actual_cs == expected_cs
 
 
-def test_basket_cup_tracker_inference():
-    """1. Model (CupTracker) PPO cikariminin soft deadband ve aksiyon limitlerini dogrular."""
-    tracker = CupTracker()
+def test_basket_rl_tracker_inference():
+    """1. Model (RLTracker) PPO cikariminin soft deadband ve aksiyon limitlerini dogrular."""
+    tracker = RLTracker()
     tracker.reset()
 
     # Merkezdeki hedef (cx=320, cy=240, screen_w=640, screen_h=480)
@@ -104,6 +136,100 @@ def test_basket_cup_tracker_inference():
     assert abs(d_tilt_far) <= CONFIG.hardware.max_step_deg
 
 
+def test_basket_rl_ballistics_inference():
+    """2. Model (RLBallistics) politika cikarimini ve super-elevasyon hesaplarini dogrular."""
+    ballistics = RLBallistics()
+
+    # 1.80m mesafede firlatma parametreleri
+    params = ballistics.compute_launch_parameters(dist_m=1.80)
+    assert isinstance(params, LaunchParameters)
+    assert CONFIG.rl.tilt_offset_min_deg <= params.tilt_offset_deg <= CONFIG.rl.tilt_offset_max_deg
+    assert CONFIG.rl.speed_min_mps <= params.speed_mps <= CONFIG.rl.speed_max_mps
+
+    # Super-elevasyon acisi
+    super_elev = ballistics.compute_super_elevation(params.tilt_offset_deg)
+    assert 5.0 <= super_elev <= 25.0
+    assert abs(super_elev - (params.tilt_offset_deg + ballistics.default_parallax_margin_deg)) < 1e-4
+
+
+def test_basket_engagement_fsm():
+    """BasketEngagement 4-asamali atis durum makinesini dogrular."""
+    eng = BasketEngagement(spinup_time_s=0.60, firing_pulse_s=0.10, recovery_time_s=0.90)
+
+    # 1. Baslangic: Bostayken
+    step = eng.update(now=10.0, current_tilt=0.0)
+    assert step.is_active is False
+    assert step.phase is None
+    assert step.cmd_state == STATE_TRACKING
+
+    # 2. Tetikleme (t = 10.0)
+    ok, reason = eng.trigger(now=10.0, tilt_at_lock=5.0, fire_speed=4.5, fire_tilt=21.0, super_elevation=21.8)
+    assert ok is True
+    assert eng.is_active is True
+
+    # 3. Spin-up ve Super-Elevasyon Asamasi (t = 10.30s)
+    step = eng.update(now=10.30, current_tilt=5.0)
+    assert step.is_active is True
+    assert step.phase == "SPINUP_ELEVATE"
+    assert step.cmd_state == STATE_LOCKED
+    assert step.step_tilt > 0.0
+
+    # 4. Solenoid Darbe Asamasi (t = 10.65s)
+    step = eng.update(now=10.65, current_tilt=26.8)
+    assert step.is_active is True
+    assert step.phase == "FIRING"
+    assert step.cmd_state == STATE_FIRING
+    assert step.just_fired is True
+
+    # Ayni asama icinde ikinci cagri (just_fired artik False olmali)
+    step2 = eng.update(now=10.68, current_tilt=26.8)
+    assert step2.just_fired is False
+
+    # 5. Toparlama Asamasi (t = 11.20s)
+    step = eng.update(now=11.20, current_tilt=20.0)
+    assert step.is_active is True
+    assert step.phase == "RECOVER"
+    assert step.cmd_state == STATE_TRACKING
+
+    # 6. Tamamlanma (t = 11.65s)
+    step = eng.update(now=11.65, current_tilt=5.0)
+    assert step.is_active is False
+    assert step.is_finished is True
+    assert eng.is_active is False
+
+    # 7. Abort testi
+    eng.trigger(now=20.0, tilt_at_lock=0.0, fire_speed=4.0, fire_tilt=20.0, super_elevation=21.0)
+    assert eng.is_active is True
+    eng.abort()
+    assert eng.is_active is False
+
+
+def test_basket_manager_lifecycle():
+    """BasketManager orkestratorunun cevrim adimini ve komut yonetimini dogrular."""
+    manager = BasketManager(comm=None)
+    dummy_frame = np.zeros((480, 640, 3), dtype=np.uint8)
+
+    status = manager.step(frame=dummy_frame, dt=0.033, now=1.0)
+    assert isinstance(status, BasketStatus)
+    assert status.is_estop is False
+    assert status.firing is False
+
+    # E-Stop Ac
+    estop_on = manager.toggle_estop()
+    assert estop_on is True
+    assert manager.is_estop is True
+
+    # E-Stop Kapa
+    estop_off = manager.toggle_estop()
+    assert estop_off is False
+    assert manager.is_estop is False
+
+    # Reset
+    manager.lock_counter = 10
+    manager.reset()
+    assert manager.lock_counter == 0
+
+
 def test_basket_ballistics_rk4_trajectory():
     """2. Model Runge-Kutta 4. Derece (RK4) aerodinamik yorunge cozumunu dogrular."""
     # 2.0 metre mesafeye 10 m/s ve 10 derece aciyla atis
@@ -112,7 +238,6 @@ def test_basket_ballistics_rk4_trajectory():
         v0=10.0,
         theta_launch_rad=math.radians(10.0),
     )
-    # res: (y, t, v_impact, vy, apex_y, hit_table, hit_front_lip)
     assert len(res) == 7
     y, t_flight, v_impact, vy, apex_y, hit_table, hit_front_lip = res
     assert t_flight > 0.05
@@ -127,10 +252,8 @@ def test_basket_ballistics_gym_environment():
     obs, info = env.reset(seed=42)
 
     assert obs.shape == (2,)
-    # Normalize gozlem araligi: [-1.0, 1.0]
     assert -1.0 <= obs[0] <= 1.0
 
-    # Nominal aksiyon ver: [tilt_offset, flywheel_speed]
     action = np.array([0.0, 0.0], dtype=np.float32)
     next_obs, reward, terminated, truncated, step_info = env.step(action)
 
@@ -141,3 +264,92 @@ def test_basket_ballistics_gym_environment():
     assert "miss_dist_m" in step_info
     assert "speed_mps" in step_info
     assert "tilt_deg" in step_info
+
+
+def test_basket_hud_and_presenter():
+    """BasketHUD ve BasketPresenter render katmanlarinin calismasini dogrular."""
+    hud = BasketHUD()
+    presenter = BasketPresenter(hud)
+
+    dummy_frame = np.zeros((480, 640, 3), dtype=np.uint8)
+
+    # 1. Scanning durumu
+    status_scan = BasketStatus(
+        cup_detected=False,
+        bbox=None,
+        confidence=0.0,
+        distance_m=1.45,
+        err_pan_deg=0.0,
+        err_tilt_deg=0.0,
+        is_locked=False,
+        firing=False,
+        is_estop=False,
+        lock_ratio=0.0,
+        speed_mps=4.4,
+        tilt_offset_deg=21.8,
+    )
+    out1 = presenter.render(dummy_frame.copy(), status=status_scan, fps=30.0)
+    assert out1.shape == dummy_frame.shape
+
+    # 2. Locked durumu
+    status_locked = BasketStatus(
+        cup_detected=True,
+        bbox=(200, 150, 440, 350),
+        confidence=0.95,
+        distance_m=1.80,
+        err_pan_deg=0.2,
+        err_tilt_deg=0.1,
+        is_locked=True,
+        firing=False,
+        is_estop=False,
+        lock_ratio=1.0,
+        speed_mps=4.5,
+        tilt_offset_deg=22.0,
+    )
+    out2 = presenter.render(dummy_frame.copy(), status=status_locked, fps=30.0)
+    assert out2.shape == dummy_frame.shape
+
+    # 3. Skor tablosu
+    hud.record_shot(is_basket=True)
+    assert hud.total_shots == 1
+    assert hud.total_baskets == 1
+
+
+def test_basket_keymap_events():
+    """Basket keymap tus isleyicisinin dogrudan BasketManager ile entegrasyonunu dogrular."""
+    manager = BasketManager(comm=None)
+    hud = BasketHUD()
+
+    # 1. Tus basilmadi (-1)
+    exit_req = process_key_event(key_code=-1, manager=manager, hud=hud)
+    assert exit_req is False
+
+    # 2. Cikis (Q)
+    exit_req = process_key_event(key_code=ord("q"), manager=manager, hud=hud)
+    assert exit_req is True
+
+    # 3. Y (Kilitli degilken atis reddedilmeli)
+    manager.is_locked = False
+    process_key_event(key_code=ord("y"), manager=manager, hud=hud)
+    assert manager.engagement.is_active is False
+    assert any("CANNOT FIRE" in msg for msg, _ in hud.event_logs)
+
+    # 4. Y (Kilitliyken atis baslatilmali)
+    manager.is_locked = True
+    process_key_event(key_code=ord("y"), manager=manager, hud=hud)
+    assert manager.engagement.is_active is True
+
+    # 5. N (Atisi iptal et)
+    process_key_event(key_code=ord("n"), manager=manager, hud=hud)
+    assert manager.engagement.is_active is False
+
+    # 6. SPACE (E-Stop mandallama)
+    process_key_event(key_code=32, manager=manager, hud=hud)
+    assert manager.is_estop is True
+    process_key_event(key_code=32, manager=manager, hud=hud)
+    assert manager.is_estop is False
+
+    # 7. R (Reset)
+    manager.lock_counter = 10
+    process_key_event(key_code=ord("r"), manager=manager, hud=hud)
+    assert manager.lock_counter == 0

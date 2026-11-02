@@ -20,21 +20,23 @@ try:
 except ImportError:
     serial = None
 
-# Protokol Sabitleri (Firmware ile %100 uyumlu)
-PC_TO_STM_HEADER = 0xAA
-STM_TO_PC_HEADER = 0x55
-CMD_FRAME_LEN = 7
-TLM_FRAME_LEN = 10
-ANGLE_SCALE = 10.0
-ANGLE_OFFSET_DEG = 90.0
-
-CMD_FORMAT = "<BhhB"
-TLM_FORMAT = "<HHhh"
-
-STATE_TRACKING = 0
-STATE_LOCKED = 1
-STATE_FIRING = 2
-STATE_ESTOP = 3
+# Protokol Sabitleri (turret_basket.protocol - Tek Kaynak SSOT)
+from turret_basket.protocol import (
+    PC_TO_STM_HEADER,
+    STM_TO_PC_HEADER,
+    LUNA_HEADER,
+    CMD_FRAME_LEN,
+    TLM_FRAME_LEN,
+    LUNA_FRAME_LEN,
+    ANGLE_SCALE,
+    ANGLE_OFFSET_DEG,
+    CMD_FORMAT,
+    TLM_FORMAT,
+    STATE_TRACKING,
+    STATE_LOCKED,
+    STATE_FIRING,
+    STATE_ESTOP,
+)
 
 
 class FCSCommunicator:
@@ -193,4 +195,3 @@ class FCSCommunicator:
                 self.ser.close()
             except Exception:
                 pass
-

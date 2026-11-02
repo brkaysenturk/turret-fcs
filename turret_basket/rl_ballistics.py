@@ -1,0 +1,97 @@
+"""
+================================================================================
+BASKET CHALLENGE: 2. MODEL - BALISTIK EGIM VE HIZ MOTORU (RL BALLISTICS)
+================================================================================
+ToF LiDAR menziline gore gereken ek super-elevasyon acisini (+21.8 deg - +22.6 deg)
+ve volan motoru hizini (4.4 m/s) anlik kestiren 10.000 yorungeli fizik gudumlu
+RL Balistik Politika motoru.
+================================================================================
+"""
+
+from pathlib import Path
+from typing import Optional, NamedTuple
+import numpy as np
+
+from turret_basket.config import CONFIG
+
+
+class LaunchParameters(NamedTuple):
+    tilt_offset_deg: float
+    speed_mps: float
+
+
+class RLBallistics:
+    """2. Model: Kupa mesafesine gore atis egimini ve volan hizini kestiren balistik AI motoru."""
+
+    def __init__(self, models_dir: Optional[Path] = None):
+        if models_dir is None:
+            models_dir = Path(__file__).resolve().parent / "rl" / "models"
+        self.models_dir = Path(models_dir)
+        self.predict_fn = self._load_model()
+
+        self.tilt_min = CONFIG.rl.tilt_offset_min_deg
+        self.tilt_max = CONFIG.rl.tilt_offset_max_deg
+        self.speed_min = CONFIG.rl.speed_min_mps
+        self.speed_max = CONFIG.rl.speed_max_mps
+        self.default_parallax_margin_deg = 0.80
+
+    def _load_model(self):
+        """2. Model: Hizli ve bagimsiz NumPy MLP Balistik Politika yukleyicisi."""
+        model_npz = self.models_dir / "cup_ballistic_policy.npz"
+        model_zip = self.models_dir / "cup_ballistic_policy.zip"
+
+        if model_npz.exists():
+            try:
+                data = np.load(str(model_npz))
+                w1, b1, w2, b2, w3, b3 = (
+                    data["w1"],
+                    data["b1"],
+                    data["w2"],
+                    data["b2"],
+                    data["w3"],
+                    data["b3"],
+                )
+
+                def predict_npz(obs: np.ndarray) -> np.ndarray:
+                    h1 = np.tanh(np.dot(w1, obs) + b1)
+                    h2 = np.tanh(np.dot(w2, h1) + b2)
+                    return np.clip(np.dot(w3, h2) + b3, -1.0, 1.0)
+
+                print("[INFO] Model 2 (Fast NumPy MLP Policy) basariyla yuklendi!")
+                return predict_npz
+            except Exception as e:
+                print(f"[WARN] NumPy Model 2 yuklenemedi: {e}")
+
+        if model_zip.exists():
+            try:
+                from stable_baselines3 import PPO
+
+                sb3_model = PPO.load(str(model_zip), device="cpu")
+                print("[INFO] Model 2 (SB3 PPO Policy) yuklendi!")
+                return lambda obs: sb3_model.predict(obs, deterministic=True)[0]
+            except Exception as e:
+                print(f"[WARN] Model 2 zip yuklenemedi: {e}")
+
+        # Fallback: Nominal analitik yaklasim
+        print("[WARN] Model 2 dosyalari bulunamadi, nominal yaklasim devrede.")
+        return lambda obs: np.array([0.75, -0.65], dtype=np.float32)
+
+    def compute_launch_parameters(self, dist_m: float) -> LaunchParameters:
+        """Menzile (metre) gore gereken balistik egim ofsetini ve volan hizini hesaplar."""
+        norm_dist = np.clip((dist_m - 2.0) / 1.0, -1.0, 1.0)
+        obs = np.array([norm_dist, 0.0], dtype=np.float32)
+        act = self.predict_fn(obs)
+
+        target_tilt_offset = float(np.interp(act[0], [-1.0, 1.0], [self.tilt_min, self.tilt_max]))
+        target_speed_mps = float(np.interp(act[1], [-1.0, 1.0], [self.speed_min, self.speed_max]))
+        return LaunchParameters(target_tilt_offset, target_speed_mps)
+
+    def compute_super_elevation(
+        self,
+        tilt_offset_deg: float,
+        parallax_margin_deg: Optional[float] = None,
+    ) -> float:
+        """Kamera-namlu paralaks payi ile sinirlandirilmis super-elevasyon acisini hesaplar."""
+        margin = self.default_parallax_margin_deg if parallax_margin_deg is None else parallax_margin_deg
+        return float(np.clip(tilt_offset_deg + margin, 5.0, 25.0))
+
