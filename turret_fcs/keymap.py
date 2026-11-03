@@ -17,7 +17,6 @@ def process_key_event(
     is_estop: bool,
     now: float,
     is_range_valid: bool,
-    is_flywheel_idle: bool,
     log_event_cb: Optional[Callable[[str, Tuple[int, int, int]], None]] = None,
 ) -> Tuple[bool, bool]:
     """
@@ -87,7 +86,6 @@ def process_key_event(
                 now=now,
                 is_locked=fcs.is_locked,
                 is_range_valid=is_range_valid,
-                is_flywheel_idle=is_flywheel_idle,
                 hit_probability=getattr(fcs, "hit_probability", None),
             )
             if ok:

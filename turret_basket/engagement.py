@@ -19,7 +19,7 @@ from turret_basket.protocol import STATE_TRACKING, STATE_LOCKED, STATE_FIRING
 class EngagementStep:
     """Anlik angajman adimi durumu."""
     is_active: bool
-    phase: Optional[str]               # "SPINUP_ELEVATE", "FIRING", "RECOVER", None
+    phase: Optional[str]               # "SPINUP_ELEVATE", "SETTLE", "FIRING", "RECOVER", None
     step_tilt: float
     cmd_state: int                     # STATE_TRACKING, STATE_LOCKED, STATE_FIRING
     just_fired: bool                   # Solenoid pulse ilk tetiklendiginde True
@@ -35,13 +35,15 @@ class BasketEngagement:
     def __init__(
         self,
         spinup_time_s: float = CONFIG.ballistics.spinup_time_s,
+        settle_time_s: float = getattr(CONFIG.ballistics, "settle_time_s", 0.25),
         firing_pulse_s: float = CONFIG.ballistics.firing_pulse_s,
         recovery_time_s: float = CONFIG.ballistics.recovery_time_s,
     ):
         self.spinup_time_s = float(spinup_time_s)
+        self.settle_time_s = float(settle_time_s)
         self.firing_pulse_s = float(firing_pulse_s)
         self.recovery_time_s = float(recovery_time_s)
-        self.total_seq_time_s = self.spinup_time_s + self.firing_pulse_s + self.recovery_time_s
+        self.total_seq_time_s = self.spinup_time_s + self.settle_time_s + self.firing_pulse_s + self.recovery_time_s
 
         self.is_active = False
         self.start_time = 0.0
@@ -96,10 +98,11 @@ class BasketEngagement:
 
         elapsed = now - self.start_time
         t_spinup = self.spinup_time_s
-        t_fire_end = t_spinup + self.firing_pulse_s
+        t_settle_end = t_spinup + self.settle_time_s
+        t_fire_end = t_settle_end + self.firing_pulse_s
         t_total = self.total_seq_time_s
 
-        # 1. Asama: Super-elevasyon acisina yuksel ve spin-up yap (0 - 0.60s)
+        # 1. Asama: Super-elevasyon acisina yuksel ve spin-up yap (0 - 0.50s)
         # Model 2 mutlak atis acisini (active_fire_tilt ~21-23 deg) hesaplar
         if elapsed < t_spinup:
             target_elevated_tilt = self.active_fire_tilt
@@ -117,7 +120,24 @@ class BasketEngagement:
                 applied_super_elevation=self.applied_super_elevation,
             )
 
-        # 2. Asama: Solenoid darbesi ile dart firlat (0.60 - 0.70s)
+        # 2. Asama: Mekanik oturma ve stabilizasyon (0.50 - 0.75s)
+        elif elapsed < t_settle_end:
+            target_elevated_tilt = self.active_fire_tilt
+            tilt_error = target_elevated_tilt - current_tilt
+            step_tilt = float(np.clip(tilt_error * 0.40, -1.50, 1.50))
+            return EngagementStep(
+                is_active=True,
+                phase="SETTLE",
+                step_tilt=step_tilt,
+                cmd_state=STATE_LOCKED,
+                just_fired=False,
+                is_finished=False,
+                active_fire_speed=self.active_fire_speed,
+                active_fire_tilt=self.active_fire_tilt,
+                applied_super_elevation=self.applied_super_elevation,
+            )
+
+        # 3. Asama: Solenoid darbesi ile dart firlat (0.75 - 0.83s)
         elif elapsed < t_fire_end:
             just_fired = False
             if not self.dart_fired:
@@ -136,7 +156,7 @@ class BasketEngagement:
                 applied_super_elevation=self.applied_super_elevation,
             )
 
-        # 3. Asama: Geri toplama ve kilit acisina yumusak inis (0.70 - 1.60s)
+        # 4. Asama: Geri toplama ve kilit acisina yumusak inis (0.83 - 1.33s)
         elif elapsed < t_total:
             rec_progress = (elapsed - t_fire_end) / max(1e-4, t_total - t_fire_end)
             target_tilt = self.active_fire_tilt + (self.tilt_at_lock - self.active_fire_tilt) * rec_progress

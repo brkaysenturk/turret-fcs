@@ -283,7 +283,6 @@ def main():
                 is_estop=is_estop,
                 now=now,
                 is_range_valid=(fcs.range_valid and fcs.range_stable),
-                is_flywheel_idle=(fcs.is_locked and not is_estop),
                 log_event_cb=emit_event,
             )
             if should_exit:

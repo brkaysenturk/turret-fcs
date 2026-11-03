@@ -168,4 +168,14 @@ def apply_tuning(fcs, tuning):
         if "d_err_ema_alpha" in tuning:
             rl.d_err_ema_alpha = float(tuning["d_err_ema_alpha"])
 
+    if hasattr(fcs, "dob") and fcs.dob is not None:
+        if "dob_enabled" in tuning:
+            fcs.dob.enabled = bool(float(tuning["dob_enabled"]) > 0.5)
+        if "dob_gain" in tuning:
+            fcs.dob.gain = float(tuning["dob_gain"])
+        if "dob_tau_s" in tuning:
+            fcs.dob.tau_s = float(tuning["dob_tau_s"])
+        if "max_dob_speed_deg_s" in tuning:
+            fcs.dob.max_speed_deg_s = float(tuning["max_dob_speed_deg_s"])
+
     return tuning

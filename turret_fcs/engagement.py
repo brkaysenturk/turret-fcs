@@ -41,15 +41,13 @@ class EngagementManager:
 
     def __init__(
         self,
-        idle_spinup_time_s: float = CONFIG.flywheel.idle_spinup_time_s,
-        cold_spinup_time_s: float = CONFIG.flywheel.cold_spinup_time_s,
+        spinup_time_s: float = CONFIG.flywheel.spinup_time_s,
         settle_time_s: float = CONFIG.ballistics.settle_time_s,
         firing_pulse_s: float = CONFIG.ballistics.firing_pulse_s,
         recovery_time_s: float = CONFIG.ballistics.recovery_time_s,
         eval_display_time_s: float = CONFIG.ballistics.eval_display_time_s,
     ):
-        self.idle_spinup_time_s = float(idle_spinup_time_s)
-        self.cold_spinup_time_s = float(cold_spinup_time_s)
+        self.spinup_time_s = float(spinup_time_s)
         self.settle_time_s = float(settle_time_s)
         self.firing_pulse_s = float(firing_pulse_s)
         self.recovery_time_s = float(recovery_time_s)
@@ -57,14 +55,13 @@ class EngagementManager:
 
         self.fire_start_time = 0.0
         self.is_firing_sequence = False
-        self.spinup_duration = self.cold_spinup_time_s
+        self.spinup_duration = self.spinup_time_s
 
     def trigger(
         self,
         now: float,
         is_locked: bool,
         is_range_valid: bool,
-        is_flywheel_idle: bool = False,
         hit_probability: Optional[float] = None,
     ) -> Tuple[bool, str]:
         """Atis tetikleme istegi. Guvenlik ve minimum isabet olasiligi kapilarini kontrol eder."""
@@ -77,7 +74,7 @@ class EngagementManager:
         if self.is_firing_sequence:
             return False, "ENGAGEMENT ALREADY IN PROGRESS"
 
-        self.spinup_duration = self.idle_spinup_time_s if is_flywheel_idle else self.cold_spinup_time_s
+        self.spinup_duration = self.spinup_time_s
         self.fire_start_time = float(now)
         self.is_firing_sequence = True
         return True, "2-STAGE ENGAGEMENT: SPIN-UP & SLEW ENGAGED"

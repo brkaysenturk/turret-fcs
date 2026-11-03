@@ -36,7 +36,6 @@ class WebotsFlywheelLauncher:
     def __init__(self, robot):
         self.robot = robot
         self.TARGET_RAD_S = CONFIG.flywheel.target_speed_rad_s
-        self.IDLE_RAD_S = CONFIG.flywheel.idle_speed_rad_s
         self.MUZZLE_VELOCITY = CONFIG.ballistics.projectile_speed_mps  # 10.0 m/s
         self.SOLENOID_PULSE_S = CONFIG.ballistics.firing_pulse_s      # 0.08 s (80 ms)
 
@@ -68,28 +67,13 @@ class WebotsFlywheelLauncher:
         self.solenoid_trigger_time = 0.0
         self.pending_dart_spawn = False
         self.is_spinning = False
-        self.is_idle = False
-
-    def start_idle(self):
-        """Hedef kilitliyken volanlari bosta dondurur; Y aninda boost suresi kisalir."""
-        if self.flywheel_left and self.flywheel_right and not self.is_idle:
-            self.flywheel_left.setVelocity(self.IDLE_RAD_S)
-            self.flywheel_right.setVelocity(-self.IDLE_RAD_S)
-            self.is_spinning = True
-            self.is_idle = True
-
-    def is_idle_ready(self):
-        """Volanlar bosta donuyor mu? Ates icin kisa spin-up kullanilabilir."""
-        return bool(self.is_spinning and self.is_idle)
 
     def start_spinup(self):
-        """Volan motorlarini nominal 23.500 RPM hizina cikarir (bostan boost)."""
-        if self.flywheel_left and self.flywheel_right:
-            if not self.is_spinning or self.is_idle:
-                self.flywheel_left.setVelocity(self.TARGET_RAD_S)
-                self.flywheel_right.setVelocity(-self.TARGET_RAD_S)
-                self.is_spinning = True
-                self.is_idle = False
+        """Volan motorlarini nominal atis devrine (23.500 RPM) cikarir."""
+        if self.flywheel_left and self.flywheel_right and not self.is_spinning:
+            self.flywheel_left.setVelocity(self.TARGET_RAD_S)
+            self.flywheel_right.setVelocity(-self.TARGET_RAD_S)
+            self.is_spinning = True
 
     def stop_flywheels(self):
         """Atis sonrasi veya emniyette volan motorlarini durdurur."""
@@ -97,7 +81,6 @@ class WebotsFlywheelLauncher:
             self.flywheel_left.setVelocity(0.0)
             self.flywheel_right.setVelocity(0.0)
             self.is_spinning = False
-            self.is_idle = False
 
     def trigger(self):
         """FIRING evresinde 80 ms solenoid itme darbesini baslatir."""

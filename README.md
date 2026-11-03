@@ -4,20 +4,20 @@
 
 Bitirme Çalışması ve Tasarım Projesi
 
-[![Release](https://img.shields.io/badge/Release-Production-success.svg)](https://github.com/brkaysenturk/turret-fcs/releases/latest)
+[![Release: v3.0](https://img.shields.io/badge/Release-v3.0%20Production-success.svg)](https://github.com/brkaysenturk/turret-fcs/releases/tag/v3.0)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10-3.12](https://img.shields.io/badge/Python-3.10--3.12-blue.svg)](https://www.python.org/)
 [![CI](https://github.com/brkaysenturk/turret-fcs/actions/workflows/ci.yml/badge.svg)](https://github.com/brkaysenturk/turret-fcs/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/Tests-46%20passed-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-48%20passed-brightgreen.svg)](tests/)
 [![Hardware](https://img.shields.io/badge/Hardware-STM32F401RE-002B49.svg)](https://www.st.com/)
 [![LiDAR](https://img.shields.io/badge/LiDAR-TF--Luna%20ToF-blueviolet.svg)](https://en.benewake.com/)
 [![Simulation](https://img.shields.io/badge/Simulation-Webots%20R2025a-red.svg)](https://cyberbotics.com/)
 [![Detection](https://img.shields.io/badge/Detection-YOLOv8n%20%2B%20ByteTrack-00AEEF.svg)](https://ultralytics.com/)
 [![Control](https://img.shields.io/badge/Control-Type--1%20P%20%2B%20PPO-orange.svg)](turret_fcs/p_controller.py)
 
-Turret FCS; mini/mikro İnsansız Hava Araçları ve asimetrik hava hedeflerine karşı elektro-optik tespit, hedef takibi, balistik önleme ve iki eksenli taret yönlendirmesi yapan otonom bir Atış Kontrol Sistemidir. Sistem; operatörün atış yetkisini elinde tuttuğu, kapalı çevrim bir mimariyle çalışır: kamera ve LiDAR verisiyle hedefi bulur, Kalman filtresiyle hedefin gelecekteki konumunu kestirir, P veya pekiştirmeli öğrenme (PPO) kontrolcüsüyle taret açısını üretir ve STM32 üzerinden servo, volan ve solenoidi sürer.
+Turret FCS; mini/mikro İnsansız Hava Araçları ve asimetrik hava hedeflerine karşı elektro-optik tespit, hedef takibi, balistik önleme ve iki eksenli taret yönlendirmesi yapan otonom bir Atış Kontrol Sistemidir. Sistem; operatörün atış yetkisini elinde tuttuğu, kapalı çevrim bir mimariyle çalışır: kamera ve LiDAR verisiyle hedefi bulur, Kalman filtresiyle hedefin gelecekteki konumunu kestirir, P veya pekiştirmeli öğrenme (PPO) kontrolcüsüyle taret açısını üretir ve STM32 üzerinden servo, volan ve solenoidi sürer. Monorepo mimarisi ayrıca dar ağızlı kupa bardağı içine dart basketi atan 2-aşamalı hiyerarşik yapay zekaya sahip Bardak Basketi Görevini (`turret_basket`) de tam teşekküllü bir alt sistem olarak içerir.
 
-> **English Overview:** Autonomous Air Defense Turret Fire Control System developed as a senior capstone project at Yildiz Technical University. It combines a Logitech C270 camera, YOLOv8n + ByteTrack detection, a TF-Luna ToF LiDAR, a constant-velocity Kalman filter with candidate-replay outlier recovery and ego-motion compensation, a Type-1 P controller and an 11-D PPO policy, closed-form Gaussian hit probability, and STM32F401RE firmware with layered fail-safe protections. The operator authorizes every shot; physical firing is disabled by default.
+> **English Overview:** Autonomous Air Defense Turret Fire Control System developed as a senior capstone project at Yildiz Technical University. It combines a Logitech C270 camera, YOLOv8n + ByteTrack detection, a TF-Luna ToF LiDAR, a constant-velocity Kalman filter with candidate-replay outlier recovery and ego-motion compensation, a Type-1 P controller and an 11-D PPO policy, closed-form Gaussian hit probability, and STM32F401RE firmware with layered fail-safe protections. The repository also integrates the Cup Basket Challenge (`turret_basket`), featuring a 2-stage hierarchical AI (Cup Mouth Tracker + Neural Ballistics) and Webots contact physics. The operator authorizes every shot; physical firing is disabled by default.
 
 ## İçindekiler
 
@@ -56,7 +56,7 @@ Sistem, tek bir operatörün hava sahasını izlemesine ve yalnızca güvenli ki
 ### Öne çıkan özellikler
 
 - **30 FPS optik algılama + 100 Hz LiDAR:** Görüntü ve menzil farklı hızlarda akar; FCS ikisini aynı karar döngüsünde birleştirir.
-- **Aday yörünge geri oynatmalı Kalman:** Tek karelik YOLO sıçramaları hızı bozmaz; 3 kare süren tutarlı sıçrama yeni hedefe gecikmesiz geçer.
+- **Aday yörünge geri oynatmalı Kalman:** 100 px tekil sıçrama ve %99.9 Ki-kare inovasyon kapısı; 3 kare süren tutarlı sıçramada aday yörünge geri oynatımıyla yeni hedefe gecikmesiz geçer.
 - **Kısa kayıp köprüsü:** 1. derece servo ego modeli ve `predict_only` ile 1-5 karelik tespit boşlukları kapatılır.
 - **Çift kontrolcü:** P modu düşük titreşimli hassas kilit için, RL modu hızlı manevralarda gecikmeye dayanıklı takip için kullanılır.
 - **Kapalı form vuruş olasılığı:** Ölümcül hedef çekirdeği, hedef hızı, uçuş süresi, gecikme ve silah saçılımı tek bir olasılığa dönüştürülür.
@@ -70,15 +70,15 @@ Sistem, tek bir operatörün hava sahasını izlemesine ve yalnızca güvenli ki
 | Alt Sistem | Uygulama | Görevi |
 | :--- | :--- | :--- |
 | **Görsel algılama** | Logitech C270, 1280x720 @ 30 FPS, yatay FOV 48.8°, dikey FOV 28.6° | Hedef görüntüsünü sıfır kuyruk gecikmesiyle sağlar |
-| **Derin öğrenme** | Ultralytics YOLOv8n + ByteTrack | Hava hedefi tespiti ve kimlik sürekliliği |
+| **Derin öğrenme** | Ultralytics YOLOv8n + ByteTrack (FCS) / CupDetector (Basket) | Hava hedefi ve kupa bardağı tespiti |
 | **Menzil** | Benewake TF-Luna ToF LiDAR, 850 nm, 0.2 - 8.0 m, 100 Hz UART | Uçuş süresi ve balistik düşüş için gerçek mesafe |
-| **Kestirim** | Sabit hızlı (CV) Kalman, Joseph formu, ego-hareket telafisi, aday geri oynatma | Hedef konumu ve dünya referanslı hız |
-| **Kontrol** | Tip-1 P ve saf PPO RL, ayrık `[M]` seçimi | Pan/tilt açı komutu |
+| **Kestirim** | Sabit hızlı (CV) Kalman, Joseph formu, 100 px sıçrama ve %99.9 Ki-kare kapısı, aday geri oynatma | Hedef konumu ve dünya referanslı hız |
+| **Kontrol** | Tip-1 P ve saf PPO RL (`turret_fcs`); Cup Mouth Tracker + Sinir Ağı Balistiği (`turret_basket`) | Pan/tilt açı ve süper-elevasyon komutu |
 | **Kilit** | Dinamik eşik, 10 kare kararlılık, 2B Gauss vuruş olasılığı | Atış izni ve kilit kalitesi |
 | **Gömülü denetleyici** | STM32F401RE Nucleo, ARM Cortex-M4 @ 84 MHz | 100 Hz servo/LiDAR döngüsü, güvenlik bekçileri |
 | **Eyleyiciler** | MG996R/DS3218 servolar, çift FF-180 volan, JF-0530B solenoid | Taret yönlendirme ve dart fırlatma |
 | **Arayüz** | MIL-STD taktik HUD + Telemetri şeması 2.1 | Operatör kararı ve mühendislik kaydı |
-| **Dijital ikiz** | Webots R2025a, 66.7 ms taşıma gecikmesi, 68.2 ms servo lag, 1.61° backlash | Donanıma zarar vermeden doğrulama |
+| **Dijital ikiz** | Webots R2025a, 90.0 ms taşıma gecikmesi, 30.0 ms servo tau, 1.61° backlash (`turret_fcs.wbt`, `turret_basket.wbt`) | Donanıma zarar vermeden doğrulama |
 
 ---
 
@@ -118,10 +118,10 @@ Sistem dört katmandan oluşur. Üst katmanlar karar üretir, alt katmanlar bu k
 ### Kademeli atış zaman çizelgesi
 
 ```text
-[Y] ──> SPINUP + SLEW (0.25 s idling / 1.0 s cold)
+[Y] ──> SPINUP + SLEW (0.25 s)
           │  volan nominal devre çıkar, taret lead + süper-elevasyon açısına yönelir
           v
-        SETTLE (0.12 s)
+        SETTLE (0.25 s)
           │  nişan açısı sabit tutulur, servo lag ve dişli boşluğu oturur
           v
         FIRING (80 ms)
@@ -185,7 +185,7 @@ Sistem dört katmandan oluşur. Üst katmanlar karar üretir, alt katmanlar bu k
 
 ![Turret FCS 3D Mekanik Montaj](turret_fcs/docs/assets/turret_cad_render_annotated.jpg)
 
-Taret; 3D baskı açık beşik, doğrudan tahrikli pan/tilt servolar ve minimum optik paralaks yerleşimiyle kurulmuştur. Kamera ve LiDAR aynı yönelimde monte edilir; namlu ekseni optik merkezle hizalanır.
+Taret; 3D baskı açık beşik, doğrudan tahrikli pan/tilt servolar ve minimum optik paralaks yerleşimiyle kurulmuştur. Kamera ve LiDAR aynı yönelimde monte edilir; CAD v10 tasarımında namlu ucu Z ekseninde kameradan 57 mm yukarıdadır (`camera_to_muzzle_z_m = 0.0570 m`, 5.7 cm dikey paralaks). FCS balistik motoru bu geometrik dikey paralaksı süper-elevasyon hesabında otomatik olarak telafi eder.
 
 ---
 
@@ -218,7 +218,11 @@ Bu bölüm, her modülün **ne olduğunu ve sistem içinde hangi işi yaptığı
 | **RL eğitimi** | `rl/turret_env.py` | Gerçek plant kısıtlarıyla Gymnasium ortamı | 11-D gözlem |
 | **RL eğitimi** | `rl/train_rl.py` | PPO politikasını eğitir | `.zip` + `.npz` model |
 | **Webots** | `webots/controllers/webots_turret_fcs/` | Üretim kodunu dijital ikizde çalıştırır | Simülasyon oturumu |
-| **Gömülü** | `turret_fcs/stm32/turret_fcs/` | Servo, LiDAR, volan ve solenoidin gerçek zamanlı denetimi | PWM / UART / GPIO |
+| **Gömülü** | `turret_fcs/stm32/` | Servo, LiDAR, volan ve solenoidin gerçek zamanlı denetimi | PWM / UART / GPIO |
+| **Basket (Orkestrasyon)** | `turret_basket/basket_manager.py` | Bardağa kilitlenme, ToF menzil kapılama ve 2-aşamalı yapay zeka | Basket atış komutu |
+| **Basket (Takip & Balistik)** | `turret_basket/rl_tracker.py`, `rl_ballistics.py` | Cup Mouth Tracker ve sinir ağı / RK4 süper-elevasyon balistiği | Açı + volan hızı |
+| **Basket (Gömülü)** | `turret_basket/stm32/` | Kupa dart atışı için optimize edilmiş 100 Hz STM32 firmware | PWM / UART / GPIO |
+| **Basket (Webots)** | `webots/controllers/webots_turret_basket/` | Dart-bardak temas fiziği ve kupa dünyası simülasyonu | Simülasyon oturumu |
 
 ### 6.2 Çalışma zamanı ve orkestrasyon
 
@@ -281,7 +285,7 @@ YOLO kutularını güven, alan, en-boy oranı ve nisangah mesafesine göre filtr
 
 Durum vektörü `[x, y, vx, vy]`, ölçüm `[x, y]` şeklindedir. Sabit hızlı model, tek süreç gürültüsü `sigma_a = 478.19 px/s^2` ve tek ölçüm gürültüsü `r_var = 63.21 px^2` ile çalışır. Kovaryans güncellemesi Joseph formundadır. Taretin son motor komutundan üretilen ego kayması kestirim adımına eklenir; böylece hız durumu dünya referanslı kalır.
 
-Tek karelik 150 px üstü sıçramada ölçüm durumu bozmaz; filtre yalnızca tahminle (`predict-only`) ilerletilir. Aynı yeni bölgede 3 tutarlı ölçüm görülürse ilk sıçrama karesinden itibaren aday ölçümler geri oynatılır (`replay`) ve hız vektörü sıfırlanmadan yeni hedefe geçilir. Çıkışta 30-60 px/s yumuşak hız ölü bölgesi vardır.
+Tek karelik 100 px üstü sahte kutu sıçramasında veya %99.9 Ki-kare istatistiksel inovasyon kapısında ölçüm durumu bozmaz; filtre yalnızca tahminle (`predict-only`) ilerletilir. Aynı yeni bölgede 3 tutarlı ölçüm görülürse ilk sıçrama karesinden itibaren aday ölçümler geri oynatılır (`replay`) ve hız vektörü sıfırlanmadan yeni hedefe geçilir. Çıkışta 30-60 px/s yumuşak hız ölü bölgesi vardır.
 
 **Ne sağlar:** YOLO kutu gürültüsünü ve taret dönüşünün yarattığı sahte hızı bastırır; kısa kayıplarda ve hedef sıçramalarında kararlı hız üretir.
 
@@ -295,15 +299,15 @@ Vuruş olasılığında hedefin yalnızca %60'lık ölümcül çekirdeği kullan
 
 #### `p_controller.py` — Hassas kilit kontrolcüsü
 
-Tek EMA (alpha = 0.9323) ile olcum gurultusunu yumusatir. Yumusak olu bolge (pan 0.691 deg, tilt 0.683 deg) icinde motoru sifirlar; disinda Kp * (|e| - db) ile oransal komut uretir. Pan Kp = 0.3159, tilt Kp = 0.2155 degerindedir. Komut, pan 601.7 deg/s^2 ve tilt 255.2 deg/s^2 ivme sinirina ve kare basina 1.50 deg / 0.75 deg adim sinirina tabidir. Ki ve Kd yoktur; asimetrik frenleme (asymmetric braking) ve ucus suresi tahmincisi (in-flight damping = 0.6242) ile asim ve salinim engellenir.
+Tek EMA (alpha = 0.9475) ile olcum gurultusunu yumusatir. Yumusak olu bolge (pan 0.766 deg, tilt 0.530 deg) icinde motoru sifirlar; disinda Kp * (|e| - db) ile oransal komut uretir. Pan Kp = 0.1921, tilt Kp = 0.1669 degerindedir. Komut, pan 556.58 deg/s^2 ve tilt 211.81 deg/s^2 ivme sinirina ve kare basina 1.50 deg / 0.75 deg adim sinirina tabidir. Ki ve Kd yoktur; asimetrik frenleme (asymmetric braking) ve ucus suresi tahmincisi (in-flight damping = 0.6875) ile asim ve salinim engellenir.
 
 **Ne sağlar:** Statik ve yavaş hedeflerde düşük titreşimli, öngörülebilir ve mekanik olarak nazik bir kilit sağlar.
 
 #### `rl_controller.py` — Çevik takip kontrolcüsü
 
-PPO politikasini Stable-Baselines3 veya PyTorch gerektirmeyen 11-64-64-2 NumPy MLP ile calistirir. Gozlem 11 boyuttadir: normalize hata (x, y), EMA ile filtrelenmis hata turevi (x, y), hiz (x, y), normalize mesafe ve son iki adimin normalize eylem gecmisi. Hata turevi olcegi 0.05, EMA katsayisi 0.3361'dir. Calisma zamaninda hiz gozlemi sifirlanir; politika konum hatasi, hata turevi ve eylem gecmisiyle kararli kalir.
+PPO politikasini Stable-Baselines3 veya PyTorch gerektirmeyen 11-64-64-2 NumPy MLP ile calistirir. Gozlem 11 boyuttadir: normalize hata (x, y), EMA ile filtrelenmis hata turevi (x, y), hiz (x, y), normalize mesafe ve son iki adimin normalize eylem gecmisi. Hata turevi olcegi 0.05, EMA katsayisi 0.4675'tir. Calisma zamaninda hiz gozlemi sifirlanir; politika konum hatasi, hata turevi ve eylem gecmisiyle kararli kalir.
 
-Cikista bagimsiz acisal yumusak olu bolge (pan 0.490 deg, tilt 0.656 deg), Hermite taper (pan 0.254 deg, tilt 0.801 deg), 3 karelik (~90 ms) yon degistirme sonumu (katsayi 0.7716), tilt ekseninde 0.75 deg donanimsal tavan ve P ile uyumlu ivme/adim sinirlari uygulanir. P harmani yoktur; politika dogrudan motor adimi uretir.
+Cikista bagimsiz acisal yumusak olu bolge (pan 0.490 deg, tilt 0.621 deg), Hermite taper (pan 0.400 deg, tilt 0.469 deg), 3 karelik (~90 ms) yon degistirme sonumu (katsayi 0.6637), tilt ekseninde 0.75 deg donanimsal tavan ve P ile uyumlu ivme/adim sinirlari uygulanir. P harmani yoktur; politika dogrudan motor adimi uretir.
 
 **Ne sağlar:** Hızlı manevralarda taşıma gecikmesini eylem geçmişiyle telafi ederek kilidi korur; merkezde mikro titreşimi sönümler.
 
@@ -364,34 +368,35 @@ Gerçek plant kısıtlarını modeller: 1.61° ölçülmüş dişli boşluğu, 0
 
 **Ne sağlar:** RL modunun dağıtılan politikasını yeniden üretilebilir biçimde eğitir.
 
-#### `analysis/` — Doğrulama ve görselleştirme
+#### `turret_fcs/analysis/` ve `turret_basket/analysis/` — Doğrulama ve görselleştirme
 
 | Kategori | Betik | Ne üretir? |
 | :--- | :--- | :--- |
-| **Karşılaştırma** | `analysis/comparison/plot_tuned_system.py` | 20° basamak, faz portresi, Bode, dinamik takip, Lissajous, balistik ve kapalı çevrim kilit figürleri |
-| **Karşılaştırma** | `analysis/comparison/generate_benchmark_plots.py` | TurretEnv üzerinde P ve PPO RL karşılaştırma paneli |
-| **Karşılaştırma** | `analysis/comparison/generate_readme_diagrams.py` | Mimari, akış ve donanım SVG şemalarını üretir |
-| **Karşılaştırma** | `analysis/comparison/optimize_selector_evt.py` | EVT ile hedef seçici güven eşiği optimizasyonu |
-| **Karşılaştırma** | `analysis/comparison/optimize_ballistics_roc.py` | Vuruş olasılığı ROC / Youden J eşik optimizasyonu |
-| **Sistem** | `analysis/system/python/system_identification.py` | Sentetik FOPDT/SOPDT model uydurma ve kök-yer eğrisi |
-| **Sistem** | `analysis/system/python/system_identification_real.py` | Canlı telemetriden gerçek backlash ve gecikme kestirimi |
-| **P kontrol** | `analysis/controllers/p/optimize_p_controller.py` | 5 parametreli Tip-1 P Optuna TPE optimizasyonu |
-| **P kontrol** | `analysis/controllers/p/p_profile_sweep.py` | 6 hedef profili × 8 P kazancı Webots taraması |
-| **RL** | `analysis/controllers/rl/optimize_rl_wrapper.py` | RL sarmalayıcı taper ve yön değiştirme sönümü optimizasyonu |
-| **RL** | `analysis/controllers/rl/export_rl_policy.py` | SB3 `.zip` modelini bağımsız `.npz` NumPy MLP'ye aktarır |
-| **RL** | `analysis/controllers/rl/rl_diagnose.py` | Üretim RL yolu ile ham politikayı aynı tohumlarda karşılaştırır |
-| **Kalman** | `analysis/kalman/optimize_kalman.py` | Süreç/ölçüm kovaryansı ve ego zaman sabiti optimizasyonu |
-| **Kalman** | `analysis/kalman/generate_kalman_plots.py` | Kalman konum/hız kestirimi, inovasyon dağılımı ve doğrulama tablosu |
-| **Telemetri** | `analysis/logs/inspect_logs.py` | Son telemetri CSV'sinde kilit, hata, salınım ve kesintisiz kilit serisi raporu |
-| **Telemetri** | `analysis/logs/consolidate_telemetry_logs.py` | Parçalı logları birleştirme ve KPI özeti |
-| **Devriye** | `analysis/patrol/plot_patrol_log.py` | Lissajous devriye yörüngesi ve servo adımları |
+| **Karşılaştırma** | `turret_fcs/analysis/comparison/plot_tuned_system.py` | 20° basamak, faz portresi, Bode, dinamik takip, Lissajous, balistik ve kapalı çevrim kilit figürleri |
+| **Karşılaştırma** | `turret_fcs/analysis/comparison/generate_benchmark_plots.py` | TurretEnv üzerinde P ve PPO RL karşılaştırma paneli |
+| **Karşılaştırma** | `turret_fcs/analysis/comparison/generate_readme_diagrams.py` | Mimari, akış ve donanım SVG şemalarını üretir |
+| **Karşılaştırma** | `turret_fcs/analysis/comparison/optimize_selector_evt.py` | EVT ile hedef seçici güven eşiği optimizasyonu |
+| **Karşılaştırma** | `turret_fcs/analysis/comparison/optimize_ballistics_roc.py` | Vuruş olasılığı ROC / Youden J eşik optimizasyonu |
+| **Sistem** | `turret_fcs/analysis/system/python/system_identification.py` | Sentetik FOPDT/SOPDT model uydurma ve kök-yer eğrisi |
+| **Sistem** | `turret_fcs/analysis/system/python/system_identification_real.py` | Canlı telemetriden gerçek backlash ve gecikme kestirimi |
+| **P kontrol** | `turret_fcs/analysis/controllers/p/optimize_p_controller.py` | 5 parametreli Tip-1 P Optuna TPE optimizasyonu |
+| **P kontrol** | `turret_fcs/analysis/controllers/p/p_profile_sweep.py` | 6 hedef profili × 8 P kazancı Webots taraması |
+| **RL** | `turret_fcs/analysis/controllers/rl/optimize_rl_wrapper.py` | RL sarmalayıcı taper ve yön değiştirme sönümü optimizasyonu |
+| **RL** | `turret_fcs/analysis/controllers/rl/export_rl_policy.py` | SB3 `.zip` modelini bağımsız `.npz` NumPy MLP'ye aktarır |
+| **RL** | `turret_fcs/analysis/controllers/rl/rl_diagnose.py` | Üretim RL yolu ile ham politikayı aynı tohumlarda karşılaştırır |
+| **Kalman** | `turret_fcs/analysis/kalman/optimize_kalman.py` | Süreç/ölçüm kovaryansı ve ego zaman sabiti optimizasyonu |
+| **Kalman** | `turret_fcs/analysis/kalman/generate_kalman_plots.py` | Kalman konum/hız kestirimi, inovasyon dağılımı ve doğrulama tablosu |
+| **Telemetri** | `turret_fcs/analysis/logs/inspect_logs.py` | Son telemetri CSV'sinde kilit, hata, salınım ve kesintisiz kilit serisi raporu |
+| **Telemetri** | `turret_fcs/analysis/logs/consolidate_telemetry_logs.py` | Parçalı logları birleştirme ve KPI özeti |
+| **Devriye** | `turret_fcs/analysis/patrol/plot_patrol_log.py` | Lissajous devriye yörüngesi ve servo adımları |
+| **Basket Analiz** | `turret_basket/analysis/plot_optuna_results.py` | Cup tracker Optuna TPE denemeleri karşılaştırma grafiği |
 
 ### 6.7 Webots dijital ikizi
 
 | Modül | Ne işe yarar? |
 | :--- | :--- |
 | `turret_fcs.py` | Üretim `FCSManager`, `EngagementManager`, HUD ve telemetri kodunu Webots'ta çalıştırır |
-| `webots_hardware_interface.py` | Motor, enkoder, kamera ve LiDAR cihazlarını üretim arayüzüne bağlar; 66.7 ms gözlem gecikmesi, 68.2 ms servo lag, 1.61° backlash ve 0.1° kuantalama uygular |
+| `webots_hardware_interface.py` | Motor, enkoder, kamera ve LiDAR cihazlarını üretim arayüzüne bağlar; 90.0 ms taşıma gecikmesi, 30.0 ms servo tau, 1.61° backlash ve 0.1° kuantalama uygular |
 | `webots_flywheel_launcher.py` | Volan spin-up, boşta dönüş ve solenoid tetiklemesini simüle eder |
 | `webots_virtual_ballistics.py` | Sanal mermi uçuşu ve namlu ofsetli isabet değerlendirmesi üretir |
 | `webots_telemetry_logger.py` | Webots oturumunu CSV olarak kaydeder |
@@ -435,7 +440,7 @@ u = sign(e) * Kp * (|e| - db),       |e| > db
 u(k) = clip(u_desired, u(k-1) - a * dt^2, u(k-1) + a * dt^2)
 ```
 
-Pan için `a = 353.1°/s²`, tilt için `a = 213.6°/s²` kullanılır. Bu, sabit bir hız tavanı koymadan kalkış ve yön değişimlerini yumuşatır.
+Pan için `a = 556.58°/s²`, tilt için `a = 211.81°/s²` kullanılır. Bu, sabit bir hız tavanı koymadan kalkış ve yön değişimlerini yumuşatır; asimetrik frenleme (`asymmetric_braking`) ile hedefe yaklaşırken sıfır aşım sağlar.
 
 ### 7.3 CV Kalman ve ego-hareket telafisi
 
@@ -455,7 +460,7 @@ ego_step = (1 - alpha_m) * ego_step + alpha_m * last_cmd
 
 `tau = 0.0300 s` değerindedir. Böylece taretin kendi dönüşü hedef hızına karışmaz. Ölçüm güncellemesi Joseph formuyla yapılır.
 
-150 px üstü inovasyonda ölçüm reddedilir; durum yalnızca `F` ile ilerletilir. Aynı yeni bölgede 3 tutarlı ölçüm oluşursa ilk aday kareden başlanarak tüm adaylar ileri sarılır (`predict + correct`), böylece yeni hedefin hızı sıfırdan öğrenilmez.
+100 px üstü inovasyon normunda veya %99.9 Ki-kare inovasyon kapısında (`chi2 > 13.8155`) ölçüm reddedilir; durum yalnızca `F` ile ilerletilir. Aynı yeni bölgede 3 tutarlı ölçüm oluşursa ilk aday kareden başlanarak tüm adaylar ileri sarılır (`predict + correct`), böylece yeni hedefin hızı sıfırdan öğrenilmez.
 
 ### 7.4 Lead ve balistik süper-elevasyon
 
@@ -463,10 +468,10 @@ ego_step = (1 - alpha_m) * ego_step + alpha_m * last_cmd
 t_flight = clip(d / v0 + t_offset, 0.03 s, 0.40 s)
 lead_x = vx * t_flight
 lead_y = vy * t_flight
-theta_gravity = arctan(g * d / (2 * v0^2))
+theta_gravity = arctan((z_drop + camera_to_muzzle_z) / d)
 ```
 
-`v0 = 10.0 m/s`, `t_offset = 0.015 s`, `g = 9.80665 m/s²` değerlerindedir. Hedefin ölçülen güncel noktası lead kadar ileri taşınır; filtrenin konum gecikmesi ikinci kez eklenmez.
+`v0 = 10.0 m/s`, `t_offset = 0.090 s`, `g = 9.80665 m/s²`, `camera_to_muzzle_z = 0.0570 m` (CAD v10 namlu paralaksı) değerlerindedir. Aerodinamik sürükleme (`drag_enabled: bool = True`, m = 1.2 g dart, Cd = 0.60) modeliyle düşüş (`z_drop`) hesaplanır. Hedefin ölçülen güncel noktası lead kadar ileri taşınır; filtrenin konum gecikmesi ikinci kez eklenmez.
 
 ### 7.5 Vuruş olasılığı
 
@@ -497,8 +502,8 @@ Gözlem:
 ```text
 r = 2.0 * (e_prev^2 - e^2)
     - 0.05 * e^2
-    - 0.0104 * |u|^2
-    - 0.0055 * |du|^2
+    - 0.0433 * |u|^2
+    - 0.0338 * |du|^2
     - reversal_penalty
     + bullseye
     + alive_bonus
@@ -567,7 +572,7 @@ Aşağıdaki değerler, P ve RL modlarının birlikte kullanıldığı 4.383 kar
 | En uzun kesintisiz kilit | 322 kare (10.71 s) | 137 kare (4.55 s) |
 | Pan komut yön değişimi | %0.19 | %0.55 |
 
-> Bu tablo aynı saha oturumunun P ve RL bölümlerini gösterir; hedef profilleri, operatör müdahaleleri ve angajman anları bölümler arasında aynı değildir. Kontrollü kontrolcü karşılaştırması için `analysis/comparison/generate_benchmark_plots.py` kullanılmalıdır.
+> Bu tablo aynı saha oturumunun P ve RL bölümlerini gösterir; hedef profilleri, operatör müdahaleleri ve angajman anları bölümler arasında aynı değildir. Kontrollü kontrolcü karşılaştırması için `turret_fcs/analysis/comparison/generate_benchmark_plots.py` kullanılmalıdır.
 
 ### 9.3 P ve PPO RL benzetim karşılaştırması
 
@@ -577,15 +582,15 @@ Benzetim, 1-3 kare arasinda rastgelelestirilmis tasima gecikmesi ve dinamik eyle
 
 ### 9.4 Kontrol ve kararlılık figürleri (Python & MATLAB)
 
-Tüm analiz grafikleri `analysis/figures/` altında `python/` ve `matlab/` olarak gruplanmıştır.
+Tüm analiz grafikleri `turret_fcs/analysis/figures/` altında `python/` ve `matlab/` olarak gruplanmıştır.
 
-#### Python doğrulama figürleri (`analysis/figures/python/`)
+#### Python doğrulama figürleri (`turret_fcs/analysis/figures/python/`)
 
 | Figür | Gösterdiği |
 | :--- | :--- |
-| python_fig1_tuned_step_and_control_effort.png | 20 deg basamak yaniti; 0.49 s yerlesme, %14.5 asim, ivme sinirli kalkis ve asimetrik frenleme |
+| python_fig1_tuned_step_and_control_effort.png | 20 deg basamak yaniti; 0.49 s yerlesme, %11.1 asim, ivme sinirli kalkis ve asimetrik frenleme |
 | `python_fig2_tuned_phase_plane_portrait.png` | Faz düzlemi; yumuşak ölü bölgeye asimptotik yakınlaşma |
-| python_fig3_tuned_bode_stability.png | Acik cevrim Bode; 9.14 rad/s gecis, 27.5 deg faz marji, 3.5 dB kazanc marji |
+| python_fig3_tuned_bode_stability.png | Acik cevrim Bode; 6.97 rad/s gecis, 42.3 deg faz marji, 6.0 dB kazanc marji |
 | `python_fig4_tuned_dynamic_tracking.png` | Sinüzoidal hedefte pan/tilt dinamik takip ve hata |
 | `python_fig5_tuned_lissajous_coverage.png` | Figure-8 devriye yörüngesi ve 3B tarama hacmi |
 | `python_fig6_tuned_ballistic_characteristics.png` | Mesafeye göre uçuş süresi ve süper-elevasyon |
@@ -602,7 +607,7 @@ Tüm analiz grafikleri `analysis/figures/` altında `python/` ve `matlab/` olara
 | `python_fig17_pipeline_latency_breakdown.png` | Uçtan uca boru hattı gecikme dağılımı (Kamera, YOLO, FCS, STM32) |
 | `python_fig18_real_tau_comparison.png` | Gerçek donanım servo zaman sabiti (tau) ve frekans cevabı karşılaştırması |
 
-#### MATLAB & Simulink figürleri (`analysis/figures/matlab/`)
+#### MATLAB & Simulink figürleri (`turret_fcs/analysis/figures/matlab/`)
 
 | Figür | Gösterdiği |
 | :--- | :--- |
@@ -690,12 +695,14 @@ setup_env.bat
 venv\Scripts\python.exe -m pytest -q
 ```
 
-46 test; P kontrolcü, Kalman aday geri oynatma, kilit/vuruş olasılığı, LiDAR kapılama, RL sarmalayıcı, Webots tuning, ağırlık yöneticisi, `CONFIG` tutarlılığı ve `turret_basket` (RK4 balistik, RLTracker, RLBallistics, BasketEngagement, BasketManager, UART comm) sözleşmelerini donanım olmadan doğrular.
+48 test; P kontrolcü, Kalman aday geri oynatma, kilit/vuruş olasılığı, LiDAR kapılama, RL sarmalayıcı, Webots tuning, ağırlık yöneticisi, `CONFIG` tutarlılığı ve `turret_basket` (RK4 balistik, RLTracker, RLBallistics, BasketEngagement, BasketManager, UART comm) sözleşmelerini donanım olmadan doğrular.
 
 ### 10.4 Sistemi başlatma
 
+**Hava Savunma Tareti (Turret FCS):**
+
 ```bash
-main.bat
+turret_fcs\main.bat
 ```
 
 veya:
@@ -704,11 +711,23 @@ veya:
 venv\Scripts\python.exe -m turret_fcs.main
 ```
 
+**Bardak Basketi Görevi (Cup Basket Challenge):**
+
+```bash
+turret_basket\main.bat
+```
+
+veya:
+
+```bash
+venv\Scripts\python.exe -m turret_basket.main
+```
+
 İlk çalıştırmada `weights/best.pt` ve `weights/yolov8n.pt` yoksa GitHub Releases üzerinden otomatik indirilir. STM32 bulunamazsa sistem çevrimdışı devam eder; kamera bulunamazsa HUD uyarısı verilir ve görüntü döngüsü başlamaz.
 
 ### 10.5 Webots dijital ikizi
 
-1. Webots R2025a ile `webots/worlds/turret_fcs.wbt` dosyasını açın.
+1. Webots R2025a ile `webots/worlds/turret_fcs.wbt` (Hava Savunma) veya `webots/worlds/turret_basket.wbt` (Bardak Basketi) dosyasını açın.
 2. Başlangıç modunu seçin:
 
    ```text
@@ -745,7 +764,7 @@ Komut `best.pt` ve `yolov8n.pt` dosyalarını SHA256 doğrulamasıyla `weights/`
 
 ### 11.2 Tipik oturum
 
-1. `main.bat` ile sistemi açın; HUD'de kamera, STM32, LiDAR ve telemetri durumunu kontrol edin.
+1. `turret_fcs\main.bat` ile sistemi açın; HUD'de kamera, STM32, LiDAR ve telemetri durumunu kontrol edin.
 2. `P` ile devriye taramasını açın veya hedefi manuel olarak kadraja alın.
 3. Hedef kutuda belirdiğinde HUD'de takip çizgisi, LEAD ibresi ve vuruş olasılığı görünür.
 4. Kilit barı dolduğunda `TARGET LOCKED` mesajı gelir; `[Y]` ile atışı onaylayın.
@@ -777,25 +796,25 @@ Komut `best.pt` ve `yolov8n.pt` dosyalarını SHA256 doğrulamasıyla `weights/`
 
 ```bash
 # Son telemetri kaydını incele
-venv\Scripts\python.exe analysis\logs\inspect_logs.py
+venv\Scripts\python.exe turret_fcs\analysis\logs\inspect_logs.py
 
 # Belirli bir kaydı incele
-venv\Scripts\python.exe analysis\logs\inspect_logs.py logs\telemetry_test_20261025_054723.csv
+venv\Scripts\python.exe turret_fcs\analysis\logs\inspect_logs.py logs\telemetry_test_20261025_054723.csv
 
 # Kontrol ve kararlılık figürlerini üret
-venv\Scripts\python.exe analysis\comparison\plot_tuned_system.py
+venv\Scripts\python.exe turret_fcs\analysis\comparison\plot_tuned_system.py
 
 # Sistem tanımlama figürünü üret
-venv\Scripts\python.exe analysis\system\python\system_identification.py
+venv\Scripts\python.exe turret_fcs\analysis\system\python\system_identification.py
 
 # Kalman doğrulama figürünü üret
-venv\Scripts\python.exe analysis\kalman\generate_kalman_plots.py
+venv\Scripts\python.exe turret_fcs\analysis\kalman\generate_kalman_plots.py
 
 # P vs RL benzetim benchmark'ını üret
-venv\Scripts\python.exe analysis\comparison\generate_benchmark_plots.py
+venv\Scripts\python.exe turret_fcs\analysis\comparison\generate_benchmark_plots.py
 
 # Mimari, akış ve donanım SVG şemalarını üret
-venv\Scripts\python.exe analysis\comparison\generate_readme_diagrams.py
+venv\Scripts\python.exe turret_fcs\analysis\comparison\generate_readme_diagrams.py
 ```
 
 ### 12.3 RL politikasını yeniden eğitme
@@ -805,7 +824,7 @@ venv\Scripts\python.exe analysis\comparison\generate_readme_diagrams.py
 venv\Scripts\python.exe turret_fcs\rl\train_rl.py
 
 # SB3 modelini bağımsız NumPy MLP'ye aktar
-venv\Scripts\python.exe analysis\controllers\rl\export_rl_policy.py
+venv\Scripts\python.exe turret_fcs\analysis\controllers\rl\export_rl_policy.py
 ```
 
 Eğitim çıktısı `turret_fcs/rl/models/` altına yazılır. Üretim çıkarımı `.npz` dosyasını kullanır; PyTorch veya Stable-Baselines3 kurulu olmasa da RL modu çalışır.
@@ -814,71 +833,91 @@ Eğitim çıktısı `turret_fcs/rl/models/` altına yazılır. Üretim çıkarı
 
 ## 13. Dizin Yapısı
 
-```text
-turret_fcs/
+\\	ext
+turret-fcs/
 ├── .github/workflows/ci.yml          # Python 3.10-3.12 test ve ruff matrisi
-├── analysis/                         # Kontrol, Kalman, telemetri ve Webots analiz araçları
-│   ├── comparison/                   # Benchmark, figür ve diyagram üreticileri
-│   ├── controllers/p/                # P kontrolcü optimizasyon ve tarama araçları
-│   ├── controllers/rl/               # RL sarmalayıcı, export ve teşhis araçları
-│   ├── figures/python/               # Python doğrulama figürleri (fig1-fig14)
-│   ├── figures/matlab/               # MATLAB & Simulink figürleri
-│   ├── kalman/                       # Kalman optimizasyon ve doğrulama
-│   ├── logs/                         # Telemetri inceleme ve birleştirme
-│   ├── patrol/                       # Devriye yörüngesi analizi
-│   └── system/                       # Sistem tanılama (python + matlab)
-├── docs/
-│   ├── assets/                       # Mimari, akış, donanım şemaları ve CAD renderları
-│   ├── cad/                          # 3B baskı STL dosyaları
-│   ├── firmware.md                   # CubeIDE, pinout ve flaşlama kılavuzu
-│   └── reproducibility.md            # Test, eğitim ve figür üretim kılavuzu
 ├── logs/                             # Telemetri CSV, meta.json ve olay günlükleri
-├── turret_fcs/stm32/turret_fcs/                # STM32CubeIDE projesi
-│   └── Core/
-│       ├── Inc/                      # protocol.h, servo_driver.h, fcs_comm.h, luna_read.h, flywheel_solenoid.h
-│       └── Src/                      # main.c, servo_driver.c, fcs_comm.c, luna_read.c, flywheel_solenoid.c
-├── tests/                            # 46 Pytest birim/entegrasyon testi
-├── turret_fcs/                       # PC çalışma zamanı
-│   ├── config.py                     # SSOT
-│   ├── protocol.py                   # PC-STM32 protokol sözleşmesi
-│   ├── main.py                       # Ana döngü
-│   ├── fcs_manager.py                # FCS çekirdeği
-│   ├── engagement.py                 # Angajman FSM
-│   ├── keymap.py                     # Operatör girişi
-│   ├── camera_thread.py              # Kamera thread'i
-│   ├── target_selector.py            # Hedef seçimi
+├── tests/                            # 48 Pytest birim/entegrasyon testi
+├── turret_fcs/                       # Hava Savunma Atış Kontrol Sistemi
+│   ├── main.bat                      # Gerçek zamanlı FCS başlatıcı
+│   ├── config.py                     # FCS SSOT konfigürasyonu
+│   ├── main.py                       # Ana çalışma döngüsü
+│   ├── fcs_manager.py                # FCS karar çekirdeği
+│   ├── p_controller.py               # Tip-1 P kontrolcü
+│   ├── rl_controller.py              # PPO RL kontrolcü
 │   ├── kalman_filter.py              # CV Kalman + aday geri oynatma
-│   ├── lock_manager.py               # Kilit + vuruş olasılığı
-│   ├── p_controller.py               # Tip-1 P
-│   ├── rl_controller.py              # PPO çıkarımı
-│   ├── patrol_generator.py           # Figure-8 devriye
-│   ├── fcs_comm.py                   # STM32 UART
+│   ├── lock_manager.py               # Dinamik kilit + vuruş olasılığı
+│   ├── engagement.py                 # 5 aşamalı angajman FSM
+│   ├── target_selector.py            # Hedef seçimi ve önceliklendirme
+│   ├── camera_thread.py              # Sıfır gecikmeli kamera thread'i
+│   ├── fcs_comm.py                   # STM32 115200 Baud ikili protokol
+│   ├── protocol.py                   # PC-STM32 ortak sözleşme
+│   ├── fcs_hud.py                    # MIL-STD taktik HUD
+│   ├── presenter.py                  # HUD sunum katmanı
 │   ├── telemetry.py                  # Telemetri şeması 2.1
-│   ├── fcs_hud.py                 # HUD ilkelleri
-│   ├── presenter.py                  # HUD sunumu
-│   ├── weights.py                    # Ağırlık indirici
-│   ├── rl/                           # Gymnasium ortamı, eğitim ve modeller
-│   └── yolo/                         # YOLO veri toplama, etiketleme ve eğitim
-├── webots/
-│   ├── worlds/turret_fcs.wbt  # Dijital ikiz dünyası
-│   ├── controllers/webots_turret_fcs/      # Üretim kodunu çalıştıran HAL
-│   ├── balloon_profile.json          # Hedef profilleri
-│   └── tuning_params.json            # Webots-only P kazancı
-├── weights/                          # best.pt ve yolov8n.pt
-├── main.bat                          # Gerçek zamanlı başlatıcı
-├── setup_env.bat                     # Ortam kurulumu
+│   ├── patrol_generator.py           # Figure-8 devriye yörüngesi
+│   ├── weights.py                    # YOLO ağırlık yöneticisi
+│   ├── analysis/                     # Doğrulama, benchmark, log ve figür araçları
+│   │   ├── comparison/               # Benchmark ve figür üreticileri
+│   │   ├── controllers/              # P ve RL optimizasyon araçları
+│   │   ├── figures/                  # Python & MATLAB doğrulama figürleri
+│   │   ├── kalman/                   # Kalman optimizasyon ve doğrulama
+│   │   ├── logs/                     # Telemetri inceleme ve birleştirme
+│   │   ├── patrol/                   # Devriye analizi
+│   │   └── system/                   # Sistem tanılama (python + matlab)
+│   ├── docs/                         # Dokümantasyon, CAD ve varlıklar
+│   │   ├── assets/                   # Mimari, akış ve donanım SVG şemaları
+│   │   ├── cad/                      # 3B baskı STL dosyaları
+│   │   ├── firmware.md               # CubeIDE, pinout ve flaşlama kılavuzu
+│   │   └── reproducibility.md        # Test, eğitim ve figür üretim kılavuzu
+│   ├── rl/                           # Gymnasium ortamı, eğitim motoru ve modeller
+│   ├── stm32/                        # STM32F401RE CubeIDE firmware projesi
+│   │   └── Core/                     # main.c, servo_driver.c, fcs_comm.c, luna_read.c, flywheel_solenoid.c
+│   └── yolo/                         # Veri toplama ve etiketleme araçları
+├── turret_basket/                    # Bardak İçi Dart Basket Görevi (Cup Basket Challenge)
+│   ├── main.bat                      # Basket görevi başlatıcı
+│   ├── config.py                     # Basket SSOT konfigürasyonu
+│   ├── main.py                       # Basket ana döngüsü
+│   ├── basket_manager.py             # Basket karar çekirdeği
+│   ├── rl_tracker.py                 # Cup Mouth Tracker (1. aşama yapay zeka)
+│   ├── rl_ballistics.py              # Neural & RK4 Balistik süper-elevasyon (2. aşama)
+│   ├── cup_tracker.py                # Bardak takip arayüzü
+│   ├── engagement.py                 # Basket atış FSM
+│   ├── basket_comm.py                # Basket STM32 UART iletişimi
+│   ├── basket_hud.py                 # Basket taktik HUD
+│   ├── presenter.py                  # Basket sunum katmanı
+│   ├── analysis/                     # Optuna TPE analiz ve görselleştirme araçları
+│   ├── docs/                         # Basket dokümantasyonu (README, firmware, reproducibility)
+│   ├── rl/                           # Kupa Gymnasium ortamı ve modeller
+│   ├── stm32/                        # Basket için optimize edilmiş STM32 firmware
+│   └── yolo/                         # Bardak tespit modeli (CupDetector)
+├── webots/                           # Webots R2025a Dijital İkiz
+│   ├── worlds/
+│   │   ├── turret_fcs.wbt            # Hava savunma simülasyon dünyası
+│   │   └── turret_basket.wbt         # Bardak basketi simülasyon dünyası
+│   ├── controllers/
+│   │   ├── webots_turret_fcs/        # Hava savunma dijital ikiz denetleyicisi
+│   │   ├── webots_turret_basket/     # Bardak basketi temas fiziği denetleyicisi
+│   │   └── balloon_mover/            # Dinamik hedef balon hareketlendiricisi
+│   ├── balloon_profile.json          # 8 hedef manevra profili
+│   └── tuning_params.json            # Webots-only P kazanç ayarları
+├── weights/                          # YOLO model ağırlıkları (best.pt, yolov8n.pt)
+├── setup_env.bat                     # Sanal ortam ve paket kurulumu
 ├── pyproject.toml                    # Paket ve pytest yapılandırması
 ├── CITATION.cff                      # Akademik atıf üstverisi
 └── LICENSE                           # MIT
-```
-
+\
 ---
 
 ## 14. Dokümantasyon
 
-- [Firmware kılavuzu](turret_fcs/docs/firmware.md): STM32CubeIDE kurulumu, pinout, flaşlama ve güvenlik bekçileri.
-- [Tekrar üretilebilirlik kılavuzu](turret_fcs/docs/reproducibility.md): testler, RL eğitimi, benchmark ve figür üretimi.
-- [Analiz araçları](turret_fcs/analysis/README.md): betikler, dizin hiyerarşisi ve ürettikleri çıktılar.
+- [FCS Firmware kılavuzu](turret_fcs/docs/firmware.md): STM32CubeIDE kurulumu, pinout, flaşlama ve güvenlik bekçileri.
+- [FCS Tekrar üretilebilirlik kılavuzu](turret_fcs/docs/reproducibility.md): testler, RL eğitimi, benchmark ve figür üretimi.
+- [FCS Analiz araçları](turret_fcs/analysis/README.md): betikler, dizin hiyerarşisi ve ürettikleri çıktılar.
+- [Basket Görevi kılavuzu](turret_basket/docs/README.md): Cup Basket Challenge görevi mimarisi ve çalıştırma.
+- [Basket Firmware kılavuzu](turret_basket/docs/firmware.md): Basket STM32 yapılandırması ve pinout.
+- [Basket Tekrar üretilebilirlik kılavuzu](turret_basket/docs/reproducibility.md): Basket ortamı, Optuna TPE eğitimi ve doğrulama.
+
 
 ---
 

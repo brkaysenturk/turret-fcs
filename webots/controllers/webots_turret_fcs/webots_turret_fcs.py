@@ -177,12 +177,9 @@ def main():
                 slew_factor=eng_state.slew_factor,
             )
 
-            # Flywheel idle: hedef kilitliyken bosta dondur, atista boost et
-            if not eng_state.is_active and not is_estop:
-                if fcs.is_locked:
-                    launcher.start_idle()
-                else:
-                    launcher.stop_flywheels()
+            # Volanlar sadece atis (Y) sekansinda (SPINUP) calisir; bosta kapali tutulur
+            if not eng_state.is_active and launcher.is_spinning:
+                launcher.stop_flywheels()
 
             # FCS Durum Bayragi
             fcs_state = FCSState.ESTOP if is_estop else eng_state.fcs_fire_cmd_state
@@ -244,7 +241,6 @@ def main():
                     is_estop=is_estop,
                     now=sim_t,
                     is_range_valid=(fcs.range_valid and fcs.range_stable),
-                    is_flywheel_idle=launcher.is_idle_ready(),
                     log_event_cb=hud.log_event,
                 )
                 if should_exit:

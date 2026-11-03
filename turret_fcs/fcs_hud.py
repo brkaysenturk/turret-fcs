@@ -181,7 +181,7 @@ class TurretHUD:
             panel_h = 72
             if fire_stage == "SPINUP" and spinup_progress is not None:
                 panel_color = (0, 215, 255)
-                spinup_total_ms = int((spinup_duration_s or CONFIG.flywheel.idle_spinup_time_s) * 1000)
+                spinup_total_ms = int((spinup_duration_s or CONFIG.flywheel.spinup_time_s) * 1000)
                 ms_rem = max(0, int((1.0 - spinup_progress) * spinup_total_ms))
                 lines = [
                     ("FIRE AUTHORIZED", 0.65, amber_color, 2),

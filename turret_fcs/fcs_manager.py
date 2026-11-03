@@ -29,6 +29,7 @@ from .p_controller import PController
 from .patrol_generator import PatrolGenerator
 from .config import CONFIG
 from .ballistics import compute_rk4_super_elevation
+from .dob import DisturbanceObserver
 
 
 class FCSManager:
@@ -87,6 +88,8 @@ class FCSManager:
         self.ego_tau_s = CONFIG.control.ego_tau_s
         self.ego_step_pan_deg = 0.0
         self.ego_step_tilt_deg = 0.0
+        if hasattr(self, "dob") and self.dob is not None:
+            self.dob.reset()
         self.ego_var_x = 0.0
         self.ego_var_y = 0.0
         self._frame_ego = (0.0, 0.0)
@@ -110,6 +113,12 @@ class FCSManager:
         self.prev_applied_lead_pan = 0.0
         self.prev_applied_lead_tilt = 0.0
         self.lead_time = 0.0
+        self.dob = DisturbanceObserver(
+            enabled=CONFIG.control.dob_enabled,
+            gain=CONFIG.control.dob_gain,
+            tau_s=CONFIG.control.dob_tau_s,
+            max_speed_deg_s=CONFIG.control.max_dob_speed_deg_s,
+        )
 
     def _integrate_command(self, u_pan, u_tilt):
         """Hesaplanan inkremental adimlari limitler dahilinde tarete ve ego modeline uygular."""
@@ -444,8 +453,11 @@ class FCSManager:
         step_limit_pan = self.p_controller.max_step_for(dt, axis="pan")
         step_limit_tilt = self.p_controller.max_step_for(dt, axis="tilt")
 
-        u_p_pan = float(np.clip(u_p_pan + delta_slew_pan, -step_limit_pan, step_limit_pan))
-        u_p_tilt = float(np.clip(u_p_tilt + delta_slew_tilt, -step_limit_tilt, step_limit_tilt))
+        # Disturbance Observer (DOB) kompanzasyonu
+        dob_pan, dob_tilt = self.dob.update(active_pan, active_tilt, u_p_pan, u_p_tilt, dt)
+
+        u_p_pan = float(np.clip(u_p_pan + delta_slew_pan + dob_pan, -step_limit_pan, step_limit_pan))
+        u_p_tilt = float(np.clip(u_p_tilt + delta_slew_tilt + dob_tilt, -step_limit_tilt, step_limit_tilt))
 
         if self.control_mode == "RL":
             if self.rl_controller is None:

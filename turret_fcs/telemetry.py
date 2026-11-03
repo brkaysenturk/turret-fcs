@@ -175,8 +175,7 @@ class TelemetryLogger:
                 "ballistics": {
                     "projectile_speed_mps": CONFIG.ballistics.projectile_speed_mps,
                     "gravity_accel": CONFIG.ballistics.gravity_accel,
-                    "idle_spinup_time_s": CONFIG.flywheel.idle_spinup_time_s,
-                    "cold_spinup_time_s": CONFIG.flywheel.cold_spinup_time_s,
+                    "spinup_time_s": CONFIG.flywheel.spinup_time_s,
                     "settle_time_s": CONFIG.ballistics.settle_time_s,
                     "firing_pulse_s": CONFIG.ballistics.firing_pulse_s,
                     "recovery_time_s": CONFIG.ballistics.recovery_time_s,

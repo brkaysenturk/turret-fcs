@@ -48,13 +48,15 @@ def test_basket_config_ssot():
 
     ballistics = CONFIG.ballistics
     assert ballistics.firing_pulse_s == 0.080
-    assert ballistics.spinup_time_s == 0.60
-    assert ballistics.recovery_time_s == 0.90
+    assert ballistics.spinup_time_s == 0.50
+    assert ballistics.settle_time_s == 0.25
+    assert ballistics.recovery_time_s == 0.50
     assert ballistics.parallax_pitch_margin_deg == 0.00  # Model 2 dogrudan cozer (paralaks 0)
 
     # Alt bilesenlerin CONFIG SSOT varsayilanlarini dogrulama
     eng = BasketEngagement()
     assert eng.spinup_time_s == ballistics.spinup_time_s
+    assert eng.settle_time_s == ballistics.settle_time_s
     assert eng.firing_pulse_s == ballistics.firing_pulse_s
     assert eng.recovery_time_s == ballistics.recovery_time_s
 
@@ -174,8 +176,8 @@ def test_basket_rl_ballistics_inference():
 
 
 def test_basket_engagement_fsm():
-    """BasketEngagement 4-asamali atis durum makinesini dogrular."""
-    eng = BasketEngagement(spinup_time_s=0.60, firing_pulse_s=0.10, recovery_time_s=0.90)
+    """BasketEngagement 4-asamali (SPINUP_ELEVATE -> SETTLE -> FIRING -> RECOVER) atis durum makinesini dogrular."""
+    eng = BasketEngagement(spinup_time_s=0.50, settle_time_s=0.25, firing_pulse_s=0.08, recovery_time_s=0.50)
 
     # 1. Baslangic: Bostayken
     step = eng.update(now=10.0, current_tilt=0.0)
@@ -188,32 +190,38 @@ def test_basket_engagement_fsm():
     assert ok is True
     assert eng.is_active is True
 
-    # 3. Spin-up ve Super-Elevasyon Asamasi (t = 10.30s)
+    # 3. Spin-up ve Super-Elevasyon Asamasi (t = 10.30s, 10.0 + 0.30)
     step = eng.update(now=10.30, current_tilt=5.0)
     assert step.is_active is True
     assert step.phase == "SPINUP_ELEVATE"
     assert step.cmd_state == STATE_LOCKED
     assert step.step_tilt > 0.0
 
-    # 4. Solenoid Darbe Asamasi (t = 10.65s)
-    step = eng.update(now=10.65, current_tilt=26.8)
+    # 4. Settle / Mekanik Oturma Asamasi (t = 10.60s, 10.0 + 0.50 + 0.10)
+    step = eng.update(now=10.60, current_tilt=21.0)
+    assert step.is_active is True
+    assert step.phase == "SETTLE"
+    assert step.cmd_state == STATE_LOCKED
+
+    # 5. Solenoid Darbe Asamasi (t = 10.78s, 10.0 + 0.50 + 0.25 + 0.03)
+    step = eng.update(now=10.78, current_tilt=21.0)
     assert step.is_active is True
     assert step.phase == "FIRING"
     assert step.cmd_state == STATE_FIRING
     assert step.just_fired is True
 
     # Ayni asama icinde ikinci cagri (just_fired artik False olmali)
-    step2 = eng.update(now=10.68, current_tilt=26.8)
+    step2 = eng.update(now=10.80, current_tilt=21.0)
     assert step2.just_fired is False
 
-    # 5. Toparlama Asamasi (t = 11.20s)
-    step = eng.update(now=11.20, current_tilt=20.0)
+    # 6. Toparlama Asamasi (t = 11.00s, 10.0 + 0.50 + 0.25 + 0.08 + 0.17)
+    step = eng.update(now=11.00, current_tilt=15.0)
     assert step.is_active is True
     assert step.phase == "RECOVER"
     assert step.cmd_state == STATE_TRACKING
 
-    # 6. Tamamlanma (t = 11.65s)
-    step = eng.update(now=11.65, current_tilt=5.0)
+    # 7. Tamamlanma (t = 11.40s, 10.0 + 1.33)
+    step = eng.update(now=11.40, current_tilt=5.0)
     assert step.is_active is False
     assert step.is_finished is True
     assert eng.is_active is False

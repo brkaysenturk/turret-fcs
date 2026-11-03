@@ -12,8 +12,7 @@ from turret_fcs.fcs_manager import FCSManager
 def test_engagement_manager_transitions():
     """SPINUP -> SETTLE -> FIRING -> RECOVER -> EVAL asamalarini dogrular."""
     em = EngagementManager(
-        idle_spinup_time_s=0.20,
-        cold_spinup_time_s=0.50,
+        spinup_time_s=0.20,
         settle_time_s=0.10,
         firing_pulse_s=0.08,
         recovery_time_s=0.20,
@@ -36,7 +35,7 @@ def test_engagement_manager_transitions():
     assert "HIT PROBABILITY TOO LOW" in reason
 
     # 3. Gecerli sartlarda atis baslamali (SPINUP)
-    ok, reason = em.trigger(now=10.0, is_locked=True, is_range_valid=True, is_flywheel_idle=True, hit_probability=65.0)
+    ok, reason = em.trigger(now=10.0, is_locked=True, is_range_valid=True, hit_probability=65.0)
     assert ok
     state = em.update(now=10.05, is_locked=True)
     assert state.phase == "SPINUP"
@@ -82,49 +81,49 @@ def test_keymap_events_and_entrypoint_contracts():
         events.append(msg)
 
     # 1. Mod degisimi (M)
-    should_exit, estop = process_key_event(ord("m"), fcs, em, False, 10.0, True, True, log_cb)
+    should_exit, estop = process_key_event(ord("m"), fcs, em, False, 10.0, True, log_cb)
     assert not should_exit
     assert fcs.control_mode == "RL"
     assert any("RL CONTROLLER" in e for e in events)
 
     # 2. Devriye ac/kapa (P)
-    process_key_event(ord("p"), fcs, em, False, 10.0, True, True, log_cb)
+    process_key_event(ord("p"), fcs, em, False, 10.0, True, log_cb)
     assert fcs.patrol_enabled is True
 
     # 3. Acil fren (Space) - devriyeyi ve kilidi kesin sifirlamalidir
     fcs.lock_mgr.is_locked = True
-    _, estop = process_key_event(32, fcs, em, False, 10.0, True, True, log_cb)
+    _, estop = process_key_event(32, fcs, em, False, 10.0, True, log_cb)
     assert estop is True
     assert fcs.patrol_enabled is False
     assert fcs.is_locked is False
 
     # 4. Acil frenden cikis (Space) - temiz baslangic saglanir
-    _, estop = process_key_event(32, fcs, em, True, 11.0, True, True, log_cb)
+    _, estop = process_key_event(32, fcs, em, True, 11.0, True, log_cb)
     assert estop is False
     assert fcs.is_locked is False
 
     # 5. turret_fcs.py (-1 idle) ve tanimsiz tus ('y') cagri sozlesmesi
     should_exit_idle, is_estop_idle = process_key_event(
         key_code=-1, fcs=fcs, engagement=em, is_estop=False, now=12.0,
-        is_range_valid=True, is_flywheel_idle=False, log_event_cb=log_cb,
+        is_range_valid=True, log_event_cb=log_cb,
     )
     assert should_exit_idle is False and is_estop_idle is False
 
     should_exit_unmapped, _ = process_key_event(
         key_code=ord("y"), fcs=fcs, engagement=em, is_estop=False, now=12.0,
-        is_range_valid=True, is_flywheel_idle=False, log_event_cb=log_cb,
+        is_range_valid=True, log_event_cb=log_cb,
     )
     assert should_exit_unmapped is False
 
     # 6. Cikis (Q)
-    should_exit, _ = process_key_event(ord("q"), fcs, em, estop, 10.0, True, True, log_cb)
+    should_exit, _ = process_key_event(ord("q"), fcs, em, estop, 10.0, True, log_cb)
     assert should_exit is True
 
     # 7. main.py ve turret_fcs.py AST cagri imzasi analizi
     project_root = Path(__file__).resolve().parents[1]
     required_kws = {
         "key_code", "fcs", "engagement", "is_estop", "now",
-        "is_range_valid", "is_flywheel_idle", "log_event_cb",
+        "is_range_valid", "log_event_cb",
     }
     for rel_path in ["turret_fcs/main.py", "webots/controllers/webots_turret_fcs/webots_turret_fcs.py"]:
         file_path = project_root / rel_path

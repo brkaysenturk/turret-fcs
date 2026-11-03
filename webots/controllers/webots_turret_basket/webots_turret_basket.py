@@ -191,7 +191,7 @@ def main():
     prev_locked = False
     target_lost_counter = 0
 
-    WINDOW_NAME = "Turret FCS - Cup Basket Challenge"
+    WINDOW_NAME = "Turret Basket - Webots Digital Twin"
     if not headless:
         cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
         cv2.resizeWindow(WINDOW_NAME, 960, 540)
@@ -470,23 +470,22 @@ def main():
             else:
                 target_tilt_offset, target_speed_mps = get_firing_parameters(dist_m)
 
-        # Atis Firlatma ve Toparlanma Sekansi (Spin-up -> Settling -> Dart Spawn -> Recovery)
+        # Atis Firlatma ve Toparlanma Sekansi (Spinup 0.5s -> Settle 0.25s -> Fire -> Recover 0.5s)
         if shot_in_progress:
             time_since_trigger = sim_t - shot_time
-            # 1. Aşama: Namlu süper-elevasyon açısına tam oturana kadar bekle (sensör ile kontrol)
-            # Motor PID oturma eğrisi ve ataleti için en az 0.50 saniye beklenir, açı hassasiyeti < 0.25° olmalıdır.
+            # 1. Aşama: 0.50s spinup + 0.25s settle sonrasinda (t >= 0.75s) namlu oturmasi denetlenir ve ateslenir
             actual_tilt = math.degrees(tilt_sensor.getValue()) if tilt_sensor else applied_tilt_deg
             tilt_settled = abs(actual_tilt - applied_tilt_deg) < 0.25
 
-            if ((tilt_settled and time_since_trigger >= 0.50) or (time_since_trigger >= 1.20)) and not dart_spawned:
+            if ((tilt_settled and time_since_trigger >= 0.75) or (time_since_trigger >= 1.20)) and not dart_spawned:
                 dart_spawned = True
                 spawn_dart(v0_mps=active_fire_speed)
                 actual_th = math.degrees(tilt_sensor.getValue()) if tilt_sensor else applied_tilt_deg
                 hud.log_event(f"[THROW] DART #{total_darts} RELEASED ({active_fire_speed:.1f} m/s @ +{actual_th:.1f} deg)", (0, 255, 128))
                 print(f"[FIRE] Dart #{total_darts} released! Launch Velocity: {active_fire_speed:.1f} m/s, Actual Pitch: +{actual_th:.1f} deg")
 
-            # 2. Aşama: 2.2 saniye sonra volanları durdur ve tareti tekrar optik kilitlenme açısına indir
-            if time_since_trigger > 2.2:
+            # 2. Aşama: Firlatma sonrasi toparlanma (0.75s + 0.08s firing + 0.50s recover = ~1.33s toplam)
+            if time_since_trigger > 1.33:
                 shot_in_progress = False
                 dart_spawned = False
                 locked_dist_m = None

@@ -99,8 +99,9 @@ class BallisticsConfig:
     air_density: float = 1.225           # kg/m^3
     gravity: float = 9.80665
     firing_pulse_s: float = 0.080        # 80 ms solenoid itme darbesi
-    spinup_time_s: float = 0.60          # 600 ms devirlenme ve super-elevasyona cikis
-    recovery_time_s: float = 0.90        # 900 ms geri toplama ve optik kilide inis
+    spinup_time_s: float = 0.50          # 500 ms devirlenme ve super-elevasyona cikis
+    settle_time_s: float = 0.25          # 250 ms mekanik oturma ve stabilizasyon
+    recovery_time_s: float = 0.50        # 500 ms geri toplama ve optik kilide inis
     parallax_pitch_margin_deg: float = 0.00  # Model 2 dogrudan mutlak atis acisini cozer (paralaks eklenmez)
 
 

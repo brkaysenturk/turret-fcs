@@ -64,6 +64,10 @@ class ControlConfig:
     ego_tau_s: float = 0.0300            # Ego icin komut adimi servo zaman sabiti (30 ms fiziksel taret)
     ego_motion_uncertainty_ratio: float = 0.35  # Olculmeyen servo hareketi bagil standart sapmasi
     ego_backlash_uncertainty_ratio: float = 0.25  # Disli boslugu alimi sirasindaki belirsizlik orani
+    dob_enabled: bool = False            # Disturbance Observer (DOB) anahtari (True: acik, False: kapali)
+    dob_gain: float = 1.2233             # DOB kazanci (Optuna TPE optimal)
+    dob_tau_s: float = 0.1710            # DOB Q-filtresi zaman sabiti (saniye)
+    max_dob_speed_deg_s: float = 12.0666 # DOB maksimum kompanzasyon hiz siniri (deg/s)
 
 
 @dataclass(frozen=True)
@@ -104,9 +108,9 @@ class BallisticsConfig:
     drag_coefficient: float = 0.60            # Kup / yarim kure burunlu dart Cd katsayisi
     air_density_kg_m3: float = 1.225          # 15 C deniz seviyesi hava yogunlugu
     # Atis sekansi zamanlamalari (saniye; spin-up sureleri FlywheelConfig icindedir)
-    settle_time_s: float = 0.25     # Slew sonrasi servo oturma (250 ms, MG996R FOPDT FSM oturma ve titreşim sönümleme)
+    settle_time_s: float = 0.15     # Slew sonrasi servo oturma (150 ms, MG996R FOPDT FSM oturma ve titreşim sönümleme)
     firing_pulse_s: float = 0.08    # Solenoid itici darbe suresi (80 ms - STM32 firmware ile uyumlu)
-    recovery_time_s: float = 0.35   # Mekanik geri toplama suresi
+    recovery_time_s: float = 0.25   # Mekanik geri toplama suresi (250 ms)
     eval_display_time_s: float = 1.50  # Atis sonrasi EVAL gosterim suresi
     system_latency_s: float = 0.0900 # 90.0 ms (3.0 kare @ 30 FPS / TensorRT 5ms + Donanim 81.5ms olculen uctan uca gecikme)
     camera_to_muzzle_z_m: float = 0.0570  # CAD v10: Namlu ucu Z ekseninde kameradan 57 mm yukaridadir (paralaks)
@@ -166,9 +170,7 @@ class LidarConfig:
 class FlywheelConfig:
     """Cift volan motoru: kilitliyken bosta donme ve ates boost parametreleri."""
     target_speed_rad_s: float = 2460.9   # 23.500 RPM nominal atis devri
-    idle_speed_rad_s: float = 1600.0     # Kilitliyken bosta donme devri (~%65)
-    idle_spinup_time_s: float = 0.25     # Bostan tam devre + kisa slew suresi
-    cold_spinup_time_s: float = 0.50     # Bosta degilse emniyetli tam spin-up
+    spinup_time_s: float = 0.25          # Tekil spin-up suresi (0.25 s)
 
 
 @dataclass(frozen=True)
