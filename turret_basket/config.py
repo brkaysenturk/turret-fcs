@@ -75,6 +75,14 @@ class CupTargetConfig:
     target_distance_min_m: float = 1.0
     target_distance_max_m: float = 3.0
 
+    # Lidar menzil kapilama ve kilit parametreleri
+    lidar_range_min_m: float = 0.60
+    lidar_range_max_m: float = 4.0
+    nominal_distance_m: float = 1.45
+    lock_threshold_frames: int = 15
+    lock_tolerance_pan_deg: float = 1.20
+    lock_tolerance_tilt_deg: float = 1.20
+
 
 @dataclass(frozen=True)
 class BallisticsConfig:
@@ -88,6 +96,9 @@ class BallisticsConfig:
     air_density: float = 1.225           # kg/m^3
     gravity: float = 9.80665
     firing_pulse_s: float = 0.080        # 80 ms solenoid itme darbesi
+    spinup_time_s: float = 0.60          # 600 ms devirlenme ve super-elevasyona cikis
+    recovery_time_s: float = 0.90        # 900 ms geri toplama ve optik kilide inis
+    parallax_pitch_margin_deg: float = 0.80  # Dikey kamera-namlu paralaks payi
 
 
 @dataclass(frozen=True)

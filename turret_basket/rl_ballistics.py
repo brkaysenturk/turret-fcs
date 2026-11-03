@@ -33,7 +33,7 @@ class RLBallistics:
         self.tilt_max = CONFIG.rl.tilt_offset_max_deg
         self.speed_min = CONFIG.rl.speed_min_mps
         self.speed_max = CONFIG.rl.speed_max_mps
-        self.default_parallax_margin_deg = 0.80
+        self.default_parallax_margin_deg = CONFIG.ballistics.parallax_pitch_margin_deg
 
     def _load_model(self):
         """2. Model: Hizli ve bagimsiz NumPy MLP Balistik Politika yukleyicisi."""

@@ -20,31 +20,27 @@ try:
 except ImportError:
     serial = None
 
+from turret_basket.config import CONFIG
 # Protokol Sabitleri (turret_basket.protocol - Tek Kaynak SSOT)
 from turret_basket.protocol import (
     PC_TO_STM_HEADER,
     STM_TO_PC_HEADER,
-    LUNA_HEADER,
-    CMD_FRAME_LEN,
     TLM_FRAME_LEN,
-    LUNA_FRAME_LEN,
     ANGLE_SCALE,
     ANGLE_OFFSET_DEG,
     CMD_FORMAT,
     TLM_FORMAT,
     STATE_TRACKING,
-    STATE_LOCKED,
     STATE_FIRING,
-    STATE_ESTOP,
 )
 
 
 class FCSCommunicator:
     """STM32 mikrodenetleyici ile ikili paket uzerinden konusan iletisim sinifi."""
 
-    def __init__(self, port=None, baudrate=115200, reconnect_interval=2.0, stale_timeout=0.3):
+    def __init__(self, port=None, baudrate=None, reconnect_interval=2.0, stale_timeout=0.3):
         self.port = port
-        self.baudrate = baudrate
+        self.baudrate = CONFIG.hardware.baudrate if baudrate is None else baudrate
         self.reconnect_interval = reconnect_interval
         self.stale_timeout = stale_timeout
 

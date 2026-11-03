@@ -23,7 +23,8 @@ if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
 from turret_basket.config import CONFIG
-from turret_basket.basket_comm import FCSCommunicator, STATE_TRACKING
+from turret_basket.protocol import STATE_TRACKING
+from turret_basket.basket_comm import FCSCommunicator
 from turret_basket.camera_thread import CameraThread
 from turret_basket.yolo.cup_detector import CupDetector
 from turret_basket.rl_tracker import RLTracker

@@ -13,7 +13,7 @@ from typing import Optional, Tuple, Callable
 import numpy as np
 
 from turret_basket.config import CONFIG
-from turret_basket.protocol import STATE_TRACKING, STATE_LOCKED, STATE_FIRING, STATE_ESTOP
+from turret_basket.protocol import STATE_TRACKING, STATE_LOCKED, STATE_ESTOP
 from turret_basket.yolo.cup_detector import CupDetector, CupDetection
 from turret_basket.rl_tracker import RLTracker
 from turret_basket.rl_ballistics import RLBallistics
@@ -61,12 +61,12 @@ class BasketManager:
         # Sistem durum degiskenleri
         self.is_estop = False
         self.lock_counter = 0
-        self.MAX_LOCK_FRAMES = 15
+        self.MAX_LOCK_FRAMES = CONFIG.cup.lock_threshold_frames
         self.is_locked = False
         self.lock_ratio = 0.0
 
-        self.last_valid_dist_m = 1.45
-        self.dist_m = 1.45
+        self.last_valid_dist_m = CONFIG.cup.nominal_distance_m
+        self.dist_m = CONFIG.cup.nominal_distance_m
         self.target_speed_mps = 4.4
         self.target_tilt_offset = 21.8
 
@@ -160,7 +160,7 @@ class BasketManager:
         # 2. Telemetri Oku ve Lidar Menzil Kapilama
         if self.comm:
             raw_dist_m = (self.comm.distance / 100.0) if self.comm.distance > 0 else 0.0
-            if 0.60 <= raw_dist_m <= 4.0:
+            if CONFIG.cup.lidar_range_min_m <= raw_dist_m <= CONFIG.cup.lidar_range_max_m:
                 self.dist_m = raw_dist_m
                 self.last_valid_dist_m = self.dist_m
             else:
@@ -171,7 +171,10 @@ class BasketManager:
 
         # 3. Kilit Kararliligi Kontrolu
         if det.detected:
-            is_close = (abs(det.err_pan_deg) < 1.20 and abs(det.err_tilt_deg) < 1.20)
+            is_close = (
+                abs(det.err_pan_deg) < CONFIG.cup.lock_tolerance_pan_deg
+                and abs(det.err_tilt_deg) < CONFIG.cup.lock_tolerance_tilt_deg
+            )
             if is_close:
                 self.lock_counter = min(self.MAX_LOCK_FRAMES, self.lock_counter + 1)
             else:

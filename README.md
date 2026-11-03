@@ -8,7 +8,7 @@ Bitirme Çalışması ve Tasarım Projesi
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10-3.12](https://img.shields.io/badge/Python-3.10--3.12-blue.svg)](https://www.python.org/)
 [![CI](https://github.com/brkaysenturk/turret-fcs/actions/workflows/ci.yml/badge.svg)](https://github.com/brkaysenturk/turret-fcs/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/Tests-40%20passed-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-46%20passed-brightgreen.svg)](tests/)
 [![Hardware](https://img.shields.io/badge/Hardware-STM32F401RE-002B49.svg)](https://www.st.com/)
 [![LiDAR](https://img.shields.io/badge/LiDAR-TF--Luna%20ToF-blueviolet.svg)](https://en.benewake.com/)
 [![Simulation](https://img.shields.io/badge/Simulation-Webots%20R2025a-red.svg)](https://cyberbotics.com/)
@@ -690,7 +690,7 @@ setup_env.bat
 venv\Scripts\python.exe -m pytest -q
 ```
 
-40 test; P kontrolcü, Kalman aday geri oynatma, kilit/vuruş olasılığı, LiDAR kapılama, RL sarmalayıcı, Webots tuning, ağırlık yöneticisi, `CONFIG` tutarlılığı ve `turret_basket` (RK4 balistik, CupTracker, UART comm) sözleşmelerini donanım olmadan doğrular.
+46 test; P kontrolcü, Kalman aday geri oynatma, kilit/vuruş olasılığı, LiDAR kapılama, RL sarmalayıcı, Webots tuning, ağırlık yöneticisi, `CONFIG` tutarlılığı ve `turret_basket` (RK4 balistik, RLTracker, RLBallistics, BasketEngagement, BasketManager, UART comm) sözleşmelerini donanım olmadan doğrular.
 
 ### 10.4 Sistemi başlatma
 
@@ -837,7 +837,7 @@ turret_fcs/
 │   └── Core/
 │       ├── Inc/                      # protocol.h, servo_driver.h, fcs_comm.h, luna_read.h, flywheel_solenoid.h
 │       └── Src/                      # main.c, servo_driver.c, fcs_comm.c, luna_read.c, flywheel_solenoid.c
-├── tests/                            # 40 Pytest birim/entegrasyon testi
+├── tests/                            # 46 Pytest birim/entegrasyon testi
 ├── turret_fcs/                       # PC çalışma zamanı
 │   ├── config.py                     # SSOT
 │   ├── protocol.py                   # PC-STM32 protokol sözleşmesi

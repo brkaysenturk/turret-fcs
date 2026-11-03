@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from typing import Optional, Tuple
 import numpy as np
 
+from turret_basket.config import CONFIG
 from turret_basket.protocol import STATE_TRACKING, STATE_LOCKED, STATE_FIRING
 
 
@@ -33,9 +34,9 @@ class BasketEngagement:
 
     def __init__(
         self,
-        spinup_time_s: float = 0.60,
-        firing_pulse_s: float = 0.10,
-        recovery_time_s: float = 0.90,
+        spinup_time_s: float = CONFIG.ballistics.spinup_time_s,
+        firing_pulse_s: float = CONFIG.ballistics.firing_pulse_s,
+        recovery_time_s: float = CONFIG.ballistics.recovery_time_s,
     ):
         self.spinup_time_s = float(spinup_time_s)
         self.firing_pulse_s = float(firing_pulse_s)

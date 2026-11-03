@@ -22,7 +22,7 @@ from turret_basket.protocol import (
 from turret_basket.basket_comm import FCSCommunicator
 from turret_basket.rl_tracker import RLTracker
 from turret_basket.rl_ballistics import RLBallistics, LaunchParameters
-from turret_basket.engagement import BasketEngagement, EngagementStep
+from turret_basket.engagement import BasketEngagement
 from turret_basket.basket_manager import BasketManager, BasketStatus
 from turret_basket.rl.cup_env import BallisticBasketEnv, solve_rk4_trajectory
 from turret_basket.basket_hud import BasketHUD
@@ -48,6 +48,25 @@ def test_basket_config_ssot():
 
     ballistics = CONFIG.ballistics
     assert ballistics.firing_pulse_s == 0.080
+    assert ballistics.spinup_time_s == 0.60
+    assert ballistics.recovery_time_s == 0.90
+    assert ballistics.parallax_pitch_margin_deg == 0.80
+
+    # Alt bilesenlerin CONFIG SSOT varsayilanlarini dogrulama
+    eng = BasketEngagement()
+    assert eng.spinup_time_s == ballistics.spinup_time_s
+    assert eng.firing_pulse_s == ballistics.firing_pulse_s
+    assert eng.recovery_time_s == ballistics.recovery_time_s
+
+    mgr = BasketManager(comm=None)
+    assert mgr.MAX_LOCK_FRAMES == cup.lock_threshold_frames
+    assert mgr.last_valid_dist_m == cup.nominal_distance_m
+
+    b_ai = RLBallistics()
+    assert b_ai.default_parallax_margin_deg == ballistics.parallax_pitch_margin_deg
+
+    comm = FCSCommunicator(port=None)
+    assert comm.baudrate == hw.baudrate
 
 
 def test_basket_protocol_constants():
