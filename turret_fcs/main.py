@@ -18,9 +18,11 @@ TEMEL GOREVLER VE AKIS:
 ================================================================================
 """
 
+import os
 import time
 from pathlib import Path
 import cv2
+import numpy as np
 from ultralytics import YOLO
 
 from .camera_thread import CameraThread
@@ -56,7 +58,27 @@ def main():
     engine_path = model_path.with_suffix(".engine")
     if engine_path.exists() and engine_path.stat().st_size > 1000:
         model_path = engine_path
-    model = YOLO(str(model_path), task='detect')
+
+    # Ultralytics ve TensorRT C++ backend loglarini (model yukleme ve ilk isinma) terminalden gizle
+    try:
+        null_fd = os.open(os.devnull, os.O_WRONLY)
+        save_stdout = os.dup(1)
+        save_stderr = os.dup(2)
+        os.dup2(null_fd, 1)
+        os.dup2(null_fd, 2)
+        try:
+            model = YOLO(str(model_path), task='detect')
+            # TensorRT motorunu ilk kare ile sessizce isit (stdout loglari burada cikiyor)
+            dummy_img = np.zeros((480, 640, 3), dtype=np.uint8)
+            model(dummy_img, verbose=False)
+        finally:
+            os.dup2(save_stdout, 1)
+            os.dup2(save_stderr, 2)
+            os.close(save_stdout)
+            os.close(save_stderr)
+            os.close(null_fd)
+    except Exception:
+        model = YOLO(str(model_path), task='detect')
 
     cap = CameraThread()
     WINDOW_NAME = "Turret FCS"

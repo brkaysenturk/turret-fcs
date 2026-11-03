@@ -34,9 +34,8 @@ class RLTracker:
             try:
                 with open(params_file, "r", encoding="utf-8") as f:
                     params = json.load(f)
-                print(f"[TRACKER] Optuna parametreleri yuklendi: {params_file.name}")
-            except Exception as e:
-                print(f"[WARN] Optuna parametreleri okunamadi: {e}")
+            except Exception:
+                pass
 
         self.deadband_pan_deg = float(params.get("deadband_pan_deg", 0.1948))
         self.deadband_tilt_deg = float(params.get("deadband_tilt_deg", 0.1522))

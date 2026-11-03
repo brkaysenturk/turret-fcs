@@ -92,7 +92,6 @@ class FCSCommunicator:
         try:
             self.ser = serial.Serial(target_port, self.baudrate, timeout=0.01)
             self._rx_buffer.clear()
-            print(f"[COMM] STM32 baglantisi kuruldu: {target_port} @ {self.baudrate} baud")
             return True
         except Exception:
             self.ser = None

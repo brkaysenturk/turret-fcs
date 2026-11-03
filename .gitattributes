@@ -17,8 +17,28 @@
 
 # GitHub Linguist language statistics
 # Treat vendor HAL / CMSIS drivers as third-party vendored code
-turret_fcs/stm32/turret_fcs/Drivers/** linguist-vendored
+turret_fcs/stm32/Drivers/** linguist-vendored
+turret_basket/stm32/Drivers/** linguist-vendored
 
-# STM32CubeIDE generated startup/linker files: keep in repo, exclude from language stats
-turret_fcs/stm32/turret_fcs/Core/Startup/*.s linguist-generated
-turret_fcs/stm32/turret_fcs/*.ld linguist-generated
+# STM32CubeIDE generated startup/linker/boilerplate files: keep in repo, exclude from language stats
+turret_fcs/stm32/Core/Startup/** linguist-generated
+turret_basket/stm32/Core/Startup/** linguist-generated
+turret_fcs/stm32/Core/Src/syscalls.c linguist-generated
+turret_fcs/stm32/Core/Src/sysmem.c linguist-generated
+turret_fcs/stm32/Core/Src/system_stm32f4xx.c linguist-generated
+turret_fcs/stm32/Core/Src/stm32f4xx_hal_msp.c linguist-generated
+turret_fcs/stm32/Core/Src/stm32f4xx_it.c linguist-generated
+turret_fcs/stm32/Core/Inc/stm32f4xx_hal_conf.h linguist-generated
+turret_fcs/stm32/Core/Inc/stm32f4xx_it.h linguist-generated
+turret_fcs/stm32/*.ld linguist-generated
+turret_fcs/stm32/*.ioc linguist-generated
+
+turret_basket/stm32/Core/Src/syscalls.c linguist-generated
+turret_basket/stm32/Core/Src/sysmem.c linguist-generated
+turret_basket/stm32/Core/Src/system_stm32f4xx.c linguist-generated
+turret_basket/stm32/Core/Src/stm32f4xx_hal_msp.c linguist-generated
+turret_basket/stm32/Core/Src/stm32f4xx_it.c linguist-generated
+turret_basket/stm32/Core/Inc/stm32f4xx_hal_conf.h linguist-generated
+turret_basket/stm32/Core/Inc/stm32f4xx_it.h linguist-generated
+turret_basket/stm32/*.ld linguist-generated
+turret_basket/stm32/*.ioc linguist-generated

@@ -20,8 +20,8 @@ class CameraConfig:
     """Kamera ve optik kalibrasyon parametreleri."""
     device_id: int = 0
     camera_name_substr: str = "C270"
-    width: int = 640
-    height: int = 480
+    width: int = 1280
+    height: int = 720
     fps: int = 30
     h_fov_deg: float = 48.8    # Logitech C270 yatay gorunur alan
     v_fov_deg: float = 38.0    # Logitech C270 dikey gorunur alan

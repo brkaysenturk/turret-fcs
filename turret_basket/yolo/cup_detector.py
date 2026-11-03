@@ -43,11 +43,9 @@ class CupDetector:
     def __init__(self, model_path: Optional[str] = None):
         path = model_path or CONFIG.cup.yolo_model_path
         if YOLO is not None:
-            print(f"[VISION] YOLOv8 modeli yukleniyor: {path}")
-            self.model = YOLO(path)
+            self.model = YOLO(path, verbose=False)
         else:
             self.model = None
-            print("[VISION] Ultralytics kutuphanesi bulunamadi, simule tespit modu devrede.")
 
         self.target_classes = CONFIG.cup.target_classes
         self.conf_thresh = CONFIG.cup.confidence_threshold

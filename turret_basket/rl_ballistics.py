@@ -57,23 +57,20 @@ class RLBallistics:
                     h2 = np.tanh(np.dot(w2, h1) + b2)
                     return np.clip(np.dot(w3, h2) + b3, -1.0, 1.0)
 
-                print("[INFO] Model 2 (Fast NumPy MLP Policy) basariyla yuklendi!")
                 return predict_npz
-            except Exception as e:
-                print(f"[WARN] NumPy Model 2 yuklenemedi: {e}")
+            except Exception:
+                pass
 
         if model_zip.exists():
             try:
                 from stable_baselines3 import PPO
 
                 sb3_model = PPO.load(str(model_zip), device="cpu")
-                print("[INFO] Model 2 (SB3 PPO Policy) yuklendi!")
                 return lambda obs: sb3_model.predict(obs, deterministic=True)[0]
-            except Exception as e:
-                print(f"[WARN] Model 2 zip yuklenemedi: {e}")
+            except Exception:
+                pass
 
         # Fallback: Nominal analitik yaklasim
-        print("[WARN] Model 2 dosyalari bulunamadi, nominal yaklasim devrede.")
         return lambda obs: np.array([0.75, -0.65], dtype=np.float32)
 
     def compute_launch_parameters(self, dist_m: float, delta_z_m: float = -0.2287) -> LaunchParameters:

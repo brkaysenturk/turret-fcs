@@ -5,11 +5,6 @@ cd /d "%~dp0\.."
 
 set PYTHONDONTWRITEBYTECODE=1
 
-echo ==============================================================
-echo    TURRET BASKET // KULPLU KUPA BASKET CHALLENGE
-echo ==============================================================
-echo.
-
 if not exist "venv\Scripts\python.exe" (
     echo [HATA] Sanal ortam bulunamadi: venv\Scripts\python.exe
     echo        Once 'setup_env.bat' betigini calistirin.
@@ -17,10 +12,7 @@ if not exist "venv\Scripts\python.exe" (
     exit /b 1
 )
 
-echo [INFO] Sanal ortam devrede: venv\Scripts\python.exe
+echo TURRET BASKET // ACTIVATED
 venv\Scripts\python.exe -m turret_basket.main %*
-
-echo.
-echo [BASKET] Oturum sonlandirildi.
-if not defined CI pause
+echo TURRET BASKET // DEACTIVATED
 endlocal

@@ -168,7 +168,7 @@ class FlywheelConfig:
     target_speed_rad_s: float = 2460.9   # 23.500 RPM nominal atis devri
     idle_speed_rad_s: float = 1600.0     # Kilitliyken bosta donme devri (~%65)
     idle_spinup_time_s: float = 0.25     # Bostan tam devre + kisa slew suresi
-    cold_spinup_time_s: float = 1.00     # Bosta degilse emniyetli tam spin-up
+    cold_spinup_time_s: float = 0.50     # Bosta degilse emniyetli tam spin-up
 
 
 @dataclass(frozen=True)

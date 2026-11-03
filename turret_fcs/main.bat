@@ -5,11 +5,6 @@ cd /d "%~dp0\.."
 
 set PYTHONDONTWRITEBYTECODE=1
 
-echo ==============================================================
-echo    TURRET FCS // GERCEK ZAMANLI ATIS KONTROL SISTEMI
-echo ==============================================================
-echo.
-
 if not exist "venv\Scripts\python.exe" (
     echo [HATA] Sanal ortam bulunamadi: venv\Scripts\python.exe
     echo        Once 'setup_env.bat' betigini calistirin.
@@ -17,10 +12,7 @@ if not exist "venv\Scripts\python.exe" (
     exit /b 1
 )
 
-echo [INFO] Sanal ortam devrede: venv\Scripts\python.exe
+echo TURRET FCS // ACTIVATED
 venv\Scripts\python.exe -m turret_fcs.main %*
-
-echo.
-echo [FCS] Oturum sonlandirildi.
-if not defined CI pause
+echo TURRET FCS // DEACTIVATED
 endlocal

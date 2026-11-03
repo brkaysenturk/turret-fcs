@@ -33,8 +33,8 @@ from turret_basket.keymap import process_key_event
 def test_basket_config_ssot():
     """turret_basket config degerlerinin geometrik ve fiziksel tutarliligini dogrular."""
     cam = CONFIG.camera
-    assert cam.width == 640
-    assert cam.height == 480
+    assert cam.width == 1280
+    assert cam.height == 720
     assert cam.fps == 30
     assert cam.fx > 0 and cam.fy > 0
 

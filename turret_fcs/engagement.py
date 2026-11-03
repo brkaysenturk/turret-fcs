@@ -90,7 +90,7 @@ class EngagementManager:
     def update(self, now: float, is_locked: bool) -> EngagementState:
         """Anlik zamana gore atis durum makinesini gunceller."""
         if not self.is_firing_sequence or self.fire_start_time <= 0:
-            default_state = FCSState.LOCKED if is_locked else FCSState.TRACKING
+            default_state = FCSState.TRACKING
             return EngagementState(
                 phase=None,
                 slew_factor=0.0,
@@ -117,7 +117,7 @@ class EngagementManager:
                 phase="SPINUP",
                 slew_factor=slew_factor,
                 spinup_progress=progress,
-                fcs_fire_cmd_state=FCSState.LOCKED if is_locked else FCSState.TRACKING,
+                fcs_fire_cmd_state=FCSState.LOCKED,
                 is_physical_firing=True,
                 is_active=True,
                 status_text=f"STATUS: SPIN-UP & SLEW ({ms_left:3d}ms)",
@@ -129,7 +129,7 @@ class EngagementManager:
                 phase="SETTLE",
                 slew_factor=1.0,
                 spinup_progress=1.0,
-                fcs_fire_cmd_state=FCSState.LOCKED if is_locked else FCSState.TRACKING,
+                fcs_fire_cmd_state=FCSState.LOCKED,
                 is_physical_firing=True,
                 is_active=True,
                 status_text="STATUS: SETTLING AIM",
@@ -155,7 +155,7 @@ class EngagementManager:
                 phase="RECOVER",
                 slew_factor=slew_factor,
                 spinup_progress=1.0,
-                fcs_fire_cmd_state=FCSState.LOCKED if is_locked else FCSState.TRACKING,
+                fcs_fire_cmd_state=FCSState.TRACKING,
                 is_physical_firing=True,
                 is_active=True,
                 status_text="STATUS: RECOVERING BORESIGHT",
@@ -167,7 +167,7 @@ class EngagementManager:
                 phase="EVAL",
                 slew_factor=0.0,
                 spinup_progress=1.0,
-                fcs_fire_cmd_state=FCSState.LOCKED if is_locked else FCSState.TRACKING,
+                fcs_fire_cmd_state=FCSState.TRACKING,
                 is_physical_firing=False,
                 is_active=True,
                 status_text="STATUS: ENGAGEMENT COMPLETED",
@@ -176,7 +176,7 @@ class EngagementManager:
             )
         else:
             self.abort()
-            default_state = FCSState.LOCKED if is_locked else FCSState.TRACKING
+            default_state = FCSState.TRACKING
             return EngagementState(
                 phase=None,
                 slew_factor=0.0,

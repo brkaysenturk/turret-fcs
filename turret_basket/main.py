@@ -37,10 +37,6 @@ from turret_basket.keymap import process_key_event
 
 
 def main():
-    print("=" * 70)
-    print("TURRET FCS - REAL CUP BASKET CHALLENGE (PRODUCTION MAIN)")
-    print("=" * 70)
-
     models_dir = Path(__file__).resolve().parent / "rl" / "models"
 
     # 1. Donanim ve Yapay Zeka Alt Bilesenleri
@@ -67,14 +63,6 @@ def main():
 
     WINDOW_NAME = "Turret FCS - Real Cup Basket Challenge (Main)"
     cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
-    cv2.resizeWindow(WINDOW_NAME, 960, 540)
-
-    print("\n[KONTROLLER]")
-    print("  SPACE / Y : Atis Emri (2 Asamali Spin-up -> Yukselis -> Firlatma)")
-    print("  N         : Atisi Iptal Et (Abort)")
-    print("  R         : Hedef Takipcisini Sifirla")
-    print("  E         : E-Stop Acil Durum Freni")
-    print("  Q / ESC   : Guvenli Cikis\n")
 
     hud.log_event("[SYS] CUP BASKET FCS ONLINE", hud.C_GREEN)
     hud.log_event("[AI] 2-STAGE HIERARCHICAL AGENTS READY", hud.C_CYAN)
@@ -118,13 +106,11 @@ def main():
                 break
 
     finally:
-        print("[SYS] Donanim ve kamera guvenli kapatiliyor...")
         cam.stop()
         if comm:
             comm.send_command(0.0, 0.0, state=STATE_TRACKING)
             comm.close()
         cv2.destroyAllWindows()
-        print("[SYS] Sistem kapatildi. Iyi calismalar!")
 
 
 if __name__ == "__main__":

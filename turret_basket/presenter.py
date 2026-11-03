@@ -89,11 +89,11 @@ class BasketPresenter:
                 target_detected=status.cup_detected and not status.is_estop,
             )
 
-            # Sag Ust FPS
+            # Sag Ust FPS (Kompakt ve estetik)
             fps_text = f"FPS: {int(round(fps))}"
-            (fps_w, _), _ = cv2.getTextSize(fps_text, self.hud.font, 0.50, 2)
+            (fps_w, _), _ = cv2.getTextSize(fps_text, self.hud.font, 0.40, 1)
             fps_color = self.hud.C_GREEN if fps >= 25.0 else self.hud.C_AMBER
-            cv2.putText(out, fps_text, (w - fps_w - 18, 26), self.hud.font, 0.50, fps_color, 2, cv2.LINE_AA)
+            cv2.putText(out, fps_text, (w - fps_w - 14, 20), self.hud.font, 0.40, fps_color, 1, cv2.LINE_AA)
 
             # Sag Ust BASKET SCOREBOARD
             self.hud.draw_basket_scoreboard(out)
