@@ -61,11 +61,11 @@ def main():
     hud = BasketHUD()
     presenter = BasketPresenter(hud)
 
-    WINDOW_NAME = "Turret FCS - Real Cup Basket Challenge (Main)"
+    WINDOW_NAME = "Turret Basket"
     cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
 
-    hud.log_event("[SYS] CUP BASKET FCS ONLINE", hud.C_GREEN)
-    hud.log_event("[AI] 2-STAGE HIERARCHICAL AGENTS READY", hud.C_CYAN)
+    hud.log_event("[SYS] TURRET BASKET ONLINE", hud.C_GREEN)
+    hud.log_event("[RL] 2-STAGE HIERARCHICAL AGENTS READY", hud.C_CYAN)
 
     prev_time = time.time()
     fps = 30.0

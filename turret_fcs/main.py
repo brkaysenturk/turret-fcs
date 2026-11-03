@@ -117,7 +117,7 @@ def main():
     # 4. TF-Luna LiDAR durumu (STM32 uzerinden)
     time.sleep(0.04)
     if stm.is_luna_online:
-        hud.log_event("[LIDAR] TF-LUNA ONLINE", color=(0, 255, 128))
+        hud.log_event("[LIDAR] TF-LUNA ONLINE (100 Hz)", color=(0, 255, 128))
     else:
         hud.log_event("[LIDAR] TF-LUNA STANDBY / WAITING", color=(0, 191, 255))
 

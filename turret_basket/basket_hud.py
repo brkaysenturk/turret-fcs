@@ -116,19 +116,19 @@ class BasketHUD:
         banner_color = self.C_GREEN
         banner_border = (70, 80, 90)
 
-        (b_w, _), _ = cv2.getTextSize(banner_text, self.font, 0.52, 2)
+        (b_w, _), _ = cv2.getTextSize(banner_text, self.font, 0.56, 2)
         banner_x = max(10, cx - (b_w // 2))
 
-        pad_x, pad_y = 10, 4
-        bx1, by1 = max(0, banner_x - pad_x), max(0, 24 - 14 - pad_y)
-        bx2, by2 = min(w, banner_x + b_w + pad_x), min(h, 24 + pad_y)
+        pad_x, pad_y = 12, 5
+        bx1, by1 = max(0, banner_x - pad_x), max(0, 26 - 16 - pad_y)
+        bx2, by2 = min(w, banner_x + b_w + pad_x), min(h, 26 + pad_y)
         roi_b = frame[by1:by2, bx1:bx2]
         if roi_b.size > 0:
             black_b = np.zeros_like(roi_b)
-            frame[by1:by2, bx1:bx2] = cv2.addWeighted(roi_b, 0.35, black_b, 0.65, 0)
+            frame[by1:by2, bx1:bx2] = cv2.addWeighted(roi_b, 0.30, black_b, 0.70, 0)
         cv2.rectangle(frame, (bx1, by1), (bx2, by2), banner_border, 1)
 
-        cv2.putText(frame, banner_text, (banner_x, 24), self.font, 0.52, banner_color, 2, cv2.LINE_AA)
+        cv2.putText(frame, banner_text, (banner_x, 26), self.font, 0.56, banner_color, 2, cv2.LINE_AA)
 
     def draw_combat_panel(
         self,
@@ -209,86 +209,68 @@ class BasketHUD:
         """Sol ust sivil durum ve telemetri paneli (Kompakt ~205px genislik, ince 1px cerceve)."""
         h, w, _ = frame.shape
 
-        dist_cm = int(round(dist_m * 100.0)) if dist_m > 0.05 else 0
-        dist_str = f"{dist_cm:3d} cm" if dist_cm > 0 else "-- cm"
-        sig_str = "OK" if dist_cm > 0 else "--"
+        # 1. Sivillestirilmis Durum Metni ve Rengi
+        status_line = f"STATUS: {status_text}"
+        dist_str = f"{dist_m:.2f} m" if dist_m > 0.05 else "--"
+        sig_str = "STRONG" if dist_m > 0.05 else "NO LOCK"
+        telemetry_line = f"RANGE: {dist_str}  |  SIGNAL: {sig_str}"
+        angle_err_text = f"ANGULAR ERR: [{err_pan:+.1f}, {err_tilt:+.1f}] deg"
 
-        line1 = f"STATUS: {status_text}"
-        line2 = f"DISTANCE: {dist_str}  |  SENSOR: {sig_str}"
-        line3 = f"AIM OFFSET: [{err_pan:+.1f}, {err_tilt:+.1f}] deg"
+        title_scale = 0.55
+        sub_scale = 0.50
+        thick = 2
 
-        panel_w = 205
-        panel_h = 68
-        px1, py1 = 12, 28
-        px2 = px1 + panel_w
-        py2 = py1 + panel_h
+        (w_status, _), _ = cv2.getTextSize(status_line, self.font, title_scale, thick)
+        (w_telemetry, _), _ = cv2.getTextSize(telemetry_line, self.font, sub_scale, 1)
+        (w_angle, _), _ = cv2.getTextSize(angle_err_text, self.font, sub_scale, 1)
 
-        px1, py1 = max(0, px1), max(0, py1)
-        px2, py2 = min(w, px2), min(h, py2)
+        max_text_w = max(w_status, w_telemetry, w_angle)
 
-        roi = frame[py1:py2, px1:px2]
-        if roi.size > 0:
-            black_layer = np.zeros_like(roi)
-            frame[py1:py2, px1:px2] = cv2.addWeighted(roi, 0.35, black_layer, 0.65, 0)
+        px1, py1 = 15, 46
+        px2 = px1 + max_text_w + 24
+        py2 = py1 + 86
 
-        border_color = status_color if target_detected else (90, 90, 90)
-        cv2.rectangle(frame, (px1, py1), (px2, py2), border_color, 2)
-
-        cv2.putText(frame, line1, (px1 + 10, py1 + 20), self.font, 0.44, status_color, 2, cv2.LINE_AA)
-        cv2.putText(frame, line2, (px1 + 10, py1 + 40), self.font, 0.36, self.C_WHITE if target_detected else self.C_GRAY, 1, cv2.LINE_AA)
-        cv2.putText(frame, line3, (px1 + 10, py1 + 58), self.font, 0.36, status_color if target_detected else self.C_GRAY, 1, cv2.LINE_AA)
-
-    def draw_basket_scoreboard(self, frame: np.ndarray):
-        """Sag ustte dengeli, ince ve kompakt BASKET SCOREBOARD paneli (~185px genislik)."""
-        h, w, _ = frame.shape
-        panel_w = 185
-        panel_h = 80
-        px1 = w - panel_w - 12
-        py1 = 28
-        px2 = px1 + panel_w
-        py2 = py1 + panel_h
+        px2 = min(px2, w)
+        py2 = min(py2, h)
 
         roi = frame[py1:py2, px1:px2]
         if roi.size > 0:
             black_layer = np.zeros_like(roi)
             frame[py1:py2, px1:px2] = cv2.addWeighted(roi, 0.35, black_layer, 0.65, 0)
 
-        cv2.rectangle(frame, (px1, py1), (px2, py2), self.C_DARK_BORDER, 1)
+        box_border_color = (0, 191, 255) if target_detected else (90, 90, 90)
+        angle_color = (0, 255, 0) if abs(err_pan) < 1.0 and abs(err_tilt) < 1.0 else (200, 210, 220)
+        text_color = (255, 255, 255) if target_detected else (170, 175, 180)
 
-        # Baslik
-        cv2.putText(frame, "BASKET SCOREBOARD", (px1 + 10, py1 + 18), self.font, 0.40, self.C_GREEN, 2, cv2.LINE_AA)
-        cv2.line(frame, (px1 + 8, py1 + 22), (px2 - 8, py1 + 22), (65, 75, 85), 1)
+        cv2.rectangle(frame, (px1, py1), (px2, py2), box_border_color, 2)
 
-        # Sivil Metrikler (Kompakt 13px satir araligi, font 0.34)
-        cv2.putText(frame, f"Total Throws : {self.total_shots}", (px1 + 10, py1 + 36), self.font, 0.34, self.C_WHITE, 1, cv2.LINE_AA)
-        cv2.putText(frame, f"Baskets Made : {self.total_baskets}", (px1 + 10, py1 + 50), self.font, 0.34, self.C_GREEN, 1, cv2.LINE_AA)
-        acc = (self.total_baskets / self.total_shots * 100.0) if self.total_shots > 0 else 0.0
-        cv2.putText(frame, f"Success Rate : %{acc:.1f}", (px1 + 10, py1 + 64), self.font, 0.34, self.C_CYAN, 1, cv2.LINE_AA)
-        cv2.putText(frame, f"Last Result  : {self.last_shot_result}", (px1 + 10, py1 + 76), self.font, 0.33, self.last_shot_color, 1, cv2.LINE_AA)
+        cv2.putText(frame, status_line, (26, py1 + 24), self.font, title_scale, status_color, thick, cv2.LINE_AA)
+        cv2.putText(frame, telemetry_line, (26, py1 + 50), self.font, sub_scale, text_color, 1, cv2.LINE_AA)
+        cv2.putText(frame, angle_err_text, (26, py1 + 72), self.font, sub_scale, angle_color, 1, cv2.LINE_AA)
 
-    def draw_event_log(self, frame: np.ndarray, max_lines: int = 3, is_locked: bool = False, firing: bool = False):
-        """Sol alt kosede kompakt olay mesajlarini gosteren EVENT LOG kutusu."""
+    def draw_event_log(self, frame: np.ndarray, max_lines: int = 4, is_locked: bool = False, firing: bool = False):
+        """Sol alt kosede terminaldeki sistem ve operator mesajlarini gosteren EVENT LOG kutusu."""
         if is_locked or firing or not self.event_logs:
             return
 
         display_logs = self.event_logs[-max_lines:]
         h, w, _ = frame.shape
-        line_height = 14
-        header_height = 16
-        box_h = header_height + (len(display_logs) * line_height) + 6
+        line_height = 18
+        header_height = 20
+        box_h = header_height + (len(display_logs) * line_height) + 8
 
-        px1 = 12
-        py2 = h - 26
+        px1 = 15
+        py2 = h - 30
         py1 = py2 - box_h
 
-        max_txt_w = 160
+        max_txt_w = 220
         for item in display_logs:
             txt = str(item[0]) if isinstance(item, (list, tuple)) else str(item)
-            (tw, _), _ = cv2.getTextSize(txt, self.font, 0.32, 1)
+            (tw, _), _ = cv2.getTextSize(txt, self.font, 0.38, 1)
             if tw > max_txt_w:
                 max_txt_w = tw
 
-        px2 = min(w - 16, px1 + max_txt_w + 16)
+        px2 = min(w - 20, px1 + max_txt_w + 24)
         px1, py1 = max(0, px1), max(0, py1)
         px2, py2 = min(w, px2), min(h, py2)
 
@@ -297,22 +279,22 @@ class BasketHUD:
             black_layer = np.zeros_like(roi)
             frame[py1:py2, px1:px2] = cv2.addWeighted(roi, 0.25, black_layer, 0.75, 0)
 
-        cv2.rectangle(frame, (px1, py1), (px2, py2), (65, 75, 85), 1)
+        cv2.rectangle(frame, (px1, py1), (px2, py2), (75, 85, 95), 1)
 
         header_text = "EVENT LOG"
-        cv2.putText(frame, header_text, (px1 + 8, py1 + 12), self.font, 0.30, (0, 200, 255), 1, cv2.LINE_AA)
-        cv2.line(frame, (px1 + 6, py1 + 15), (px2 - 6, py1 + 15), (45, 55, 65), 1)
+        cv2.putText(frame, header_text, (px1 + 10, py1 + 14), self.font, 0.36, (0, 200, 255), 1, cv2.LINE_AA)
+        cv2.line(frame, (px1 + 8, py1 + 18), (px2 - 8, py1 + 18), (55, 65, 75), 1)
 
-        curr_y = py1 + 15 + line_height
+        curr_y = py1 + 18 + line_height
         for item in display_logs:
             if isinstance(item, (list, tuple)):
                 full_text = str(item[0])
-                color = item[1] if len(item) > 1 else (190, 200, 210)
+                color = item[1] if len(item) > 1 else (200, 210, 220)
             else:
-                color = (190, 200, 210)
+                color = (200, 210, 220)
                 full_text = str(item)
 
-            cv2.putText(frame, full_text, (px1 + 8, curr_y - 2), self.font, 0.31, color, 1, cv2.LINE_AA)
+            cv2.putText(frame, full_text, (px1 + 10, curr_y - 3), self.font, 0.38, color, 1, cv2.LINE_AA)
             curr_y += line_height
 
     def draw_footer(self, frame: np.ndarray, is_locked: bool = False, firing: bool = False, is_estop: bool = False):
@@ -325,16 +307,25 @@ class BasketHUD:
 
         if is_estop:
             footer_text = "[SPACE] RESUME SYSTEM  |  [Q / ESC] QUIT"
-            color = self.C_RED
+            footer_color = self.C_RED
         elif is_locked:
             footer_text = "[Y] Throw Dart  |  [N] Cancel  |  [SPACE] Safety Stop  |  [Q] Quit"
-            color = (150, 160, 170)
+            footer_color = (150, 160, 170)
         else:
             footer_text = "[Y] Throw Dart  |  [SPACE] Safety Stop  |  [Q / ESC] Quit"
-            color = (140, 150, 160)
+            footer_color = (160, 170, 180)
 
-        (tw, _), _ = cv2.getTextSize(footer_text, self.font, 0.34, 1)
-        cv2.putText(frame, footer_text, (cx - (tw // 2), h - 10), self.font, 0.34, color, 1, cv2.LINE_AA)
+        (f_w, _), _ = cv2.getTextSize(footer_text, self.font, 0.42, 1)
+        cv2.putText(
+            frame,
+            footer_text,
+            (cx - f_w // 2, h - 14),
+            self.font,
+            0.42,
+            footer_color,
+            1,
+            cv2.LINE_AA,
+        )
 
     def render(
         self,
@@ -401,7 +392,7 @@ class BasketHUD:
             # Ust Orta Banner: [RL CONTROLLER]
             self.draw_mode_banner(out, is_locked=is_locked, firing=firing)
 
-            # Sol Ust Telemetri Paneli (Kompakt 205px Genislik)
+            # Sol Ust Telemetri Paneli (turret_fcs ile birebir ayni konum ve tasarim)
             self.draw_telemetry(
                 out,
                 status_text=status_text,
@@ -412,17 +403,14 @@ class BasketHUD:
                 target_detected=cup_detected and not is_estop
             )
 
-            # Sag Ust FPS (Kompakt)
+            # Sag Ust FPS (turret_fcs ile birebir ayni)
             fps_text = f"FPS: {int(round(fps))}"
-            (fps_w, _), _ = cv2.getTextSize(fps_text, self.font, 0.38, 1)
-            fps_color = self.C_GREEN if fps >= 25.0 else self.C_AMBER
-            cv2.putText(out, fps_text, (w - fps_w - 14, 20), self.font, 0.38, fps_color, 1, cv2.LINE_AA)
-
-            # Sag Ust BASKET SCOREBOARD
-            self.draw_basket_scoreboard(out)
+            (fps_w, _), _ = cv2.getTextSize(fps_text, self.font, 0.50, 2)
+            fps_color = (0, 255, 0) if fps >= 25.0 else (0, 165, 255)
+            cv2.putText(out, fps_text, (w - fps_w - 18, 26), self.font, 0.50, fps_color, 2, cv2.LINE_AA)
 
             # Sol Alt Olay Gunlugu
-            self.draw_event_log(out, max_lines=3, is_locked=is_locked, firing=firing)
+            self.draw_event_log(out, max_lines=4, is_locked=is_locked, firing=firing)
 
         # 5. Hedefe Kilitlendiginde Acilan Merkez Atis Paneli (SADECE bu panel odakli kalir)
         if (is_locked or firing) and not is_estop:

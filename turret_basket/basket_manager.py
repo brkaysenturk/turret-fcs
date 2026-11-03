@@ -133,7 +133,7 @@ class BasketManager:
             if self.comm:
                 self.comm.send_command(0.0, 0.0, state=STATE_TRACKING)
             if log_cb:
-                log_cb("[E-STOP] DISENGAGED - RESUMING FCS", (0, 255, 128))
+                log_cb("[E-STOP] DISENGAGED - RESUMING ALIGNMENT", (0, 255, 128))
         return self.is_estop
 
     def reset(
@@ -148,7 +148,7 @@ class BasketManager:
         self.locked_dist_m = None
         self.abort_throw()
         if log_cb:
-            log_cb("[TRACKER] SYSTEM FILTERS FLUSHED", (255, 215, 0))
+            log_cb("[RESET] SYSTEM FILTERS FLUSHED", (255, 215, 0))
 
     def step(
         self,
