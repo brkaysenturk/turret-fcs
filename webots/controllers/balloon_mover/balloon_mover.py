@@ -27,6 +27,12 @@ trans_field = balloon_node.getField("translation")
 initial_pos = trans_field.getSFVec3f()
 start_x = initial_pos[0]
 fixed_y = initial_pos[1]
+dist_env = os.environ.get("WEBOTS_BALLOON_DISTANCE")
+if dist_env is not None:
+    try:
+        fixed_y = float(dist_env)
+    except ValueError:
+        pass
 fixed_z = initial_pos[2]
 
 # 0 statik, 1 yavas, 2 standart, 3 cevik, 4 step, 5 zigzag, 6 tilt-only, 7 figure-8, 8 kose giris
@@ -79,7 +85,8 @@ def _triangle(phase):
 
 def target_offsets(t):
     kind = P["kind"]
-    ax, az, wx, wz = P["ax"], P["az"], P["wx"], P["wz"]
+    dist_scale = fixed_y / 2.0 if fixed_y > 0 else 1.0
+    ax, az, wx, wz = P["ax"] * dist_scale, P["az"] * dist_scale, P["wx"], P["wz"]
     if kind == "static":
         return 0.0, 0.0
     if kind == "sine":

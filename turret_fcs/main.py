@@ -171,7 +171,7 @@ def main():
             best_box = fcs.select_best_target(boxes, center_x, center_y, dt=dt)
             pan_cmd, tilt_cmd = fcs.update(
                 best_box, center_x, center_y, fx, fy, dt,
-                is_firing=eng_state.is_physical_firing,
+                is_firing=eng_state.is_active,
                 dist_cm=dist_cm,
                 slew_factor=eng_state.slew_factor,
             )

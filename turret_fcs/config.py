@@ -57,7 +57,7 @@ class ControlConfig:
     cmd_accel_tilt_deg_s2: float = 211.81  # P/RL tilt komut ivme siniri (Coklu Mesafe Optuna optimal)
     asymmetric_braking: bool = True      # Oneri 1: Hedefe varista/yavaslamada ivme sinirini kaldir (sifir overshoot)
     in_flight_damping: float = 0.6875      # Oneri 2: Yoldaki (in-flight) 3-kare komut yaklasim sonumlemesi
-    lead_time_offset_s: float = 0.015    # Balistik lead'e eklenen sabit pay
+    lead_time_offset_s: float = 0.090    # Balistik lead'e eklenen sabit pay (system_latency_s ile tam senkron: 90 ms)
     lead_time_min_s: float = 0.03        # Lead sure alt siniri
     lead_time_max_s: float = 0.40        # Lead sure ust siniri (dart ucus suresi olcegi)
     alpha_filter: float = 0.9475         # P giris EMA'sinda yeni deger agirligi (Coklu Mesafe Optuna optimal)
@@ -104,11 +104,12 @@ class BallisticsConfig:
     drag_coefficient: float = 0.60            # Kup / yarim kure burunlu dart Cd katsayisi
     air_density_kg_m3: float = 1.225          # 15 C deniz seviyesi hava yogunlugu
     # Atis sekansi zamanlamalari (saniye; spin-up sureleri FlywheelConfig icindedir)
-    settle_time_s: float = 0.15     # Slew sonrasi servo oturma (tau=30ms + 90ms tasiyici + 1.61 deg backlash tam sonumlenmesi)
+    settle_time_s: float = 0.25     # Slew sonrasi servo oturma (250 ms, MG996R FOPDT FSM oturma ve titreşim sönümleme)
     firing_pulse_s: float = 0.08    # Solenoid itici darbe suresi (80 ms - STM32 firmware ile uyumlu)
     recovery_time_s: float = 0.35   # Mekanik geri toplama suresi
     eval_display_time_s: float = 1.50  # Atis sonrasi EVAL gosterim suresi
     system_latency_s: float = 0.0900 # 90.0 ms (3.0 kare @ 30 FPS / TensorRT 5ms + Donanim 81.5ms olculen uctan uca gecikme)
+    camera_to_muzzle_z_m: float = 0.0570  # CAD v10: Namlu ucu Z ekseninde kameradan 57 mm yukaridadir (paralaks)
 
     @property
     def drag_k(self) -> float:

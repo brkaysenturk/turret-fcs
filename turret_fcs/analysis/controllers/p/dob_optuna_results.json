@@ -1,0 +1,371 @@
+{
+  "best_trial": 16,
+  "best_cost": 3.4742176157004545,
+  "best_params": {
+    "dob_gain": 1.2233477112423126,
+    "dob_tau_s": 0.1710491994646663,
+    "max_dob_speed_deg_s": 12.066623598860303
+  },
+  "trials": [
+    {
+      "trial": 1,
+      "params": {
+        "dob_gain": 0.7,
+        "dob_tau_s": 0.15,
+        "max_dob_speed_deg_s": 20.0
+      },
+      "cost": 3.879,
+      "p2_rms": 1.428,
+      "p2_lock": 47.4,
+      "p5_rms": 3.405,
+      "p5_lock": 51.7,
+      "p5_flip": 2.4,
+      "elapsed_s": 22.9
+    },
+    {
+      "trial": 2,
+      "params": {
+        "dob_gain": 0.6870861069626262,
+        "dob_tau_s": 0.3071857196665782,
+        "max_dob_speed_deg_s": 23.71190306898248
+      },
+      "cost": 4.001,
+      "p2_rms": 1.481,
+      "p2_lock": 44.5,
+      "p5_rms": 3.43,
+      "p5_lock": 54.4,
+      "p5_flip": 1.9,
+      "elapsed_s": 22.7
+    },
+    {
+      "trial": 3,
+      "params": {
+        "dob_gain": 0.8887926357773329,
+        "dob_tau_s": 0.1005648465150335,
+        "max_dob_speed_deg_s": 14.495912325379242
+      },
+      "cost": 3.754,
+      "p2_rms": 1.358,
+      "p2_lock": 51.7,
+      "p5_rms": 3.308,
+      "p5_lock": 45.6,
+      "p5_flip": 2.5,
+      "elapsed_s": 24.1
+    },
+    {
+      "trial": 4,
+      "params": {
+        "dob_gain": 0.4022752509513795,
+        "dob_tau_s": 0.28520579790148315,
+        "max_dob_speed_deg_s": 21.61784018789134
+      },
+      "cost": 4.28,
+      "p2_rms": 1.566,
+      "p2_lock": 37.2,
+      "p5_rms": 3.392,
+      "p5_lock": 49.1,
+      "p5_flip": 1.2,
+      "elapsed_s": 23.7
+    },
+    {
+      "trial": 5,
+      "params": {
+        "dob_gain": 0.987265320016441,
+        "dob_tau_s": 0.06535196851690864,
+        "max_dob_speed_deg_s": 27.518557634591907
+      },
+      "cost": 5.786,
+      "p2_rms": 1.325,
+      "p2_lock": 52.9,
+      "p5_rms": 3.944,
+      "p5_lock": 27.0,
+      "p5_flip": 5.1,
+      "elapsed_s": 23.6
+    },
+    {
+      "trial": 6,
+      "params": {
+        "dob_gain": 1.0991983767203797,
+        "dob_tau_s": 0.1152081687763518,
+        "max_dob_speed_deg_s": 14.90919947531361
+      },
+      "cost": 4.256,
+      "p2_rms": 1.331,
+      "p2_lock": 52.6,
+      "p5_rms": 3.323,
+      "p5_lock": 51.5,
+      "p5_flip": 3.2,
+      "elapsed_s": 23.2
+    },
+    {
+      "trial": 7,
+      "params": {
+        "dob_gain": 0.5150640588680904,
+        "dob_tau_s": 0.1391029831694798,
+        "max_dob_speed_deg_s": 20.396102906115807
+      },
+      "cost": 4.056,
+      "p2_rms": 1.498,
+      "p2_lock": 41.0,
+      "p5_rms": 3.382,
+      "p5_lock": 53.8,
+      "p5_flip": 1.8,
+      "elapsed_s": 24.2
+    },
+    {
+      "trial": 8,
+      "params": {
+        "dob_gain": 0.7387505167779042,
+        "dob_tau_s": 0.1357195764514909,
+        "max_dob_speed_deg_s": 21.789646315558073
+      },
+      "cost": 3.836,
+      "p2_rms": 1.41,
+      "p2_lock": 48.5,
+      "p5_rms": 3.42,
+      "p5_lock": 53.2,
+      "p5_flip": 2.5,
+      "elapsed_s": 23.7
+    },
+    {
+      "trial": 9,
+      "params": {
+        "dob_gain": 0.47554447458683763,
+        "dob_tau_s": 0.13595760861915673,
+        "max_dob_speed_deg_s": 17.861789492699067
+      },
+      "cost": 4.051,
+      "p2_rms": 1.514,
+      "p2_lock": 40.1,
+      "p5_rms": 3.364,
+      "p5_lock": 56.4,
+      "p5_flip": 1.2,
+      "elapsed_s": 23.9
+    },
+    {
+      "trial": 10,
+      "params": {
+        "dob_gain": 0.7604629857953323,
+        "dob_tau_s": 0.26414574996218354,
+        "max_dob_speed_deg_s": 15.194780514533756
+      },
+      "cost": 3.774,
+      "p2_rms": 1.447,
+      "p2_lock": 48.8,
+      "p5_rms": 3.347,
+      "p5_lock": 55.8,
+      "p5_flip": 1.9,
+      "elapsed_s": 22.7
+    },
+    {
+      "trial": 11,
+      "params": {
+        "dob_gain": 1.216401591147044,
+        "dob_tau_s": 0.21002462979404873,
+        "max_dob_speed_deg_s": 12.12075710906069
+      },
+      "cost": 3.529,
+      "p2_rms": 1.353,
+      "p2_lock": 55.5,
+      "p5_rms": 3.276,
+      "p5_lock": 61.0,
+      "p5_flip": 2.5,
+      "elapsed_s": 23.9
+    },
+    {
+      "trial": 12,
+      "params": {
+        "dob_gain": 1.1890613077206083,
+        "dob_tau_s": 0.21395116107008497,
+        "max_dob_speed_deg_s": 12.61960319937893
+      },
+      "cost": 3.584,
+      "p2_rms": 1.363,
+      "p2_lock": 54.1,
+      "p5_rms": 3.288,
+      "p5_lock": 61.0,
+      "p5_flip": 2.6,
+      "elapsed_s": 24.1
+    },
+    {
+      "trial": 13,
+      "params": {
+        "dob_gain": 1.2368401839425998,
+        "dob_tau_s": 0.21420734713747627,
+        "max_dob_speed_deg_s": 12.295559611049283
+      },
+      "cost": 3.948,
+      "p2_rms": 1.363,
+      "p2_lock": 49.7,
+      "p5_rms": 3.276,
+      "p5_lock": 61.9,
+      "p5_flip": 2.6,
+      "elapsed_s": 23.7
+    },
+    {
+      "trial": 14,
+      "params": {
+        "dob_gain": 1.247506724379494,
+        "dob_tau_s": 0.20567671894663953,
+        "max_dob_speed_deg_s": 12.074684322229526
+      },
+      "cost": 3.511,
+      "p2_rms": 1.346,
+      "p2_lock": 55.2,
+      "p5_rms": 3.271,
+      "p5_lock": 61.9,
+      "p5_flip": 2.6,
+      "elapsed_s": 23.4
+    },
+    {
+      "trial": 15,
+      "params": {
+        "dob_gain": 1.0792319524355483,
+        "dob_tau_s": 0.19926230864922737,
+        "max_dob_speed_deg_s": 16.740846110054356
+      },
+      "cost": 4.411,
+      "p2_rms": 1.39,
+      "p2_lock": 49.7,
+      "p5_rms": 3.392,
+      "p5_lock": 46.2,
+      "p5_flip": 3.8,
+      "elapsed_s": 23.8
+    },
+    {
+      "trial": 16,
+      "params": {
+        "dob_gain": 1.2233477112423126,
+        "dob_tau_s": 0.1710491994646663,
+        "max_dob_speed_deg_s": 12.066623598860303
+      },
+      "cost": 3.474,
+      "p2_rms": 1.33,
+      "p2_lock": 55.2,
+      "p5_rms": 3.273,
+      "p5_lock": 61.6,
+      "p5_flip": 2.0,
+      "elapsed_s": 24.4
+    },
+    {
+      "trial": 17,
+      "params": {
+        "dob_gain": 1.0680801597626428,
+        "dob_tau_s": 0.16630744811315076,
+        "max_dob_speed_deg_s": 13.895338618346349
+      },
+      "cost": 3.723,
+      "p2_rms": 1.366,
+      "p2_lock": 50.0,
+      "p5_rms": 3.313,
+      "p5_lock": 54.9,
+      "p5_flip": 2.5,
+      "elapsed_s": 24.0
+    },
+    {
+      "trial": 18,
+      "params": {
+        "dob_gain": 0.9705829410085778,
+        "dob_tau_s": 0.24574928722932116,
+        "max_dob_speed_deg_s": 17.46259790826643
+      },
+      "cost": 3.872,
+      "p2_rms": 1.409,
+      "p2_lock": 47.7,
+      "p5_rms": 3.382,
+      "p5_lock": 54.1,
+      "p5_flip": 2.5,
+      "elapsed_s": 23.5
+    },
+    {
+      "trial": 19,
+      "params": {
+        "dob_gain": 1.1379863579258658,
+        "dob_tau_s": 0.1699471970252694,
+        "max_dob_speed_deg_s": 16.19919828976127
+      },
+      "cost": 4.339,
+      "p2_rms": 1.359,
+      "p2_lock": 52.0,
+      "p5_rms": 3.372,
+      "p5_lock": 46.8,
+      "p5_flip": 3.8,
+      "elapsed_s": 22.7
+    },
+    {
+      "trial": 20,
+      "params": {
+        "dob_gain": 1.2464148785726916,
+        "dob_tau_s": 0.17543048266964373,
+        "max_dob_speed_deg_s": 13.603012100891359
+      },
+      "cost": 4.368,
+      "p2_rms": 1.336,
+      "p2_lock": 50.9,
+      "p5_rms": 3.301,
+      "p5_lock": 56.1,
+      "p5_flip": 2.7,
+      "elapsed_s": 24.5
+    },
+    {
+      "trial": 21,
+      "params": {
+        "dob_gain": 1.0078201720730744,
+        "dob_tau_s": 0.22663448153149846,
+        "max_dob_speed_deg_s": 13.421349767121693
+      },
+      "cost": 3.768,
+      "p2_rms": 1.393,
+      "p2_lock": 48.8,
+      "p5_rms": 3.303,
+      "p5_lock": 55.8,
+      "p5_flip": 2.6,
+      "elapsed_s": 28.7
+    },
+    {
+      "trial": 22,
+      "params": {
+        "dob_gain": 1.1678426346315665,
+        "dob_tau_s": 0.18924220233882164,
+        "max_dob_speed_deg_s": 12.236125018291931
+      },
+      "cost": 3.578,
+      "p2_rms": 1.353,
+      "p2_lock": 52.0,
+      "p5_rms": 3.275,
+      "p5_lock": 61.6,
+      "p5_flip": 2.5,
+      "elapsed_s": 26.7
+    },
+    {
+      "trial": 23,
+      "params": {
+        "dob_gain": 1.2444968343804579,
+        "dob_tau_s": 0.2470434003326346,
+        "max_dob_speed_deg_s": 12.176400713032809
+      },
+      "cost": 3.96,
+      "p2_rms": 1.367,
+      "p2_lock": 48.5,
+      "p5_rms": 3.279,
+      "p5_lock": 62.2,
+      "p5_flip": 2.5,
+      "elapsed_s": 26.8
+    },
+    {
+      "trial": 24,
+      "params": {
+        "dob_gain": 1.15118583377673,
+        "dob_tau_s": 0.19392498991162335,
+        "max_dob_speed_deg_s": 15.75478707925959
+      },
+      "cost": 4.064,
+      "p2_rms": 1.371,
+      "p2_lock": 52.3,
+      "p5_rms": 3.356,
+      "p5_lock": 50.3,
+      "p5_flip": 3.2,
+      "elapsed_s": 22.8
+    }
+  ]
+}

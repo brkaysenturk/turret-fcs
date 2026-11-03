@@ -124,9 +124,15 @@ class PController:
                 g=self.GRAVITY_ACCEL,
                 k=CONFIG.ballistics.drag_k,
             )
-            return float(theta_deg)
-        v_sq_2 = 2.0 * (self.PROJECTILE_SPEED_MPS ** 2)
-        return float(np.degrees(np.arctan((self.GRAVITY_ACCEL * target_d_m) / v_sq_2)))
+            raw_comp = float(theta_deg)
+        else:
+            v_sq_2 = 2.0 * (self.PROJECTILE_SPEED_MPS ** 2)
+            raw_comp = float(np.degrees(np.arctan((self.GRAVITY_ACCEL * target_d_m) / v_sq_2)))
+
+        # CAD v10 Paralaks Telafisi: Namlu kameranin camera_to_muzzle_z_m kadar yukarisindadir.
+        # Kamera hedefe baktiginda namlu dogal olarak atan(dz / d) kadar yukari bakar.
+        parallax_deg = float(np.degrees(np.arctan(CONFIG.ballistics.camera_to_muzzle_z_m / max(0.20, target_d_m))))
+        return float(raw_comp - parallax_deg)
 
     def compute_lead_angles(self, d_lead_x, d_lead_y, fx, fy):
         """Hedefin gelecekteki konumuna dogru atis onleme acilarini hesaplar."""

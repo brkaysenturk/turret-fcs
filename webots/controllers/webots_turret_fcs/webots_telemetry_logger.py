@@ -80,7 +80,10 @@ class WebotsTelemetryLogger:
             try:
                 pos = self.balloon_node.getPosition()
                 if pos:
-                    gt_x, gt_y, gt_z = float(pos[0]), float(pos[1]), float(pos[2])
+                    # Gorsel balon merkezine gore zemin gercegi (CAD v10 1.5x olcekli mesh ofseti)
+                    gt_x = float(pos[0] - 0.033)
+                    gt_y = float(pos[1] - 0.385)
+                    gt_z = float(pos[2] + 0.255)
                     gt_dist_m = float(np.sqrt(gt_x**2 + gt_y**2 + gt_z**2))
             except Exception:
                 pass

@@ -132,3 +132,18 @@ def test_p_controller_asymmetric_braking_and_in_flight_damping():
     u_stop, _ = p_no_smith.compute_p(0.50, 0.0, dt=dt)
     assert u_stop == 0.0
     assert p_no_smith.command_speed_pan_deg_s == 0.0
+
+
+def test_p_controller_gravity_and_parallax_compensation():
+    """CAD v10 57 mm kamera-namlu paralaks ve RK4 yercekimi kompanzasyonunu dogrular."""
+    p = PController()
+
+    # 1. 2.0 m mesafede:
+    # RK4 super-elevasyon ~5.93 deg, 57 mm paralaks ~1.63 deg -> net telafi ~4.30 deg
+    comp_2m = p.compute_gravity_comp(200.0)
+    assert 4.1 <= comp_2m <= 4.5
+
+    # 2. 1.58 m mesafede (Webots tipik menzili):
+    # RK4 super-elevasyon ~4.62 deg, 57 mm paralaks ~2.06 deg -> net telafi ~2.56 deg
+    comp_158 = p.compute_gravity_comp(158.0)
+    assert 2.4 <= comp_158 <= 2.7

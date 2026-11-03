@@ -708,7 +708,7 @@ DEF BALLOON Robot {
 
   boundingObject Pose {
 
-    translation -0.02 0.155 0.255
+    translation -0.033 0.255 0.385
 
     children [
 

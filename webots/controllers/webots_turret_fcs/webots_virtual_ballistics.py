@@ -113,6 +113,12 @@ class VirtualBallisticsEvaluator:
             "impact_x": impact_x,
             "impact_y": impact_y,
             "impact_z": impact_z,
+            "muzzle_x": muzzle_x,
+            "muzzle_y": muzzle_y,
+            "muzzle_z": muzzle_z,
+            "fx_dir": fx_dir,
+            "fy_dir": fy_dir,
+            "fz_dir": fz_dir,
             "dist_front_m": dist_front,
             "dist_center_m": dist,
             "gravity_drop_cm": gravity_drop_m * 100.0,
@@ -132,23 +138,57 @@ class VirtualBallisticsEvaluator:
                 # Carpisma aninda gercek balon konumunu al
                 b_pos = self._get_balloon_position()
                 if b_pos:
-                    # 3D mesafe farki
-                    dx = shot["impact_x"] - b_pos[0]
-                    dy = shot["impact_y"] - b_pos[1]
-                    dz = shot["impact_z"] - b_pos[2]
-                    err_3d = math.sqrt(dx*dx + dy*dy + dz*dz)
+                    # Merminin hedef Y derinligindeki gercek 3D carpisma noktasi (Enine Isabet Analizi)
+                    fy = shot.get("fy_dir", 1.0)
+                    muzzle_y = shot.get("muzzle_y", 0.0)
+                    muzzle_x = shot.get("muzzle_x", 0.0)
+                    muzzle_z = shot.get("muzzle_z", 1.05)
+                    fx = shot.get("fx_dir", 0.0)
+                    fz = shot.get("fz_dir", 0.0)
 
-                    is_hit = err_3d <= self.target_radius_m
+                    if abs(fy) > 1e-4:
+                        dist_to_plane = max(0.5, (b_pos[1] - muzzle_y) / fy)
+                    else:
+                        dist_to_plane = shot["dist_center_m"]
+
+                    if CONFIG.ballistics.drag_enabled:
+                        drop_m, _ = compute_rk4_drop(
+                            dist_to_plane,
+                            v0=self.bullet_speed,
+                            g=CONFIG.ballistics.gravity_accel,
+                            k=CONFIG.ballistics.drag_k,
+                        )
+                    else:
+                        t_fl = dist_to_plane / self.bullet_speed
+                        drop_m = 0.5 * CONFIG.ballistics.gravity_accel * (t_fl ** 2)
+
+                    impact_x = muzzle_x + fx * dist_to_plane
+                    impact_y = b_pos[1]
+                    impact_z = muzzle_z + fz * dist_to_plane - drop_m
+
+                    shot["impact_x"] = impact_x
+                    shot["impact_y"] = impact_y
+                    shot["impact_z"] = impact_z
+
+                    dx = impact_x - b_pos[0]
+                    dz = impact_z - b_pos[2]
+                    err_transverse = math.sqrt(dx * dx + dz * dz)
+
+                    is_hit = err_transverse <= self.target_radius_m
                     self.last_hit = bool(is_hit)
-                    self.last_miss_cm = float(err_3d * 100.0)
+                    self.last_miss_cm = float(err_transverse * 100.0)
                     if is_hit:
                         self.total_hits += 1
-                        self.last_result_text = f"HIT! (ERR: {err_3d*100.0:.1f}cm)"
-                        self.last_result_color = (0, 255, 0)
+                        if err_transverse <= 0.05:
+                            self.last_result_text = f"BULLSEYE! (ERR: {err_transverse*100.0:.1f}cm)"
+                            self.last_result_color = (0, 255, 0)
+                        else:
+                            self.last_result_text = f"HIT! (ERR: {err_transverse*100.0:.1f}cm)"
+                            self.last_result_color = (0, 255, 128)
                         self.last_result_sim_time = sim_time
                         self._pop_balloon()
                     else:
-                        self.last_result_text = f"MISSED (ERR: {err_3d*100.0:.1f}cm)"
+                        self.last_result_text = f"MISSED (ERR: {err_transverse*100.0:.1f}cm)"
                         self.last_result_color = (0, 0, 255)
                         self.last_result_sim_time = sim_time
                 else:
@@ -167,7 +207,10 @@ class VirtualBallisticsEvaluator:
                 pos = self.balloon_node.getPosition()
                 if pos:
                     # Balon geometrik ofsetleri (boundingObject translation)
-                    return [pos[0] - 0.02, pos[1] - 0.255, pos[2] + 0.155]
+                    # 1.5x olcekli gorsel balonun dunya geometrik ofsetleri (CAD v10 / mesh analizi):
+                    # Robot rotasyonu [1, 0, 0, 1.5714] (X etrafinda 90 deg):
+                    # obj mesh Z -> -dunya Y (-0.384m), obj mesh Y -> dunya Z (+0.185m), obj mesh X -> dunya X (-0.031m)
+                    return [pos[0] - 0.033, pos[1] - 0.385, pos[2] + 0.255]
             except Exception:
                 pass
         return None

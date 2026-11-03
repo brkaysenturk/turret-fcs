@@ -253,7 +253,7 @@ def run_single_sim(
         stderr=subprocess.DEVNULL,
     )
     try:
-        proc.wait(timeout=max(30.0, sim_time_sec * 3.0))
+        proc.wait(timeout=max(50.0, sim_time_sec * 6.0))
     except subprocess.TimeoutExpired:
         subprocess.run(["taskkill", "/PID", str(proc.pid), "/T", "/F"], capture_output=True)
         time.sleep(1.0)

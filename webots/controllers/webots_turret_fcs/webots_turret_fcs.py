@@ -135,12 +135,13 @@ def main():
                 if eng_state.phase == "SPINUP":
                     launcher.start_spinup()
                 elif eng_state.phase == "FIRING":
-                    # Uretim doktrini ile uyumlu isabet kapisi kontrolu
+                    # Uretim doktrini ile uyumlu isabet kapisi kontrolu:
+                    # Kilit oturmus ve isabet olasiligi esigi gecilmisse atis tetiklenir.
                     if not fcs.is_locked or fcs.hit_probability < CONFIG.lock.min_hit_probability_pct:
                         engagement.abort()
                         launcher.stop_flywheels()
                         hud.log_event(
-                            f"[FIRE ABORTED] HIT PROB TOO LOW ({fcs.hit_probability:.1f}% < {CONFIG.lock.min_hit_probability_pct:.0f}%)",
+                            f"[FIRE ABORTED] HIT PROB LOW ({fcs.hit_probability:.1f}% < {CONFIG.lock.min_hit_probability_pct:.0f}%)",
                             color=(0, 0, 255),
                         )
                     else:
@@ -171,7 +172,7 @@ def main():
             # FCS Karar ve Kontrol Dongusu
             pan_cmd, tilt_cmd = fcs.update(
                 best_box, center_x, center_y, fx, fy, hw.dt,
-                is_firing=eng_state.is_physical_firing,
+                is_firing=eng_state.is_active,
                 dist_cm=dist_cm,
                 slew_factor=eng_state.slew_factor,
             )

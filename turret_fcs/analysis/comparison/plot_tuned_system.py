@@ -174,7 +174,8 @@ overshoot_pan = max(0.0, (np.max(y_pan) - step_deg) / step_deg * 100.0)
 # kalici durum hatasi dogrudan olu bolge bandindan raporlanir.
 ss_error_pan = float(step_deg - y_pan[-1])
 ss_error_tilt = float(step_deg - y_tilt[-1])
-t_settle_tilt = t_sim[np.where(np.abs(y_tilt - step_deg) <= DEADBAND_TILT)[0][0]]
+settled_tilt_idx = np.where(np.abs(y_tilt - step_deg) <= DEADBAND_TILT)[0]
+t_settle_tilt = t_sim[settled_tilt_idx[0]] if len(settled_tilt_idx) > 0 else t_sim[-1]
 
 fig1, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 7.5), sharex=True, gridspec_kw={"height_ratios": [1.8, 1.2]})
 

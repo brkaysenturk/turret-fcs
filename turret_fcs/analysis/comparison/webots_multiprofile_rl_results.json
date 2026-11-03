@@ -1,9 +1,9 @@
 {
   "mode": "RL",
-  "accepted": false,
-  "baseline_cost": 105.4380421372719,
-  "best_cost": 105.4380421372719,
-  "best_trial": 0,
+  "accepted": true,
+  "baseline_cost": 184.82511864187597,
+  "best_cost": 139.00415782797097,
+  "best_trial": 12,
   "baseline_params": {
     "in_flight_damping": 0.6875,
     "reversal_damping": 0.6637,
@@ -14,220 +14,220 @@
     "d_err_ema_alpha": 0.4675
   },
   "best_params": {
-    "in_flight_damping": 0.6875,
-    "reversal_damping": 0.6637,
-    "taper_pan_deg": 0.4,
-    "taper_tilt_deg": 0.469,
-    "rl_deadband_pan_deg": 0.49,
-    "rl_deadband_tilt_deg": 0.621,
-    "d_err_ema_alpha": 0.4675
+    "in_flight_damping": 0.4594847890609296,
+    "reversal_damping": 0.7800044701293882,
+    "taper_pan_deg": 0.6577046550589418,
+    "taper_tilt_deg": 0.3193482741620345,
+    "rl_deadband_pan_deg": 0.746721523922631,
+    "rl_deadband_tilt_deg": 0.5437490279559246,
+    "d_err_ema_alpha": 0.3446919427056511
   },
   "baseline_metrics": {
     "p8_100cm": {
       "profile": 8,
       "dist_m": 1.0,
-      "frames": 181,
-      "rms_deg": 4.283,
-      "overshoot_deg": 2.019,
-      "lock_pct": 79.44,
-      "flip_pct": 1.6,
-      "jerk_deg": 0.0252,
-      "cost": 73.422
+      "frames": 69,
+      "rms_deg": 12.38,
+      "overshoot_deg": 3.516,
+      "lock_pct": 0.0,
+      "flip_pct": 4.09,
+      "jerk_deg": 0.0874,
+      "cost": 247.865
     },
     "p7_100cm": {
       "profile": 7,
       "dist_m": 1.0,
-      "frames": 171,
-      "rms_deg": 2.814,
+      "frames": 107,
+      "rms_deg": 6.067,
       "overshoot_deg": 0.0,
-      "lock_pct": 43.27,
-      "flip_pct": 2.05,
-      "jerk_deg": 0.0343,
-      "cost": 19.782
+      "lock_pct": 0.0,
+      "flip_pct": 1.93,
+      "jerk_deg": 0.0605,
+      "cost": 113.316
     },
     "p2_100cm": {
       "profile": 2,
       "dist_m": 1.0,
-      "frames": 157,
-      "rms_deg": 2.477,
+      "frames": 52,
+      "rms_deg": 7.667,
       "overshoot_deg": 0.0,
-      "lock_pct": 59.87,
-      "flip_pct": 2.0,
-      "jerk_deg": 0.0273,
-      "cost": 0.243
+      "lock_pct": 0.0,
+      "flip_pct": 3.08,
+      "jerk_deg": 0.1348,
+      "cost": 145.327
     },
     "p8_200cm": {
       "profile": 8,
       "dist_m": 2.0,
-      "frames": 183,
-      "rms_deg": 2.81,
-      "overshoot_deg": 1.289,
-      "lock_pct": 82.24,
-      "flip_pct": 3.14,
-      "jerk_deg": 0.0212,
-      "cost": 45.758
+      "frames": 200,
+      "rms_deg": 1.327,
+      "overshoot_deg": 1.167,
+      "lock_pct": 100.0,
+      "flip_pct": 1.32,
+      "jerk_deg": 0.0184,
+      "cost": 14.09
     },
     "p7_200cm": {
       "profile": 7,
       "dist_m": 2.0,
       "frames": 188,
-      "rms_deg": 3.442,
+      "rms_deg": 2.525,
       "overshoot_deg": 0.0,
       "lock_pct": 55.32,
-      "flip_pct": 1.28,
-      "jerk_deg": 0.0265,
-      "cost": 20.161
+      "flip_pct": 1.33,
+      "jerk_deg": 0.027,
+      "cost": 3.726
     },
     "p2_200cm": {
       "profile": 2,
       "dist_m": 2.0,
       "frames": 157,
-      "rms_deg": 3.237,
+      "rms_deg": 2.183,
       "overshoot_deg": 0.0,
-      "lock_pct": 68.79,
-      "flip_pct": 1.03,
-      "jerk_deg": 0.0233,
-      "cost": 5.242
+      "lock_pct": 67.52,
+      "flip_pct": 1.41,
+      "jerk_deg": 0.0255,
+      "cost": -12.104
     },
     "p8_300cm": {
       "profile": 8,
       "dist_m": 3.0,
-      "frames": 33,
-      "rms_deg": 12.633,
-      "overshoot_deg": 0.68,
-      "lock_pct": 3.45,
-      "flip_pct": 1.92,
-      "jerk_deg": 0.0691,
-      "cost": 181.3
+      "frames": 169,
+      "rms_deg": 1.061,
+      "overshoot_deg": 0.721,
+      "lock_pct": 100.0,
+      "flip_pct": 2.16,
+      "jerk_deg": 0.0146,
+      "cost": 4.273
     },
     "p7_300cm": {
       "profile": 7,
       "dist_m": 3.0,
-      "frames": 156,
-      "rms_deg": 5.123,
+      "frames": 157,
+      "rms_deg": 2.117,
       "overshoot_deg": 0.0,
-      "lock_pct": 59.62,
-      "flip_pct": 1.61,
-      "jerk_deg": 0.0278,
-      "cost": 47.509
+      "lock_pct": 64.97,
+      "flip_pct": 1.68,
+      "jerk_deg": 0.0239,
+      "cost": -10.865
     },
     "p2_300cm": {
       "profile": 2,
       "dist_m": 3.0,
       "frames": 157,
-      "rms_deg": 4.583,
+      "rms_deg": 1.787,
       "overshoot_deg": 0.0,
-      "lock_pct": 75.8,
+      "lock_pct": 80.25,
       "flip_pct": 1.4,
-      "jerk_deg": 0.0194,
-      "cost": 24.339
+      "jerk_deg": 0.02,
+      "cost": -29.539
     }
   },
   "best_metrics": {
     "p8_100cm": {
       "profile": 8,
       "dist_m": 1.0,
-      "frames": 181,
-      "rms_deg": 4.283,
-      "overshoot_deg": 2.019,
-      "lock_pct": 79.44,
-      "flip_pct": 1.6,
-      "jerk_deg": 0.0252,
-      "cost": 73.422
+      "frames": 101,
+      "rms_deg": 4.199,
+      "overshoot_deg": 4.282,
+      "lock_pct": 23.91,
+      "flip_pct": 4.05,
+      "jerk_deg": 0.0842,
+      "cost": 162.327
     },
     "p7_100cm": {
       "profile": 7,
       "dist_m": 1.0,
-      "frames": 171,
-      "rms_deg": 2.814,
+      "frames": 105,
+      "rms_deg": 6.045,
       "overshoot_deg": 0.0,
-      "lock_pct": 43.27,
-      "flip_pct": 2.05,
-      "jerk_deg": 0.0343,
-      "cost": 19.782
+      "lock_pct": 0.0,
+      "flip_pct": 1.99,
+      "jerk_deg": 0.0657,
+      "cost": 113.109
     },
     "p2_100cm": {
       "profile": 2,
       "dist_m": 1.0,
-      "frames": 157,
-      "rms_deg": 2.477,
+      "frames": 48,
+      "rms_deg": 7.817,
       "overshoot_deg": 0.0,
-      "lock_pct": 59.87,
-      "flip_pct": 2.0,
-      "jerk_deg": 0.0273,
-      "cost": 0.243
+      "lock_pct": 0.0,
+      "flip_pct": 3.41,
+      "jerk_deg": 0.1401,
+      "cost": 148.629
     },
     "p8_200cm": {
       "profile": 8,
       "dist_m": 2.0,
-      "frames": 183,
-      "rms_deg": 2.81,
-      "overshoot_deg": 1.289,
-      "lock_pct": 82.24,
-      "flip_pct": 3.14,
-      "jerk_deg": 0.0212,
-      "cost": 45.758
+      "frames": 200,
+      "rms_deg": 1.316,
+      "overshoot_deg": 1.695,
+      "lock_pct": 100.0,
+      "flip_pct": 2.0,
+      "jerk_deg": 0.0177,
+      "cost": 25.834
     },
     "p7_200cm": {
       "profile": 7,
       "dist_m": 2.0,
       "frames": 188,
-      "rms_deg": 3.442,
+      "rms_deg": 2.447,
       "overshoot_deg": 0.0,
-      "lock_pct": 55.32,
-      "flip_pct": 1.28,
-      "jerk_deg": 0.0265,
-      "cost": 20.161
+      "lock_pct": 47.87,
+      "flip_pct": 1.33,
+      "jerk_deg": 0.0315,
+      "cost": 8.377
     },
     "p2_200cm": {
       "profile": 2,
       "dist_m": 2.0,
       "frames": 157,
-      "rms_deg": 3.237,
+      "rms_deg": 2.135,
       "overshoot_deg": 0.0,
-      "lock_pct": 68.79,
-      "flip_pct": 1.03,
-      "jerk_deg": 0.0233,
-      "cost": 5.242
+      "lock_pct": 65.61,
+      "flip_pct": 2.9,
+      "jerk_deg": 0.0273,
+      "cost": -9.155
     },
     "p8_300cm": {
       "profile": 8,
       "dist_m": 3.0,
-      "frames": 33,
-      "rms_deg": 12.633,
-      "overshoot_deg": 0.68,
-      "lock_pct": 3.45,
-      "flip_pct": 1.92,
-      "jerk_deg": 0.0691,
-      "cost": 181.3
+      "frames": 169,
+      "rms_deg": 1.172,
+      "overshoot_deg": 1.33,
+      "lock_pct": 100.0,
+      "flip_pct": 2.48,
+      "jerk_deg": 0.0163,
+      "cost": 18.035
     },
     "p7_300cm": {
       "profile": 7,
       "dist_m": 3.0,
-      "frames": 156,
-      "rms_deg": 5.123,
+      "frames": 157,
+      "rms_deg": 2.129,
       "overshoot_deg": 0.0,
-      "lock_pct": 59.62,
-      "flip_pct": 1.61,
-      "jerk_deg": 0.0278,
-      "cost": 47.509
+      "lock_pct": 46.5,
+      "flip_pct": 1.36,
+      "jerk_deg": 0.0306,
+      "cost": 3.768
     },
     "p2_300cm": {
       "profile": 2,
       "dist_m": 3.0,
       "frames": 157,
-      "rms_deg": 4.583,
+      "rms_deg": 1.8,
       "overshoot_deg": 0.0,
-      "lock_pct": 75.8,
-      "flip_pct": 1.4,
-      "jerk_deg": 0.0194,
-      "cost": 24.339
+      "lock_pct": 63.69,
+      "flip_pct": 1.2,
+      "jerk_deg": 0.0266,
+      "cost": -16.216
     }
   },
   "trials": [
     {
       "trial": 0,
-      "cost": 105.4380421372719,
+      "cost": 184.82511864187597,
       "params": {
         "in_flight_damping": 0.6875,
         "reversal_damping": 0.6637,
@@ -241,107 +241,107 @@
         "p8_100cm": {
           "profile": 8,
           "dist_m": 1.0,
-          "frames": 181,
-          "rms_deg": 4.283,
-          "overshoot_deg": 2.019,
-          "lock_pct": 79.44,
-          "flip_pct": 1.6,
-          "jerk_deg": 0.0252,
-          "cost": 73.422
+          "frames": 69,
+          "rms_deg": 12.38,
+          "overshoot_deg": 3.516,
+          "lock_pct": 0.0,
+          "flip_pct": 4.09,
+          "jerk_deg": 0.0874,
+          "cost": 247.865
         },
         "p7_100cm": {
           "profile": 7,
           "dist_m": 1.0,
-          "frames": 171,
-          "rms_deg": 2.814,
+          "frames": 107,
+          "rms_deg": 6.067,
           "overshoot_deg": 0.0,
-          "lock_pct": 43.27,
-          "flip_pct": 2.05,
-          "jerk_deg": 0.0343,
-          "cost": 19.782
+          "lock_pct": 0.0,
+          "flip_pct": 1.93,
+          "jerk_deg": 0.0605,
+          "cost": 113.316
         },
         "p2_100cm": {
           "profile": 2,
           "dist_m": 1.0,
-          "frames": 157,
-          "rms_deg": 2.477,
+          "frames": 52,
+          "rms_deg": 7.667,
           "overshoot_deg": 0.0,
-          "lock_pct": 59.87,
-          "flip_pct": 2.0,
-          "jerk_deg": 0.0273,
-          "cost": 0.243
+          "lock_pct": 0.0,
+          "flip_pct": 3.08,
+          "jerk_deg": 0.1348,
+          "cost": 145.327
         },
         "p8_200cm": {
           "profile": 8,
           "dist_m": 2.0,
-          "frames": 183,
-          "rms_deg": 2.81,
-          "overshoot_deg": 1.289,
-          "lock_pct": 82.24,
-          "flip_pct": 3.14,
-          "jerk_deg": 0.0212,
-          "cost": 45.758
+          "frames": 200,
+          "rms_deg": 1.327,
+          "overshoot_deg": 1.167,
+          "lock_pct": 100.0,
+          "flip_pct": 1.32,
+          "jerk_deg": 0.0184,
+          "cost": 14.09
         },
         "p7_200cm": {
           "profile": 7,
           "dist_m": 2.0,
           "frames": 188,
-          "rms_deg": 3.442,
+          "rms_deg": 2.525,
           "overshoot_deg": 0.0,
           "lock_pct": 55.32,
-          "flip_pct": 1.28,
-          "jerk_deg": 0.0265,
-          "cost": 20.161
+          "flip_pct": 1.33,
+          "jerk_deg": 0.027,
+          "cost": 3.726
         },
         "p2_200cm": {
           "profile": 2,
           "dist_m": 2.0,
           "frames": 157,
-          "rms_deg": 3.237,
+          "rms_deg": 2.183,
           "overshoot_deg": 0.0,
-          "lock_pct": 68.79,
-          "flip_pct": 1.03,
-          "jerk_deg": 0.0233,
-          "cost": 5.242
+          "lock_pct": 67.52,
+          "flip_pct": 1.41,
+          "jerk_deg": 0.0255,
+          "cost": -12.104
         },
         "p8_300cm": {
           "profile": 8,
           "dist_m": 3.0,
-          "frames": 33,
-          "rms_deg": 12.633,
-          "overshoot_deg": 0.68,
-          "lock_pct": 3.45,
-          "flip_pct": 1.92,
-          "jerk_deg": 0.0691,
-          "cost": 181.3
+          "frames": 169,
+          "rms_deg": 1.061,
+          "overshoot_deg": 0.721,
+          "lock_pct": 100.0,
+          "flip_pct": 2.16,
+          "jerk_deg": 0.0146,
+          "cost": 4.273
         },
         "p7_300cm": {
           "profile": 7,
           "dist_m": 3.0,
-          "frames": 156,
-          "rms_deg": 5.123,
+          "frames": 157,
+          "rms_deg": 2.117,
           "overshoot_deg": 0.0,
-          "lock_pct": 59.62,
-          "flip_pct": 1.61,
-          "jerk_deg": 0.0278,
-          "cost": 47.509
+          "lock_pct": 64.97,
+          "flip_pct": 1.68,
+          "jerk_deg": 0.0239,
+          "cost": -10.865
         },
         "p2_300cm": {
           "profile": 2,
           "dist_m": 3.0,
           "frames": 157,
-          "rms_deg": 4.583,
+          "rms_deg": 1.787,
           "overshoot_deg": 0.0,
-          "lock_pct": 75.8,
+          "lock_pct": 80.25,
           "flip_pct": 1.4,
-          "jerk_deg": 0.0194,
-          "cost": 24.339
+          "jerk_deg": 0.02,
+          "cost": -29.539
         }
       }
     },
     {
       "trial": 1,
-      "cost": 111.55645169297838,
+      "cost": 165.21433059764857,
       "params": {
         "in_flight_damping": 0.40914955053556856,
         "reversal_damping": 0.8241865342440112,
@@ -355,107 +355,107 @@
         "p8_100cm": {
           "profile": 8,
           "dist_m": 1.0,
-          "frames": 181,
-          "rms_deg": 4.14,
-          "overshoot_deg": 2.707,
-          "lock_pct": 68.22,
-          "flip_pct": 3.63,
-          "jerk_deg": 0.0334,
-          "cost": 95.1
+          "frames": 80,
+          "rms_deg": 5.815,
+          "overshoot_deg": 5.087,
+          "lock_pct": 0.0,
+          "flip_pct": 4.35,
+          "jerk_deg": 0.1215,
+          "cost": 213.233
         },
         "p7_100cm": {
           "profile": 7,
           "dist_m": 1.0,
-          "frames": 180,
-          "rms_deg": 2.634,
+          "frames": 106,
+          "rms_deg": 5.936,
           "overshoot_deg": 0.0,
-          "lock_pct": 48.33,
-          "flip_pct": 2.17,
-          "jerk_deg": 0.0353,
-          "cost": 12.702
+          "lock_pct": 0.0,
+          "flip_pct": 1.97,
+          "jerk_deg": 0.0681,
+          "cost": 111.174
         },
         "p2_100cm": {
           "profile": 2,
           "dist_m": 1.0,
-          "frames": 157,
-          "rms_deg": 2.412,
+          "frames": 52,
+          "rms_deg": 8.006,
           "overshoot_deg": 0.0,
-          "lock_pct": 59.24,
-          "flip_pct": 2.51,
-          "jerk_deg": 0.0288,
-          "cost": 0.369
+          "lock_pct": 0.0,
+          "flip_pct": 3.29,
+          "jerk_deg": 0.1097,
+          "cost": 151.225
         },
         "p8_200cm": {
           "profile": 8,
           "dist_m": 2.0,
-          "frames": 183,
-          "rms_deg": 2.782,
+          "frames": 200,
+          "rms_deg": 1.304,
           "overshoot_deg": 1.37,
-          "lock_pct": 81.31,
-          "flip_pct": 3.63,
-          "jerk_deg": 0.0238,
-          "cost": 48.338
+          "lock_pct": 100.0,
+          "flip_pct": 1.63,
+          "jerk_deg": 0.0165,
+          "cost": 18.366
         },
         "p7_200cm": {
           "profile": 7,
           "dist_m": 2.0,
           "frames": 188,
-          "rms_deg": 3.388,
+          "rms_deg": 2.468,
           "overshoot_deg": 0.0,
-          "lock_pct": 60.11,
-          "flip_pct": 1.1,
-          "jerk_deg": 0.0297,
-          "cost": 15.145
+          "lock_pct": 56.38,
+          "flip_pct": 1.46,
+          "jerk_deg": 0.0325,
+          "cost": 2.144
         },
         "p2_200cm": {
           "profile": 2,
           "dist_m": 2.0,
           "frames": 157,
-          "rms_deg": 3.215,
+          "rms_deg": 2.118,
           "overshoot_deg": 0.0,
-          "lock_pct": 79.62,
-          "flip_pct": 1.16,
-          "jerk_deg": 0.0249,
-          "cost": -3.597
+          "lock_pct": 67.52,
+          "flip_pct": 1.57,
+          "jerk_deg": 0.0269,
+          "cost": -12.995
         },
         "p8_300cm": {
           "profile": 8,
           "dist_m": 3.0,
-          "frames": 33,
-          "rms_deg": 12.659,
-          "overshoot_deg": 1.249,
-          "lock_pct": 3.45,
-          "flip_pct": 1.92,
-          "jerk_deg": 0.0722,
-          "cost": 193.088
+          "frames": 169,
+          "rms_deg": 1.145,
+          "overshoot_deg": 1.046,
+          "lock_pct": 100.0,
+          "flip_pct": 2.22,
+          "jerk_deg": 0.0131,
+          "cost": 11.31
         },
         "p7_300cm": {
           "profile": 7,
           "dist_m": 3.0,
-          "frames": 156,
-          "rms_deg": 5.098,
+          "frames": 157,
+          "rms_deg": 2.074,
           "overshoot_deg": 0.0,
-          "lock_pct": 61.54,
-          "flip_pct": 1.73,
-          "jerk_deg": 0.0308,
-          "cost": 45.749
+          "lock_pct": 66.88,
+          "flip_pct": 1.44,
+          "jerk_deg": 0.0292,
+          "cost": -13.426
         },
         "p2_300cm": {
           "profile": 2,
           "dist_m": 3.0,
           "frames": 157,
-          "rms_deg": 4.566,
+          "rms_deg": 1.754,
           "overshoot_deg": 0.0,
-          "lock_pct": 76.43,
-          "flip_pct": 1.47,
-          "jerk_deg": 0.0208,
-          "cost": 23.659
+          "lock_pct": 71.97,
+          "flip_pct": 1.1,
+          "jerk_deg": 0.0239,
+          "cost": -23.878
         }
       }
     },
     {
       "trial": 2,
-      "cost": 114.41516613252989,
+      "cost": 173.85956621318326,
       "params": {
         "in_flight_damping": 0.3623124738570067,
         "reversal_damping": 0.5429774851662061,
@@ -469,107 +469,107 @@
         "p8_100cm": {
           "profile": 8,
           "dist_m": 1.0,
-          "frames": 194,
-          "rms_deg": 1.782,
-          "overshoot_deg": 2.707,
-          "lock_pct": 71.03,
-          "flip_pct": 5.62,
-          "jerk_deg": 0.0247,
-          "cost": 72.821
+          "frames": 70,
+          "rms_deg": 7.665,
+          "overshoot_deg": 4.282,
+          "lock_pct": 0.0,
+          "flip_pct": 6.09,
+          "jerk_deg": 0.1318,
+          "cost": 221.667
         },
         "p7_100cm": {
           "profile": 7,
           "dist_m": 1.0,
-          "frames": 179,
-          "rms_deg": 2.703,
+          "frames": 103,
+          "rms_deg": 6.026,
           "overshoot_deg": 0.0,
-          "lock_pct": 40.78,
-          "flip_pct": 2.21,
-          "jerk_deg": 0.0373,
-          "cost": 20.094
+          "lock_pct": 2.91,
+          "flip_pct": 2.05,
+          "jerk_deg": 0.0735,
+          "cost": 110.685
         },
         "p2_100cm": {
           "profile": 2,
           "dist_m": 1.0,
-          "frames": 157,
-          "rms_deg": 2.475,
+          "frames": 54,
+          "rms_deg": 7.668,
           "overshoot_deg": 0.0,
-          "lock_pct": 63.06,
-          "flip_pct": 2.56,
-          "jerk_deg": 0.0321,
-          "cost": -1.415
+          "lock_pct": 0.0,
+          "flip_pct": 3.13,
+          "jerk_deg": 0.1055,
+          "cost": 144.831
         },
         "p8_200cm": {
           "profile": 8,
           "dist_m": 2.0,
-          "frames": 183,
-          "rms_deg": 2.862,
-          "overshoot_deg": 1.532,
-          "lock_pct": 81.31,
-          "flip_pct": 3.79,
-          "jerk_deg": 0.0227,
-          "cost": 52.699
+          "frames": 200,
+          "rms_deg": 1.491,
+          "overshoot_deg": 1.573,
+          "lock_pct": 91.59,
+          "flip_pct": 1.89,
+          "jerk_deg": 0.0194,
+          "cost": 29.124
         },
         "p7_200cm": {
           "profile": 7,
           "dist_m": 2.0,
           "frames": 188,
-          "rms_deg": 3.461,
+          "rms_deg": 2.56,
           "overshoot_deg": 0.0,
-          "lock_pct": 54.79,
-          "flip_pct": 1.1,
-          "jerk_deg": 0.0355,
-          "cost": 20.826
+          "lock_pct": 52.66,
+          "flip_pct": 1.56,
+          "jerk_deg": 0.0375,
+          "cost": 7.052
         },
         "p2_200cm": {
           "profile": 2,
           "dist_m": 2.0,
           "frames": 157,
-          "rms_deg": 3.283,
+          "rms_deg": 2.206,
           "overshoot_deg": 0.0,
-          "lock_pct": 68.15,
-          "flip_pct": 1.27,
-          "jerk_deg": 0.0287,
-          "cost": 7.051
+          "lock_pct": 69.43,
+          "flip_pct": 1.75,
+          "jerk_deg": 0.0292,
+          "cost": -12.624
         },
         "p8_300cm": {
           "profile": 8,
           "dist_m": 3.0,
-          "frames": 33,
-          "rms_deg": 12.692,
-          "overshoot_deg": 1.37,
-          "lock_pct": 3.45,
-          "flip_pct": 1.92,
-          "jerk_deg": 0.0701,
-          "cost": 195.884
+          "frames": 169,
+          "rms_deg": 1.406,
+          "overshoot_deg": 1.167,
+          "lock_pct": 92.11,
+          "flip_pct": 2.34,
+          "jerk_deg": 0.0143,
+          "cost": 20.496
         },
         "p7_300cm": {
           "profile": 7,
           "dist_m": 3.0,
-          "frames": 156,
-          "rms_deg": 5.142,
+          "frames": 157,
+          "rms_deg": 2.188,
           "overshoot_deg": 0.0,
-          "lock_pct": 46.15,
-          "flip_pct": 1.83,
-          "jerk_deg": 0.0317,
-          "cost": 59.015
+          "lock_pct": 56.69,
+          "flip_pct": 1.56,
+          "jerk_deg": 0.0323,
+          "cost": -2.979
         },
         "p2_300cm": {
           "profile": 2,
           "dist_m": 3.0,
           "frames": 157,
-          "rms_deg": 4.618,
+          "rms_deg": 1.903,
           "overshoot_deg": 0.0,
-          "lock_pct": 64.33,
-          "flip_pct": 1.62,
-          "jerk_deg": 0.0236,
-          "cost": 34.555
+          "lock_pct": 72.61,
+          "flip_pct": 1.22,
+          "jerk_deg": 0.0268,
+          "cost": -21.465
         }
       }
     },
     {
       "trial": 3,
-      "cost": 120.57875949982105,
+      "cost": 160.41958959487346,
       "params": {
         "in_flight_damping": 0.69326598919083,
         "reversal_damping": 0.8057859296407675,
@@ -583,107 +583,107 @@
         "p8_100cm": {
           "profile": 8,
           "dist_m": 1.0,
-          "frames": 179,
-          "rms_deg": 4.867,
-          "overshoot_deg": 2.1,
-          "lock_pct": 67.29,
-          "flip_pct": 0.63,
-          "jerk_deg": 0.0225,
-          "cost": 85.248
+          "frames": 87,
+          "rms_deg": 4.906,
+          "overshoot_deg": 4.725,
+          "lock_pct": 0.0,
+          "flip_pct": 3.7,
+          "jerk_deg": 0.0954,
+          "cost": 192.811
         },
         "p7_100cm": {
           "profile": 7,
           "dist_m": 1.0,
-          "frames": 177,
-          "rms_deg": 2.941,
+          "frames": 106,
+          "rms_deg": 6.195,
           "overshoot_deg": 0.0,
-          "lock_pct": 35.03,
-          "flip_pct": 1.95,
-          "jerk_deg": 0.0353,
-          "cost": 28.556
+          "lock_pct": 0.0,
+          "flip_pct": 1.99,
+          "jerk_deg": 0.0692,
+          "cost": 115.872
         },
         "p2_100cm": {
           "profile": 2,
           "dist_m": 1.0,
-          "frames": 157,
-          "rms_deg": 2.69,
+          "frames": 53,
+          "rms_deg": 6.77,
           "overshoot_deg": 0.0,
-          "lock_pct": 36.31,
-          "flip_pct": 1.89,
-          "jerk_deg": 0.0276,
-          "cost": 22.769
+          "lock_pct": 7.55,
+          "flip_pct": 3.2,
+          "jerk_deg": 0.1028,
+          "cost": 122.69
         },
         "p8_200cm": {
           "profile": 8,
           "dist_m": 2.0,
-          "frames": 183,
-          "rms_deg": 2.922,
-          "overshoot_deg": 1.492,
-          "lock_pct": 68.22,
-          "flip_pct": 3.81,
-          "jerk_deg": 0.0177,
-          "cost": 59.215
+          "frames": 200,
+          "rms_deg": 1.632,
+          "overshoot_deg": 1.411,
+          "lock_pct": 92.52,
+          "flip_pct": 2.01,
+          "jerk_deg": 0.0112,
+          "cost": 27.09
         },
         "p7_200cm": {
           "profile": 7,
           "dist_m": 2.0,
           "frames": 188,
-          "rms_deg": 3.65,
+          "rms_deg": 2.799,
           "overshoot_deg": 0.0,
-          "lock_pct": 41.49,
-          "flip_pct": 1.02,
-          "jerk_deg": 0.0287,
-          "cost": 34.622
+          "lock_pct": 39.36,
+          "flip_pct": 1.37,
+          "jerk_deg": 0.0306,
+          "cost": 21.548
         },
         "p2_200cm": {
           "profile": 2,
           "dist_m": 2.0,
           "frames": 157,
-          "rms_deg": 3.416,
+          "rms_deg": 2.41,
           "overshoot_deg": 0.0,
           "lock_pct": 47.77,
-          "flip_pct": 1.08,
-          "jerk_deg": 0.0242,
-          "cost": 25.375
+          "flip_pct": 1.47,
+          "jerk_deg": 0.0247,
+          "cost": 7.859
         },
         "p8_300cm": {
           "profile": 8,
           "dist_m": 3.0,
-          "frames": 33,
-          "rms_deg": 12.697,
-          "overshoot_deg": 0.68,
-          "lock_pct": 3.45,
-          "flip_pct": 2.08,
-          "jerk_deg": 0.0634,
-          "cost": 182.267
+          "frames": 169,
+          "rms_deg": 1.289,
+          "overshoot_deg": 1.289,
+          "lock_pct": 80.26,
+          "flip_pct": 0.96,
+          "jerk_deg": 0.0065,
+          "cost": 25.57
         },
         "p7_300cm": {
           "profile": 7,
           "dist_m": 3.0,
-          "frames": 156,
-          "rms_deg": 5.21,
+          "frames": 157,
+          "rms_deg": 2.398,
           "overshoot_deg": 0.0,
-          "lock_pct": 42.31,
-          "flip_pct": 1.7,
-          "jerk_deg": 0.0277,
-          "cost": 63.047
+          "lock_pct": 47.13,
+          "flip_pct": 1.38,
+          "jerk_deg": 0.027,
+          "cost": 8.067
         },
         "p2_300cm": {
           "profile": 2,
           "dist_m": 3.0,
           "frames": 157,
-          "rms_deg": 4.704,
+          "rms_deg": 2.111,
           "overshoot_deg": 0.0,
-          "lock_pct": 53.5,
-          "flip_pct": 1.4,
+          "lock_pct": 59.24,
+          "flip_pct": 1.07,
           "jerk_deg": 0.022,
-          "cost": 44.398
+          "cost": -7.348
         }
       }
     },
     {
       "trial": 4,
-      "cost": 124.1305754135229,
+      "cost": 215.13132552780252,
       "params": {
         "in_flight_damping": 0.23295786854497424,
         "reversal_damping": 0.5604660203661458,
@@ -697,677 +697,677 @@
         "p8_100cm": {
           "profile": 8,
           "dist_m": 1.0,
-          "frames": 180,
-          "rms_deg": 4.778,
-          "overshoot_deg": 2.99,
-          "lock_pct": 57.01,
-          "flip_pct": 5.62,
-          "jerk_deg": 0.0379,
-          "cost": 116.613
+          "frames": 60,
+          "rms_deg": 13.569,
+          "overshoot_deg": 4.162,
+          "lock_pct": 0.0,
+          "flip_pct": 3.03,
+          "jerk_deg": 0.0929,
+          "cost": 273.787
         },
         "p7_100cm": {
           "profile": 7,
           "dist_m": 1.0,
-          "frames": 173,
-          "rms_deg": 2.646,
+          "frames": 106,
+          "rms_deg": 5.921,
           "overshoot_deg": 0.0,
-          "lock_pct": 40.46,
-          "flip_pct": 2.46,
-          "jerk_deg": 0.0392,
-          "cost": 19.726
+          "lock_pct": 0.0,
+          "flip_pct": 1.97,
+          "jerk_deg": 0.0735,
+          "cost": 111.004
         },
         "p2_100cm": {
           "profile": 2,
           "dist_m": 1.0,
-          "frames": 157,
-          "rms_deg": 2.452,
+          "frames": 58,
+          "rms_deg": 7.297,
           "overshoot_deg": 0.0,
-          "lock_pct": 55.41,
-          "flip_pct": 2.27,
-          "jerk_deg": 0.0347,
-          "cost": 3.902
+          "lock_pct": 1.72,
+          "flip_pct": 3.02,
+          "jerk_deg": 0.0923,
+          "cost": 136.351
         },
         "p8_200cm": {
           "profile": 8,
           "dist_m": 2.0,
-          "frames": 183,
-          "rms_deg": 2.883,
-          "overshoot_deg": 1.573,
-          "lock_pct": 81.31,
-          "flip_pct": 3.72,
-          "jerk_deg": 0.0257,
-          "cost": 53.624
+          "frames": 200,
+          "rms_deg": 1.579,
+          "overshoot_deg": 1.938,
+          "lock_pct": 84.11,
+          "flip_pct": 1.89,
+          "jerk_deg": 0.0195,
+          "cost": 41.194
         },
         "p7_200cm": {
           "profile": 7,
           "dist_m": 2.0,
           "frames": 188,
-          "rms_deg": 3.453,
+          "rms_deg": 2.503,
           "overshoot_deg": 0.0,
-          "lock_pct": 52.66,
-          "flip_pct": 1.16,
-          "jerk_deg": 0.0372,
-          "cost": 22.503
+          "lock_pct": 25.53,
+          "flip_pct": 1.63,
+          "jerk_deg": 0.0381,
+          "cost": 27.846
         },
         "p2_200cm": {
           "profile": 2,
           "dist_m": 2.0,
           "frames": 157,
-          "rms_deg": 3.257,
+          "rms_deg": 2.155,
           "overshoot_deg": 0.0,
-          "lock_pct": 66.88,
-          "flip_pct": 1.18,
-          "jerk_deg": 0.0278,
-          "cost": 7.462
+          "lock_pct": 50.32,
+          "flip_pct": 1.7,
+          "jerk_deg": 0.0283,
+          "cost": 1.656
         },
         "p8_300cm": {
           "profile": 8,
           "dist_m": 3.0,
-          "frames": 33,
-          "rms_deg": 12.692,
-          "overshoot_deg": 1.532,
-          "lock_pct": 3.45,
-          "flip_pct": 1.92,
-          "jerk_deg": 0.0749,
-          "cost": 199.252
+          "frames": 169,
+          "rms_deg": 1.41,
+          "overshoot_deg": 1.816,
+          "lock_pct": 89.47,
+          "flip_pct": 3.41,
+          "jerk_deg": 0.0136,
+          "cost": 37.312
         },
         "p7_300cm": {
           "profile": 7,
           "dist_m": 3.0,
-          "frames": 156,
-          "rms_deg": 5.136,
+          "frames": 157,
+          "rms_deg": 2.112,
           "overshoot_deg": 0.0,
-          "lock_pct": 48.08,
-          "flip_pct": 1.97,
-          "jerk_deg": 0.0335,
-          "cost": 57.605
+          "lock_pct": 38.22,
+          "flip_pct": 1.75,
+          "jerk_deg": 0.0327,
+          "cost": 10.725
         },
         "p2_300cm": {
           "profile": 2,
           "dist_m": 3.0,
           "frames": 157,
-          "rms_deg": 4.606,
+          "rms_deg": 1.832,
           "overshoot_deg": 0.0,
-          "lock_pct": 61.15,
-          "flip_pct": 1.72,
-          "jerk_deg": 0.026,
-          "cost": 37.092
+          "lock_pct": 49.68,
+          "flip_pct": 1.38,
+          "jerk_deg": 0.0248,
+          "cost": -4.201
         }
       }
     },
     {
       "trial": 5,
-      "cost": 112.11508410671448,
+      "cost": 158.75049892486777,
       "params": {
-        "in_flight_damping": 0.6562324852666553,
-        "reversal_damping": 0.655728057705553,
-        "taper_pan_deg": 0.3658631382489935,
-        "taper_tilt_deg": 0.5265737510479674,
-        "rl_deadband_pan_deg": 0.7756149241341002,
-        "rl_deadband_tilt_deg": 0.5708974816541271,
-        "d_err_ema_alpha": 0.5148314761908523
+        "in_flight_damping": 0.5743190541691852,
+        "reversal_damping": 0.8257096370738902,
+        "taper_pan_deg": 0.9616254082737055,
+        "taper_tilt_deg": 0.35861494038378494,
+        "rl_deadband_pan_deg": 0.7413492376716291,
+        "rl_deadband_tilt_deg": 0.6445369091929612,
+        "d_err_ema_alpha": 0.4232211712127809
       },
       "metrics": {
         "p8_100cm": {
           "profile": 8,
           "dist_m": 1.0,
-          "frames": 179,
-          "rms_deg": 4.783,
-          "overshoot_deg": 2.14,
-          "lock_pct": 77.36,
-          "flip_pct": 2.28,
-          "jerk_deg": 0.0274,
-          "cost": 83.543
+          "frames": 85,
+          "rms_deg": 4.797,
+          "overshoot_deg": 4.202,
+          "lock_pct": 0.0,
+          "flip_pct": 5.53,
+          "jerk_deg": 0.0998,
+          "cost": 185.632
         },
         "p7_100cm": {
           "profile": 7,
           "dist_m": 1.0,
-          "frames": 173,
-          "rms_deg": 2.797,
+          "frames": 105,
+          "rms_deg": 6.077,
           "overshoot_deg": 0.0,
-          "lock_pct": 42.2,
-          "flip_pct": 1.98,
-          "jerk_deg": 0.0377,
-          "cost": 20.309
+          "lock_pct": 0.0,
+          "flip_pct": 2.01,
+          "jerk_deg": 0.066,
+          "cost": 113.715
         },
         "p2_100cm": {
           "profile": 2,
           "dist_m": 1.0,
-          "frames": 157,
-          "rms_deg": 2.513,
+          "frames": 53,
+          "rms_deg": 7.805,
           "overshoot_deg": 0.0,
-          "lock_pct": 60.51,
-          "flip_pct": 2.89,
-          "jerk_deg": 0.0305,
-          "cost": 1.761
+          "lock_pct": 0.0,
+          "flip_pct": 3.04,
+          "jerk_deg": 0.1177,
+          "cost": 147.405
         },
         "p8_200cm": {
           "profile": 8,
           "dist_m": 2.0,
-          "frames": 183,
-          "rms_deg": 2.839,
-          "overshoot_deg": 1.451,
-          "lock_pct": 74.77,
-          "flip_pct": 3.7,
-          "jerk_deg": 0.0206,
-          "cost": 54.048
+          "frames": 200,
+          "rms_deg": 1.514,
+          "overshoot_deg": 1.654,
+          "lock_pct": 90.65,
+          "flip_pct": 1.62,
+          "jerk_deg": 0.0177,
+          "cost": 31.104
         },
         "p7_200cm": {
           "profile": 7,
           "dist_m": 2.0,
           "frames": 188,
-          "rms_deg": 3.471,
+          "rms_deg": 2.592,
           "overshoot_deg": 0.0,
-          "lock_pct": 53.72,
-          "flip_pct": 0.98,
-          "jerk_deg": 0.0276,
-          "cost": 21.534
+          "lock_pct": 30.85,
+          "flip_pct": 1.35,
+          "jerk_deg": 0.0306,
+          "cost": 24.598
         },
         "p2_200cm": {
           "profile": 2,
           "dist_m": 2.0,
           "frames": 157,
-          "rms_deg": 3.276,
+          "rms_deg": 2.257,
           "overshoot_deg": 0.0,
-          "lock_pct": 66.88,
-          "flip_pct": 1.01,
-          "jerk_deg": 0.0246,
-          "cost": 7.467
+          "lock_pct": 48.41,
+          "flip_pct": 1.56,
+          "jerk_deg": 0.0266,
+          "cost": 4.768
         },
         "p8_300cm": {
           "profile": 8,
           "dist_m": 3.0,
-          "frames": 33,
-          "rms_deg": 12.665,
-          "overshoot_deg": 0.843,
-          "lock_pct": 3.45,
-          "flip_pct": 2.0,
-          "jerk_deg": 0.072,
-          "cost": 185.181
+          "frames": 169,
+          "rms_deg": 1.419,
+          "overshoot_deg": 1.167,
+          "lock_pct": 100.0,
+          "flip_pct": 1.69,
+          "jerk_deg": 0.0163,
+          "cost": 16.038
         },
         "p7_300cm": {
           "profile": 7,
           "dist_m": 3.0,
-          "frames": 156,
-          "rms_deg": 5.15,
+          "frames": 157,
+          "rms_deg": 2.259,
           "overshoot_deg": 0.0,
-          "lock_pct": 49.36,
-          "flip_pct": 1.62,
-          "jerk_deg": 0.0305,
-          "cost": 56.253
+          "lock_pct": 43.31,
+          "flip_pct": 1.42,
+          "jerk_deg": 0.028,
+          "cost": 8.704
         },
         "p2_300cm": {
           "profile": 2,
           "dist_m": 3.0,
           "frames": 157,
-          "rms_deg": 4.611,
+          "rms_deg": 1.949,
           "overshoot_deg": 0.0,
-          "lock_pct": 65.61,
-          "flip_pct": 1.41,
-          "jerk_deg": 0.0236,
-          "cost": 33.093
+          "lock_pct": 49.04,
+          "flip_pct": 1.15,
+          "jerk_deg": 0.0238,
+          "cost": -1.956
         }
       }
     },
     {
       "trial": 6,
-      "cost": 107.75695541100416,
+      "cost": 210.2316987571824,
       "params": {
-        "in_flight_damping": 0.3625286497311142,
-        "reversal_damping": 0.5266676281245358,
-        "taper_pan_deg": 0.882290193774794,
-        "taper_tilt_deg": 0.3877962284518135,
-        "rl_deadband_pan_deg": 0.47200280560035285,
-        "rl_deadband_tilt_deg": 0.5034453647906056,
-        "d_err_ema_alpha": 0.5086563072636611
+        "in_flight_damping": 0.40174663045715053,
+        "reversal_damping": 0.603988509771329,
+        "taper_pan_deg": 1.0214558661751911,
+        "taper_tilt_deg": 0.47941542674408394,
+        "rl_deadband_pan_deg": 0.6787132717446221,
+        "rl_deadband_tilt_deg": 0.5604713252714834,
+        "d_err_ema_alpha": 0.5322148348134297
       },
       "metrics": {
         "p8_100cm": {
           "profile": 8,
           "dist_m": 1.0,
-          "frames": 182,
-          "rms_deg": 1.587,
-          "overshoot_deg": 2.707,
-          "lock_pct": 68.89,
-          "flip_pct": 7.68,
-          "jerk_deg": 0.026,
-          "cost": 76.75
+          "frames": 46,
+          "rms_deg": 12.097,
+          "overshoot_deg": 4.484,
+          "lock_pct": 0.0,
+          "flip_pct": 5.72,
+          "jerk_deg": 0.1728,
+          "cost": 273.078
         },
         "p7_100cm": {
           "profile": 7,
           "dist_m": 1.0,
-          "frames": 177,
-          "rms_deg": 2.596,
+          "frames": 104,
+          "rms_deg": 6.097,
           "overshoot_deg": 0.0,
-          "lock_pct": 51.98,
-          "flip_pct": 2.02,
-          "jerk_deg": 0.039,
-          "cost": 8.961
+          "lock_pct": 0.0,
+          "flip_pct": 2.0,
+          "jerk_deg": 0.0681,
+          "cost": 114.103
         },
         "p2_100cm": {
           "profile": 2,
           "dist_m": 1.0,
-          "frames": 157,
-          "rms_deg": 2.39,
+          "frames": 52,
+          "rms_deg": 7.838,
           "overshoot_deg": 0.0,
-          "lock_pct": 69.43,
-          "flip_pct": 3.05,
-          "jerk_deg": 0.0332,
-          "cost": -7.288
+          "lock_pct": 0.0,
+          "flip_pct": 3.15,
+          "jerk_deg": 0.1094,
+          "cost": 147.983
         },
         "p8_200cm": {
           "profile": 8,
           "dist_m": 2.0,
-          "frames": 183,
-          "rms_deg": 2.776,
-          "overshoot_deg": 1.492,
-          "lock_pct": 81.31,
-          "flip_pct": 4.55,
-          "jerk_deg": 0.0236,
-          "cost": 52.318
+          "frames": 200,
+          "rms_deg": 1.385,
+          "overshoot_deg": 1.776,
+          "lock_pct": 100.0,
+          "flip_pct": 1.77,
+          "jerk_deg": 0.0175,
+          "cost": 27.726
         },
         "p7_200cm": {
           "profile": 7,
           "dist_m": 2.0,
           "frames": 188,
-          "rms_deg": 3.343,
+          "rms_deg": 2.49,
           "overshoot_deg": 0.0,
-          "lock_pct": 69.68,
-          "flip_pct": 1.28,
-          "jerk_deg": 0.0294,
-          "cost": 6.927
+          "lock_pct": 37.77,
+          "flip_pct": 1.32,
+          "jerk_deg": 0.0335,
+          "cost": 17.265
         },
         "p2_200cm": {
           "profile": 2,
           "dist_m": 2.0,
           "frames": 157,
-          "rms_deg": 3.195,
+          "rms_deg": 2.17,
           "overshoot_deg": 0.0,
-          "lock_pct": 68.15,
-          "flip_pct": 1.02,
-          "jerk_deg": 0.0265,
-          "cost": 5.045
+          "lock_pct": 57.96,
+          "flip_pct": 2.83,
+          "jerk_deg": 0.027,
+          "cost": -2.512
         },
         "p8_300cm": {
           "profile": 8,
           "dist_m": 3.0,
-          "frames": 33,
-          "rms_deg": 12.662,
-          "overshoot_deg": 1.33,
-          "lock_pct": 3.45,
-          "flip_pct": 1.92,
-          "jerk_deg": 0.073,
-          "cost": 194.773
+          "frames": 169,
+          "rms_deg": 1.258,
+          "overshoot_deg": 1.532,
+          "lock_pct": 100.0,
+          "flip_pct": 2.12,
+          "jerk_deg": 0.015,
+          "cost": 22.268
         },
         "p7_300cm": {
           "profile": 7,
           "dist_m": 3.0,
-          "frames": 156,
-          "rms_deg": 5.09,
+          "frames": 157,
+          "rms_deg": 2.165,
           "overshoot_deg": 0.0,
-          "lock_pct": 73.08,
-          "flip_pct": 1.51,
-          "jerk_deg": 0.0301,
-          "cost": 36.017
+          "lock_pct": 47.13,
+          "flip_pct": 1.35,
+          "jerk_deg": 0.0313,
+          "cost": 3.912
         },
         "p2_300cm": {
           "profile": 2,
           "dist_m": 3.0,
           "frames": 157,
-          "rms_deg": 4.559,
+          "rms_deg": 1.853,
           "overshoot_deg": 0.0,
-          "lock_pct": 68.79,
-          "flip_pct": 1.45,
-          "jerk_deg": 0.0225,
-          "cost": 29.665
+          "lock_pct": 57.96,
+          "flip_pct": 1.1,
+          "jerk_deg": 0.0263,
+          "cost": -10.846
         }
       }
     },
     {
       "trial": 7,
-      "cost": 112.35555999763355,
+      "cost": 165.85039812614662,
       "params": {
-        "in_flight_damping": 0.5375936981232701,
-        "reversal_damping": 0.4942198360959256,
-        "taper_pan_deg": 0.5185504944321688,
-        "taper_tilt_deg": 0.40852497906800544,
-        "rl_deadband_pan_deg": 0.5532757012855368,
-        "rl_deadband_tilt_deg": 0.6265996053843884,
-        "d_err_ema_alpha": 0.22891853063260437
+        "in_flight_damping": 0.5100203319387026,
+        "reversal_damping": 0.5818053410777785,
+        "taper_pan_deg": 1.0164996376242657,
+        "taper_tilt_deg": 0.3056125630616232,
+        "rl_deadband_pan_deg": 0.8485382098393743,
+        "rl_deadband_tilt_deg": 0.5892532438601366,
+        "d_err_ema_alpha": 0.3386025705539191
       },
       "metrics": {
         "p8_100cm": {
           "profile": 8,
           "dist_m": 1.0,
-          "frames": 181,
-          "rms_deg": 4.386,
-          "overshoot_deg": 2.545,
-          "lock_pct": 66.36,
-          "flip_pct": 4.86,
-          "jerk_deg": 0.0302,
-          "cost": 97.586
+          "frames": 90,
+          "rms_deg": 4.981,
+          "overshoot_deg": 4.766,
+          "lock_pct": 0.0,
+          "flip_pct": 3.7,
+          "jerk_deg": 0.108,
+          "cost": 194.231
         },
         "p7_100cm": {
           "profile": 7,
           "dist_m": 1.0,
-          "frames": 173,
-          "rms_deg": 2.738,
+          "frames": 104,
+          "rms_deg": 6.066,
           "overshoot_deg": 0.0,
-          "lock_pct": 43.93,
-          "flip_pct": 2.12,
-          "jerk_deg": 0.0336,
-          "cost": 17.995
+          "lock_pct": 0.0,
+          "flip_pct": 2.02,
+          "jerk_deg": 0.0707,
+          "cost": 113.641
         },
         "p2_100cm": {
           "profile": 2,
           "dist_m": 1.0,
-          "frames": 157,
-          "rms_deg": 2.451,
+          "frames": 48,
+          "rms_deg": 7.392,
           "overshoot_deg": 0.0,
-          "lock_pct": 60.51,
-          "flip_pct": 1.88,
-          "jerk_deg": 0.0276,
-          "cost": -0.924
+          "lock_pct": 0.0,
+          "flip_pct": 3.41,
+          "jerk_deg": 0.1356,
+          "cost": 140.884
         },
         "p8_200cm": {
           "profile": 8,
           "dist_m": 2.0,
-          "frames": 183,
-          "rms_deg": 2.774,
-          "overshoot_deg": 1.33,
-          "lock_pct": 82.24,
-          "flip_pct": 3.71,
-          "jerk_deg": 0.0227,
-          "cost": 47.188
+          "frames": 200,
+          "rms_deg": 1.526,
+          "overshoot_deg": 1.735,
+          "lock_pct": 94.39,
+          "flip_pct": 1.59,
+          "jerk_deg": 0.0184,
+          "cost": 30.901
         },
         "p7_200cm": {
           "profile": 7,
           "dist_m": 2.0,
           "frames": 188,
-          "rms_deg": 3.41,
+          "rms_deg": 2.591,
           "overshoot_deg": 0.0,
-          "lock_pct": 58.51,
-          "flip_pct": 1.34,
-          "jerk_deg": 0.029,
-          "cost": 17.152
+          "lock_pct": 26.6,
+          "flip_pct": 1.37,
+          "jerk_deg": 0.0328,
+          "cost": 28.071
         },
         "p2_200cm": {
           "profile": 2,
           "dist_m": 2.0,
           "frames": 157,
-          "rms_deg": 3.23,
+          "rms_deg": 2.273,
           "overshoot_deg": 0.0,
-          "lock_pct": 67.52,
-          "flip_pct": 1.49,
-          "jerk_deg": 0.0245,
-          "cost": 6.856
+          "lock_pct": 47.13,
+          "flip_pct": 1.61,
+          "jerk_deg": 0.0283,
+          "cost": 6.19
         },
         "p8_300cm": {
           "profile": 8,
           "dist_m": 3.0,
-          "frames": 33,
-          "rms_deg": 12.654,
-          "overshoot_deg": 1.086,
-          "lock_pct": 3.45,
-          "flip_pct": 1.92,
-          "jerk_deg": 0.0734,
-          "cost": 189.798
+          "frames": 169,
+          "rms_deg": 1.437,
+          "overshoot_deg": 1.289,
+          "lock_pct": 86.84,
+          "flip_pct": 2.09,
+          "jerk_deg": 0.0158,
+          "cost": 25.937
         },
         "p7_300cm": {
           "profile": 7,
           "dist_m": 3.0,
-          "frames": 156,
-          "rms_deg": 5.112,
+          "frames": 157,
+          "rms_deg": 2.266,
           "overshoot_deg": 0.0,
-          "lock_pct": 62.18,
-          "flip_pct": 1.65,
-          "jerk_deg": 0.0301,
-          "cost": 45.344
+          "lock_pct": 31.85,
+          "flip_pct": 1.35,
+          "jerk_deg": 0.0292,
+          "cost": 17.917
         },
         "p2_300cm": {
           "profile": 2,
           "dist_m": 3.0,
           "frames": 157,
-          "rms_deg": 4.576,
+          "rms_deg": 1.963,
           "overshoot_deg": 0.0,
-          "lock_pct": 75.8,
-          "flip_pct": 1.42,
-          "jerk_deg": 0.0213,
-          "cost": 24.292
+          "lock_pct": 48.41,
+          "flip_pct": 1.23,
+          "jerk_deg": 0.0258,
+          "cost": -1.027
         }
       }
     },
     {
       "trial": 8,
-      "cost": 112.92843662931698,
+      "cost": 148.14887710095928,
       "params": {
-        "in_flight_damping": 0.48714040293994354,
-        "reversal_damping": 0.5383921680729012,
-        "taper_pan_deg": 0.49663812750187947,
-        "taper_tilt_deg": 0.5019445734084367,
-        "rl_deadband_pan_deg": 0.5186712169139422,
-        "rl_deadband_tilt_deg": 0.8211680735855125,
-        "d_err_ema_alpha": 0.5337448465438535
+        "in_flight_damping": 0.314973229349505,
+        "reversal_damping": 0.7803507698281351,
+        "taper_pan_deg": 0.6867523667045605,
+        "taper_tilt_deg": 0.31663216738496414,
+        "rl_deadband_pan_deg": 0.7187567147848747,
+        "rl_deadband_tilt_deg": 0.5028500574743848,
+        "d_err_ema_alpha": 0.5355229264143794
       },
       "metrics": {
         "p8_100cm": {
           "profile": 8,
           "dist_m": 1.0,
-          "frames": 180,
-          "rms_deg": 4.648,
-          "overshoot_deg": 2.383,
-          "lock_pct": 64.49,
-          "flip_pct": 4.0,
-          "jerk_deg": 0.0275,
-          "cost": 96.35
+          "frames": 94,
+          "rms_deg": 4.595,
+          "overshoot_deg": 4.524,
+          "lock_pct": 7.69,
+          "flip_pct": 4.55,
+          "jerk_deg": 0.1082,
+          "cost": 181.629
         },
         "p7_100cm": {
           "profile": 7,
           "dist_m": 1.0,
-          "frames": 172,
-          "rms_deg": 2.74,
+          "frames": 106,
+          "rms_deg": 5.945,
           "overshoot_deg": 0.0,
-          "lock_pct": 44.77,
-          "flip_pct": 2.26,
-          "jerk_deg": 0.0367,
-          "cost": 17.622
+          "lock_pct": 0.0,
+          "flip_pct": 1.97,
+          "jerk_deg": 0.0664,
+          "cost": 111.304
         },
         "p2_100cm": {
           "profile": 2,
           "dist_m": 1.0,
-          "frames": 157,
-          "rms_deg": 2.441,
+          "frames": 52,
+          "rms_deg": 6.497,
           "overshoot_deg": 0.0,
-          "lock_pct": 60.51,
-          "flip_pct": 2.08,
-          "jerk_deg": 0.0288,
-          "cost": -0.768
+          "lock_pct": 0.0,
+          "flip_pct": 4.12,
+          "jerk_deg": 0.1225,
+          "cost": 125.579
         },
         "p8_200cm": {
           "profile": 8,
           "dist_m": 2.0,
-          "frames": 183,
-          "rms_deg": 2.812,
-          "overshoot_deg": 1.289,
-          "lock_pct": 82.24,
-          "flip_pct": 3.54,
-          "jerk_deg": 0.022,
-          "cost": 46.433
+          "frames": 200,
+          "rms_deg": 1.271,
+          "overshoot_deg": 1.857,
+          "lock_pct": 90.65,
+          "flip_pct": 3.09,
+          "jerk_deg": 0.0188,
+          "cost": 35.196
         },
         "p7_200cm": {
           "profile": 7,
           "dist_m": 2.0,
           "frames": 188,
-          "rms_deg": 3.425,
+          "rms_deg": 2.357,
           "overshoot_deg": 0.0,
-          "lock_pct": 56.91,
-          "flip_pct": 1.41,
-          "jerk_deg": 0.0291,
-          "cost": 18.812
+          "lock_pct": 51.6,
+          "flip_pct": 1.34,
+          "jerk_deg": 0.0338,
+          "cost": 3.84
         },
         "p2_200cm": {
           "profile": 2,
           "dist_m": 2.0,
           "frames": 157,
-          "rms_deg": 3.236,
+          "rms_deg": 2.072,
           "overshoot_deg": 0.0,
-          "lock_pct": 70.06,
-          "flip_pct": 1.13,
-          "jerk_deg": 0.0261,
-          "cost": 4.418
+          "lock_pct": 66.88,
+          "flip_pct": 2.84,
+          "jerk_deg": 0.0293,
+          "cost": -11.359
         },
         "p8_300cm": {
           "profile": 8,
           "dist_m": 3.0,
-          "frames": 33,
-          "rms_deg": 12.653,
-          "overshoot_deg": 1.167,
-          "lock_pct": 3.45,
-          "flip_pct": 1.92,
-          "jerk_deg": 0.0716,
-          "cost": 191.353
+          "frames": 169,
+          "rms_deg": 1.061,
+          "overshoot_deg": 1.735,
+          "lock_pct": 100.0,
+          "flip_pct": 2.64,
+          "jerk_deg": 0.0159,
+          "cost": 25.288
         },
         "p7_300cm": {
           "profile": 7,
           "dist_m": 3.0,
-          "frames": 156,
-          "rms_deg": 5.105,
+          "frames": 157,
+          "rms_deg": 2.054,
           "overshoot_deg": 0.0,
-          "lock_pct": 58.33,
-          "flip_pct": 1.74,
-          "jerk_deg": 0.0294,
-          "cost": 48.433
+          "lock_pct": 52.23,
+          "flip_pct": 1.34,
+          "jerk_deg": 0.0326,
+          "cost": -2.146
         },
         "p2_300cm": {
           "profile": 2,
           "dist_m": 3.0,
           "frames": 157,
-          "rms_deg": 4.588,
+          "rms_deg": 1.717,
           "overshoot_deg": 0.0,
-          "lock_pct": 75.8,
-          "flip_pct": 1.47,
-          "jerk_deg": 0.0215,
-          "cost": 24.58
+          "lock_pct": 70.06,
+          "flip_pct": 2.43,
+          "jerk_deg": 0.0279,
+          "cost": -20.929
         }
       }
     },
     {
       "trial": 9,
-      "cost": 114.74538116227657,
+      "cost": 197.44395131057408,
       "params": {
-        "in_flight_damping": 0.5025952727895385,
-        "reversal_damping": 0.5599293105707843,
-        "taper_pan_deg": 0.8255573599592285,
-        "taper_tilt_deg": 0.9277483986623867,
-        "rl_deadband_pan_deg": 0.4833675840574017,
-        "rl_deadband_tilt_deg": 0.550022102337764,
-        "d_err_ema_alpha": 0.4807118433093668
+        "in_flight_damping": 0.24997272223372713,
+        "reversal_damping": 0.8395636388469577,
+        "taper_pan_deg": 0.4547714051208514,
+        "taper_tilt_deg": 0.7038966040617615,
+        "rl_deadband_pan_deg": 0.6555980517472506,
+        "rl_deadband_tilt_deg": 0.5029879449172515,
+        "d_err_ema_alpha": 0.4335469434720429
       },
       "metrics": {
         "p8_100cm": {
           "profile": 8,
           "dist_m": 1.0,
-          "frames": 180,
-          "rms_deg": 4.357,
-          "overshoot_deg": 2.383,
-          "lock_pct": 65.09,
-          "flip_pct": 7.58,
-          "jerk_deg": 0.0348,
-          "cost": 99.768
+          "frames": 67,
+          "rms_deg": 11.38,
+          "overshoot_deg": 4.806,
+          "lock_pct": 0.0,
+          "flip_pct": 4.55,
+          "jerk_deg": 0.1178,
+          "cost": 266.073
         },
         "p7_100cm": {
           "profile": 7,
           "dist_m": 1.0,
-          "frames": 173,
-          "rms_deg": 2.761,
+          "frames": 107,
+          "rms_deg": 5.825,
           "overshoot_deg": 0.0,
-          "lock_pct": 43.35,
-          "flip_pct": 2.71,
-          "jerk_deg": 0.035,
-          "cost": 19.78
+          "lock_pct": 1.87,
+          "flip_pct": 1.93,
+          "jerk_deg": 0.0651,
+          "cost": 107.549
         },
         "p2_100cm": {
           "profile": 2,
           "dist_m": 1.0,
-          "frames": 157,
-          "rms_deg": 2.469,
+          "frames": 56,
+          "rms_deg": 5.932,
           "overshoot_deg": 0.0,
-          "lock_pct": 58.6,
-          "flip_pct": 1.8,
-          "jerk_deg": 0.0299,
-          "cost": 0.848
+          "lock_pct": 0.0,
+          "flip_pct": 2.85,
+          "jerk_deg": 0.1304,
+          "cost": 113.664
         },
         "p8_200cm": {
           "profile": 8,
           "dist_m": 2.0,
-          "frames": 183,
-          "rms_deg": 2.828,
-          "overshoot_deg": 1.411,
-          "lock_pct": 82.24,
-          "flip_pct": 3.21,
-          "jerk_deg": 0.0217,
-          "cost": 48.47
+          "frames": 200,
+          "rms_deg": 1.249,
+          "overshoot_deg": 1.897,
+          "lock_pct": 86.92,
+          "flip_pct": 3.92,
+          "jerk_deg": 0.0196,
+          "cost": 39.174
         },
         "p7_200cm": {
           "profile": 7,
           "dist_m": 2.0,
           "frames": 188,
-          "rms_deg": 3.448,
+          "rms_deg": 2.314,
           "overshoot_deg": 0.0,
-          "lock_pct": 55.32,
-          "flip_pct": 1.26,
-          "jerk_deg": 0.0278,
-          "cost": 20.257
+          "lock_pct": 57.98,
+          "flip_pct": 1.36,
+          "jerk_deg": 0.0334,
+          "cost": -2.025
         },
         "p2_200cm": {
           "profile": 2,
           "dist_m": 2.0,
           "frames": 157,
-          "rms_deg": 3.253,
+          "rms_deg": 2.034,
           "overshoot_deg": 0.0,
-          "lock_pct": 68.15,
-          "flip_pct": 0.91,
-          "jerk_deg": 0.0233,
-          "cost": 5.848
+          "lock_pct": 66.24,
+          "flip_pct": 2.66,
+          "jerk_deg": 0.028,
+          "cost": -11.827
         },
         "p8_300cm": {
           "profile": 8,
           "dist_m": 3.0,
-          "frames": 33,
-          "rms_deg": 12.656,
-          "overshoot_deg": 1.046,
-          "lock_pct": 3.45,
-          "flip_pct": 1.85,
-          "jerk_deg": 0.0686,
-          "cost": 188.775
+          "frames": 169,
+          "rms_deg": 1.081,
+          "overshoot_deg": 1.816,
+          "lock_pct": 100.0,
+          "flip_pct": 2.4,
+          "jerk_deg": 0.0139,
+          "cost": 26.632
         },
         "p7_300cm": {
           "profile": 7,
           "dist_m": 3.0,
-          "frames": 156,
-          "rms_deg": 5.126,
+          "frames": 157,
+          "rms_deg": 2.01,
           "overshoot_deg": 0.0,
-          "lock_pct": 50.0,
-          "flip_pct": 1.61,
-          "jerk_deg": 0.0286,
-          "cost": 55.252
+          "lock_pct": 58.6,
+          "flip_pct": 1.3,
+          "jerk_deg": 0.0326,
+          "cost": -8.102
         },
         "p2_300cm": {
           "profile": 2,
           "dist_m": 3.0,
           "frames": 157,
-          "rms_deg": 4.595,
+          "rms_deg": 1.694,
           "overshoot_deg": 0.0,
-          "lock_pct": 68.15,
-          "flip_pct": 1.37,
-          "jerk_deg": 0.0212,
-          "cost": 30.666
+          "lock_pct": 71.34,
+          "flip_pct": 2.17,
+          "jerk_deg": 0.0259,
+          "cost": -22.789
         }
       }
     },
     {
       "trial": 10,
-      "cost": 117.88073710601802,
+      "cost": 168.96375614661375,
       "params": {
         "in_flight_damping": 0.32095343681370836,
         "reversal_damping": 0.5910633934530415,
@@ -1381,215 +1381,1583 @@
         "p8_100cm": {
           "profile": 8,
           "dist_m": 1.0,
-          "frames": 179,
-          "rms_deg": 4.771,
-          "overshoot_deg": 2.788,
-          "lock_pct": 65.42,
-          "flip_pct": 10.41,
-          "jerk_deg": 0.0295,
-          "cost": 116.612
+          "frames": 74,
+          "rms_deg": 6.235,
+          "overshoot_deg": 4.725,
+          "lock_pct": 0.0,
+          "flip_pct": 5.53,
+          "jerk_deg": 0.1471,
+          "cost": 214.355
         },
         "p7_100cm": {
           "profile": 7,
           "dist_m": 1.0,
-          "frames": 173,
-          "rms_deg": 2.629,
+          "frames": 105,
+          "rms_deg": 6.009,
           "overshoot_deg": 0.0,
-          "lock_pct": 47.98,
-          "flip_pct": 2.08,
-          "jerk_deg": 0.0372,
-          "cost": 12.799
+          "lock_pct": 0.0,
+          "flip_pct": 1.98,
+          "jerk_deg": 0.0676,
+          "cost": 112.478
         },
         "p2_100cm": {
           "profile": 2,
           "dist_m": 1.0,
-          "frames": 157,
-          "rms_deg": 2.375,
+          "frames": 48,
+          "rms_deg": 7.162,
           "overshoot_deg": 0.0,
-          "lock_pct": 60.51,
-          "flip_pct": 3.97,
-          "jerk_deg": 0.0285,
-          "cost": 0.856
+          "lock_pct": 0.0,
+          "flip_pct": 3.36,
+          "jerk_deg": 0.1431,
+          "cost": 136.824
         },
         "p8_200cm": {
           "profile": 8,
           "dist_m": 2.0,
-          "frames": 183,
-          "rms_deg": 2.772,
-          "overshoot_deg": 1.492,
-          "lock_pct": 81.31,
-          "flip_pct": 3.69,
-          "jerk_deg": 0.0224,
-          "cost": 50.727
+          "frames": 200,
+          "rms_deg": 1.312,
+          "overshoot_deg": 1.776,
+          "lock_pct": 100.0,
+          "flip_pct": 2.6,
+          "jerk_deg": 0.0173,
+          "cost": 28.494
         },
         "p7_200cm": {
           "profile": 7,
           "dist_m": 2.0,
           "frames": 188,
-          "rms_deg": 3.374,
+          "rms_deg": 2.419,
           "overshoot_deg": 0.0,
-          "lock_pct": 61.7,
-          "flip_pct": 1.05,
-          "jerk_deg": 0.0308,
-          "cost": 13.572
+          "lock_pct": 54.26,
+          "flip_pct": 1.41,
+          "jerk_deg": 0.0337,
+          "cost": 2.917
         },
         "p2_200cm": {
           "profile": 2,
           "dist_m": 2.0,
           "frames": 157,
-          "rms_deg": 3.206,
+          "rms_deg": 2.093,
           "overshoot_deg": 0.0,
-          "lock_pct": 70.7,
-          "flip_pct": 1.08,
-          "jerk_deg": 0.0259,
-          "cost": 3.285
+          "lock_pct": 63.69,
+          "flip_pct": 2.59,
+          "jerk_deg": 0.0278,
+          "cost": -8.846
         },
         "p8_300cm": {
           "profile": 8,
           "dist_m": 3.0,
-          "frames": 33,
-          "rms_deg": 12.666,
-          "overshoot_deg": 1.411,
-          "lock_pct": 3.45,
-          "flip_pct": 1.92,
-          "jerk_deg": 0.0733,
-          "cost": 196.444
+          "frames": 169,
+          "rms_deg": 1.182,
+          "overshoot_deg": 1.614,
+          "lock_pct": 100.0,
+          "flip_pct": 2.07,
+          "jerk_deg": 0.0139,
+          "cost": 23.14
         },
         "p7_300cm": {
           "profile": 7,
           "dist_m": 3.0,
-          "frames": 156,
-          "rms_deg": 5.101,
+          "frames": 157,
+          "rms_deg": 2.087,
           "overshoot_deg": 0.0,
-          "lock_pct": 55.77,
-          "flip_pct": 1.65,
-          "jerk_deg": 0.031,
-          "cost": 50.288
+          "lock_pct": 54.14,
+          "flip_pct": 1.81,
+          "jerk_deg": 0.0318,
+          "cost": -2.402
         },
         "p2_300cm": {
           "profile": 2,
           "dist_m": 3.0,
           "frames": 157,
-          "rms_deg": 4.56,
+          "rms_deg": 1.747,
           "overshoot_deg": 0.0,
-          "lock_pct": 76.43,
-          "flip_pct": 1.52,
-          "jerk_deg": 0.0222,
-          "cost": 23.656
+          "lock_pct": 67.52,
+          "flip_pct": 1.49,
+          "jerk_deg": 0.0252,
+          "cost": -19.817
         }
       }
     },
     {
       "trial": 11,
-      "cost": 114.18804856906837,
+      "cost": 208.51003146242775,
       "params": {
-        "in_flight_damping": 0.608781186260053,
-        "reversal_damping": 0.7097158189403424,
-        "taper_pan_deg": 0.6400855662916365,
-        "taper_tilt_deg": 0.5636550970551888,
-        "rl_deadband_pan_deg": 0.5530134033097944,
-        "rl_deadband_tilt_deg": 0.6891486599561585,
-        "d_err_ema_alpha": 0.440774394620437
+        "in_flight_damping": 0.5550006311198366,
+        "reversal_damping": 0.8093860043693795,
+        "taper_pan_deg": 0.7980975859312813,
+        "taper_tilt_deg": 0.3454140380695869,
+        "rl_deadband_pan_deg": 0.8465690440757118,
+        "rl_deadband_tilt_deg": 0.5997096943232909,
+        "d_err_ema_alpha": 0.44311747923512634
       },
       "metrics": {
         "p8_100cm": {
           "profile": 8,
           "dist_m": 1.0,
-          "frames": 179,
-          "rms_deg": 4.765,
-          "overshoot_deg": 2.181,
-          "lock_pct": 75.47,
-          "flip_pct": 10.26,
-          "jerk_deg": 0.0281,
-          "cost": 99.463
+          "frames": 67,
+          "rms_deg": 12.613,
+          "overshoot_deg": 4.323,
+          "lock_pct": 0.0,
+          "flip_pct": 4.09,
+          "jerk_deg": 0.0926,
+          "cost": 266.874
         },
         "p7_100cm": {
           "profile": 7,
           "dist_m": 1.0,
-          "frames": 174,
-          "rms_deg": 2.785,
+          "frames": 105,
+          "rms_deg": 6.119,
           "overshoot_deg": 0.0,
-          "lock_pct": 43.1,
-          "flip_pct": 1.98,
-          "jerk_deg": 0.0327,
-          "cost": 19.27
+          "lock_pct": 4.76,
+          "flip_pct": 2.02,
+          "jerk_deg": 0.0631,
+          "cost": 110.622
         },
         "p2_100cm": {
           "profile": 2,
           "dist_m": 1.0,
-          "frames": 157,
-          "rms_deg": 2.49,
+          "frames": 56,
+          "rms_deg": 7.422,
           "overshoot_deg": 0.0,
-          "lock_pct": 58.6,
-          "flip_pct": 2.27,
-          "jerk_deg": 0.0262,
-          "cost": 1.873
+          "lock_pct": 0.0,
+          "flip_pct": 2.98,
+          "jerk_deg": 0.0999,
+          "cost": 140.06
         },
         "p8_200cm": {
           "profile": 8,
           "dist_m": 2.0,
-          "frames": 183,
-          "rms_deg": 2.839,
-          "overshoot_deg": 1.37,
-          "lock_pct": 81.31,
-          "flip_pct": 3.19,
-          "jerk_deg": 0.0198,
-          "cost": 48.189
+          "frames": 200,
+          "rms_deg": 1.504,
+          "overshoot_deg": 1.654,
+          "lock_pct": 92.52,
+          "flip_pct": 1.75,
+          "jerk_deg": 0.0185,
+          "cost": 30.348
         },
         "p7_200cm": {
           "profile": 7,
           "dist_m": 2.0,
           "frames": 188,
-          "rms_deg": 3.47,
+          "rms_deg": 2.56,
           "overshoot_deg": 0.0,
-          "lock_pct": 53.72,
-          "flip_pct": 0.99,
-          "jerk_deg": 0.0286,
-          "cost": 21.55
+          "lock_pct": 23.94,
+          "flip_pct": 1.38,
+          "jerk_deg": 0.0309,
+          "cost": 29.621
         },
         "p2_200cm": {
           "profile": 2,
           "dist_m": 2.0,
           "frames": 157,
-          "rms_deg": 3.265,
+          "rms_deg": 2.252,
           "overshoot_deg": 0.0,
-          "lock_pct": 68.15,
-          "flip_pct": 1.03,
-          "jerk_deg": 0.0224,
-          "cost": 6.247
+          "lock_pct": 51.59,
+          "flip_pct": 1.64,
+          "jerk_deg": 0.0272,
+          "cost": 2.278
         },
         "p8_300cm": {
           "profile": 8,
           "dist_m": 3.0,
-          "frames": 33,
-          "rms_deg": 12.663,
-          "overshoot_deg": 0.924,
-          "lock_pct": 3.45,
-          "flip_pct": 2.0,
-          "jerk_deg": 0.0695,
-          "cost": 186.716
+          "frames": 169,
+          "rms_deg": 1.422,
+          "overshoot_deg": 1.208,
+          "lock_pct": 92.11,
+          "flip_pct": 1.82,
+          "jerk_deg": 0.0166,
+          "cost": 21.086
         },
         "p7_300cm": {
           "profile": 7,
           "dist_m": 3.0,
-          "frames": 156,
-          "rms_deg": 5.133,
+          "frames": 157,
+          "rms_deg": 2.273,
           "overshoot_deg": 0.0,
-          "lock_pct": 48.72,
-          "flip_pct": 1.63,
-          "jerk_deg": 0.0291,
-          "cost": 56.447
+          "lock_pct": 37.58,
+          "flip_pct": 1.34,
+          "jerk_deg": 0.0288,
+          "cost": 13.445
         },
         "p2_300cm": {
           "profile": 2,
           "dist_m": 3.0,
           "frames": 157,
-          "rms_deg": 4.601,
+          "rms_deg": 1.935,
           "overshoot_deg": 0.0,
-          "lock_pct": 68.15,
-          "flip_pct": 1.46,
-          "jerk_deg": 0.022,
-          "cost": 30.919
+          "lock_pct": 52.23,
+          "flip_pct": 1.22,
+          "jerk_deg": 0.0247,
+          "cost": -4.639
+        }
+      }
+    },
+    {
+      "trial": 12,
+      "cost": 139.00415782797097,
+      "params": {
+        "in_flight_damping": 0.4594847890609296,
+        "reversal_damping": 0.7800044701293882,
+        "taper_pan_deg": 0.6577046550589418,
+        "taper_tilt_deg": 0.3193482741620345,
+        "rl_deadband_pan_deg": 0.746721523922631,
+        "rl_deadband_tilt_deg": 0.5437490279559246,
+        "d_err_ema_alpha": 0.3446919427056511
+      },
+      "metrics": {
+        "p8_100cm": {
+          "profile": 8,
+          "dist_m": 1.0,
+          "frames": 101,
+          "rms_deg": 4.199,
+          "overshoot_deg": 4.282,
+          "lock_pct": 23.91,
+          "flip_pct": 4.05,
+          "jerk_deg": 0.0842,
+          "cost": 162.327
+        },
+        "p7_100cm": {
+          "profile": 7,
+          "dist_m": 1.0,
+          "frames": 105,
+          "rms_deg": 6.045,
+          "overshoot_deg": 0.0,
+          "lock_pct": 0.0,
+          "flip_pct": 1.99,
+          "jerk_deg": 0.0657,
+          "cost": 113.109
+        },
+        "p2_100cm": {
+          "profile": 2,
+          "dist_m": 1.0,
+          "frames": 48,
+          "rms_deg": 7.817,
+          "overshoot_deg": 0.0,
+          "lock_pct": 0.0,
+          "flip_pct": 3.41,
+          "jerk_deg": 0.1401,
+          "cost": 148.629
+        },
+        "p8_200cm": {
+          "profile": 8,
+          "dist_m": 2.0,
+          "frames": 200,
+          "rms_deg": 1.316,
+          "overshoot_deg": 1.695,
+          "lock_pct": 100.0,
+          "flip_pct": 2.0,
+          "jerk_deg": 0.0177,
+          "cost": 25.834
+        },
+        "p7_200cm": {
+          "profile": 7,
+          "dist_m": 2.0,
+          "frames": 188,
+          "rms_deg": 2.447,
+          "overshoot_deg": 0.0,
+          "lock_pct": 47.87,
+          "flip_pct": 1.33,
+          "jerk_deg": 0.0315,
+          "cost": 8.377
+        },
+        "p2_200cm": {
+          "profile": 2,
+          "dist_m": 2.0,
+          "frames": 157,
+          "rms_deg": 2.135,
+          "overshoot_deg": 0.0,
+          "lock_pct": 65.61,
+          "flip_pct": 2.9,
+          "jerk_deg": 0.0273,
+          "cost": -9.155
+        },
+        "p8_300cm": {
+          "profile": 8,
+          "dist_m": 3.0,
+          "frames": 169,
+          "rms_deg": 1.172,
+          "overshoot_deg": 1.33,
+          "lock_pct": 100.0,
+          "flip_pct": 2.48,
+          "jerk_deg": 0.0163,
+          "cost": 18.035
+        },
+        "p7_300cm": {
+          "profile": 7,
+          "dist_m": 3.0,
+          "frames": 157,
+          "rms_deg": 2.129,
+          "overshoot_deg": 0.0,
+          "lock_pct": 46.5,
+          "flip_pct": 1.36,
+          "jerk_deg": 0.0306,
+          "cost": 3.768
+        },
+        "p2_300cm": {
+          "profile": 2,
+          "dist_m": 3.0,
+          "frames": 157,
+          "rms_deg": 1.8,
+          "overshoot_deg": 0.0,
+          "lock_pct": 63.69,
+          "flip_pct": 1.2,
+          "jerk_deg": 0.0266,
+          "cost": -16.216
+        }
+      }
+    },
+    {
+      "trial": 13,
+      "cost": 206.57323414169832,
+      "params": {
+        "in_flight_damping": 0.3013221808863739,
+        "reversal_damping": 0.6568847361598037,
+        "taper_pan_deg": 0.8414407913561506,
+        "taper_tilt_deg": 0.29900778891659424,
+        "rl_deadband_pan_deg": 0.7497856260906665,
+        "rl_deadband_tilt_deg": 0.6421459600328497,
+        "d_err_ema_alpha": 0.49582761212850013
+      },
+      "metrics": {
+        "p8_100cm": {
+          "profile": 8,
+          "dist_m": 1.0,
+          "frames": 67,
+          "rms_deg": 11.24,
+          "overshoot_deg": 4.967,
+          "lock_pct": 0.0,
+          "flip_pct": 4.9,
+          "jerk_deg": 0.1247,
+          "cost": 269.458
+        },
+        "p7_100cm": {
+          "profile": 7,
+          "dist_m": 1.0,
+          "frames": 105,
+          "rms_deg": 5.997,
+          "overshoot_deg": 0.0,
+          "lock_pct": 0.0,
+          "flip_pct": 2.02,
+          "jerk_deg": 0.0688,
+          "cost": 112.351
+        },
+        "p2_100cm": {
+          "profile": 2,
+          "dist_m": 1.0,
+          "frames": 47,
+          "rms_deg": 7.199,
+          "overshoot_deg": 0.0,
+          "lock_pct": 0.0,
+          "flip_pct": 3.44,
+          "jerk_deg": 0.1305,
+          "cost": 137.355
+        },
+        "p8_200cm": {
+          "profile": 8,
+          "dist_m": 2.0,
+          "frames": 200,
+          "rms_deg": 1.32,
+          "overshoot_deg": 1.857,
+          "lock_pct": 90.65,
+          "flip_pct": 2.3,
+          "jerk_deg": 0.0177,
+          "cost": 34.288
+        },
+        "p7_200cm": {
+          "profile": 7,
+          "dist_m": 2.0,
+          "frames": 188,
+          "rms_deg": 2.429,
+          "overshoot_deg": 0.0,
+          "lock_pct": 35.64,
+          "flip_pct": 1.47,
+          "jerk_deg": 0.0363,
+          "cost": 18.135
+        },
+        "p2_200cm": {
+          "profile": 2,
+          "dist_m": 2.0,
+          "frames": 157,
+          "rms_deg": 2.116,
+          "overshoot_deg": 0.0,
+          "lock_pct": 66.88,
+          "flip_pct": 3.17,
+          "jerk_deg": 0.0294,
+          "cost": -10.088
+        },
+        "p8_300cm": {
+          "profile": 8,
+          "dist_m": 3.0,
+          "frames": 169,
+          "rms_deg": 1.153,
+          "overshoot_deg": 1.695,
+          "lock_pct": 100.0,
+          "flip_pct": 3.08,
+          "jerk_deg": 0.0156,
+          "cost": 26.165
+        },
+        "p7_300cm": {
+          "profile": 7,
+          "dist_m": 3.0,
+          "frames": 157,
+          "rms_deg": 2.093,
+          "overshoot_deg": 0.0,
+          "lock_pct": 49.04,
+          "flip_pct": 1.5,
+          "jerk_deg": 0.033,
+          "cost": 1.356
+        },
+        "p2_300cm": {
+          "profile": 2,
+          "dist_m": 3.0,
+          "frames": 157,
+          "rms_deg": 1.784,
+          "overshoot_deg": 0.0,
+          "lock_pct": 60.51,
+          "flip_pct": 1.25,
+          "jerk_deg": 0.0285,
+          "cost": -13.835
+        }
+      }
+    },
+    {
+      "trial": 14,
+      "cost": 209.7105770080485,
+      "params": {
+        "in_flight_damping": 0.4263229146697217,
+        "reversal_damping": 0.6722312039879903,
+        "taper_pan_deg": 0.7563459925201941,
+        "taper_tilt_deg": 0.3302982251233303,
+        "rl_deadband_pan_deg": 0.7341575073020283,
+        "rl_deadband_tilt_deg": 0.5544306766627694,
+        "d_err_ema_alpha": 0.37631707080329463
+      },
+      "metrics": {
+        "p8_100cm": {
+          "profile": 8,
+          "dist_m": 1.0,
+          "frames": 46,
+          "rms_deg": 12.097,
+          "overshoot_deg": 4.484,
+          "lock_pct": 0.0,
+          "flip_pct": 5.72,
+          "jerk_deg": 0.1762,
+          "cost": 273.161
+        },
+        "p7_100cm": {
+          "profile": 7,
+          "dist_m": 1.0,
+          "frames": 104,
+          "rms_deg": 6.107,
+          "overshoot_deg": 0.0,
+          "lock_pct": 0.0,
+          "flip_pct": 2.01,
+          "jerk_deg": 0.0673,
+          "cost": 114.296
+        },
+        "p2_100cm": {
+          "profile": 2,
+          "dist_m": 1.0,
+          "frames": 52,
+          "rms_deg": 8.489,
+          "overshoot_deg": 0.0,
+          "lock_pct": 0.0,
+          "flip_pct": 3.1,
+          "jerk_deg": 0.1335,
+          "cost": 160.133
+        },
+        "p8_200cm": {
+          "profile": 8,
+          "dist_m": 2.0,
+          "frames": 200,
+          "rms_deg": 1.329,
+          "overshoot_deg": 1.735,
+          "lock_pct": 100.0,
+          "flip_pct": 2.89,
+          "jerk_deg": 0.018,
+          "cost": 28.35
+        },
+        "p7_200cm": {
+          "profile": 7,
+          "dist_m": 2.0,
+          "frames": 188,
+          "rms_deg": 2.453,
+          "overshoot_deg": 0.0,
+          "lock_pct": 46.28,
+          "flip_pct": 1.37,
+          "jerk_deg": 0.0325,
+          "cost": 9.829
+        },
+        "p2_200cm": {
+          "profile": 2,
+          "dist_m": 2.0,
+          "frames": 157,
+          "rms_deg": 2.131,
+          "overshoot_deg": 0.0,
+          "lock_pct": 65.61,
+          "flip_pct": 3.03,
+          "jerk_deg": 0.0275,
+          "cost": -9.034
+        },
+        "p8_300cm": {
+          "profile": 8,
+          "dist_m": 3.0,
+          "frames": 169,
+          "rms_deg": 1.18,
+          "overshoot_deg": 1.451,
+          "lock_pct": 100.0,
+          "flip_pct": 2.42,
+          "jerk_deg": 0.0152,
+          "cost": 20.369
+        },
+        "p7_300cm": {
+          "profile": 7,
+          "dist_m": 3.0,
+          "frames": 157,
+          "rms_deg": 2.149,
+          "overshoot_deg": 0.0,
+          "lock_pct": 49.68,
+          "flip_pct": 1.32,
+          "jerk_deg": 0.0317,
+          "cost": 1.557
+        },
+        "p2_300cm": {
+          "profile": 2,
+          "dist_m": 3.0,
+          "frames": 157,
+          "rms_deg": 1.805,
+          "overshoot_deg": 0.0,
+          "lock_pct": 60.51,
+          "flip_pct": 1.18,
+          "jerk_deg": 0.0274,
+          "cost": -13.588
+        }
+      }
+    },
+    {
+      "trial": 15,
+      "cost": 148.18234994235073,
+      "params": {
+        "in_flight_damping": 0.45138585558824773,
+        "reversal_damping": 0.7800624456734881,
+        "taper_pan_deg": 1.0008465960954644,
+        "taper_tilt_deg": 0.27673018051010645,
+        "rl_deadband_pan_deg": 0.8375887143357659,
+        "rl_deadband_tilt_deg": 0.5314200838039607,
+        "d_err_ema_alpha": 0.4992339910957151
+      },
+      "metrics": {
+        "p8_100cm": {
+          "profile": 8,
+          "dist_m": 1.0,
+          "frames": 95,
+          "rms_deg": 4.422,
+          "overshoot_deg": 4.403,
+          "lock_pct": 15.0,
+          "flip_pct": 3.57,
+          "jerk_deg": 0.1004,
+          "cost": 171.812
+        },
+        "p7_100cm": {
+          "profile": 7,
+          "dist_m": 1.0,
+          "frames": 106,
+          "rms_deg": 6.046,
+          "overshoot_deg": 0.0,
+          "lock_pct": 0.0,
+          "flip_pct": 1.98,
+          "jerk_deg": 0.0687,
+          "cost": 113.177
+        },
+        "p2_100cm": {
+          "profile": 2,
+          "dist_m": 1.0,
+          "frames": 54,
+          "rms_deg": 6.679,
+          "overshoot_deg": 0.0,
+          "lock_pct": 0.0,
+          "flip_pct": 4.11,
+          "jerk_deg": 0.1213,
+          "cost": 128.807
+        },
+        "p8_200cm": {
+          "profile": 8,
+          "dist_m": 2.0,
+          "frames": 200,
+          "rms_deg": 1.453,
+          "overshoot_deg": 1.735,
+          "lock_pct": 100.0,
+          "flip_pct": 2.71,
+          "jerk_deg": 0.0172,
+          "cost": 29.242
+        },
+        "p7_200cm": {
+          "profile": 7,
+          "dist_m": 2.0,
+          "frames": 188,
+          "rms_deg": 2.522,
+          "overshoot_deg": 0.0,
+          "lock_pct": 27.13,
+          "flip_pct": 1.34,
+          "jerk_deg": 0.0316,
+          "cost": 26.337
+        },
+        "p2_200cm": {
+          "profile": 2,
+          "dist_m": 2.0,
+          "frames": 157,
+          "rms_deg": 2.234,
+          "overshoot_deg": 0.0,
+          "lock_pct": 54.78,
+          "flip_pct": 2.93,
+          "jerk_deg": 0.0284,
+          "cost": 1.351
+        },
+        "p8_300cm": {
+          "profile": 8,
+          "dist_m": 3.0,
+          "frames": 169,
+          "rms_deg": 1.363,
+          "overshoot_deg": 1.33,
+          "lock_pct": 100.0,
+          "flip_pct": 2.09,
+          "jerk_deg": 0.0162,
+          "cost": 19.331
+        },
+        "p7_300cm": {
+          "profile": 7,
+          "dist_m": 3.0,
+          "frames": 157,
+          "rms_deg": 2.24,
+          "overshoot_deg": 0.0,
+          "lock_pct": 35.03,
+          "flip_pct": 1.34,
+          "jerk_deg": 0.0297,
+          "cost": 14.904
+        },
+        "p2_300cm": {
+          "profile": 2,
+          "dist_m": 3.0,
+          "frames": 157,
+          "rms_deg": 1.907,
+          "overshoot_deg": 0.0,
+          "lock_pct": 54.78,
+          "flip_pct": 2.54,
+          "jerk_deg": 0.0266,
+          "cost": -5.149
+        }
+      }
+    },
+    {
+      "trial": 16,
+      "cost": 143.4186451858571,
+      "params": {
+        "in_flight_damping": 0.4561786538324296,
+        "reversal_damping": 0.7382391440416963,
+        "taper_pan_deg": 0.7259080208565286,
+        "taper_tilt_deg": 0.3997719771511794,
+        "rl_deadband_pan_deg": 0.8050177901616363,
+        "rl_deadband_tilt_deg": 0.6061808196111104,
+        "d_err_ema_alpha": 0.2410226705774078
+      },
+      "metrics": {
+        "p8_100cm": {
+          "profile": 8,
+          "dist_m": 1.0,
+          "frames": 99,
+          "rms_deg": 4.2,
+          "overshoot_deg": 4.363,
+          "lock_pct": 25.0,
+          "flip_pct": 4.17,
+          "jerk_deg": 0.0784,
+          "cost": 163.872
+        },
+        "p7_100cm": {
+          "profile": 7,
+          "dist_m": 1.0,
+          "frames": 105,
+          "rms_deg": 6.096,
+          "overshoot_deg": 0.0,
+          "lock_pct": 0.0,
+          "flip_pct": 2.01,
+          "jerk_deg": 0.0668,
+          "cost": 114.082
+        },
+        "p2_100cm": {
+          "profile": 2,
+          "dist_m": 1.0,
+          "frames": 50,
+          "rms_deg": 7.786,
+          "overshoot_deg": 0.0,
+          "lock_pct": 0.0,
+          "flip_pct": 3.31,
+          "jerk_deg": 0.114,
+          "cost": 147.384
+        },
+        "p8_200cm": {
+          "profile": 8,
+          "dist_m": 2.0,
+          "frames": 200,
+          "rms_deg": 1.371,
+          "overshoot_deg": 1.695,
+          "lock_pct": 100.0,
+          "flip_pct": 2.07,
+          "jerk_deg": 0.0179,
+          "cost": 26.519
+        },
+        "p7_200cm": {
+          "profile": 7,
+          "dist_m": 2.0,
+          "frames": 188,
+          "rms_deg": 2.49,
+          "overshoot_deg": 0.0,
+          "lock_pct": 31.38,
+          "flip_pct": 1.41,
+          "jerk_deg": 0.0333,
+          "cost": 22.496
+        },
+        "p2_200cm": {
+          "profile": 2,
+          "dist_m": 2.0,
+          "frames": 157,
+          "rms_deg": 2.178,
+          "overshoot_deg": 0.0,
+          "lock_pct": 57.32,
+          "flip_pct": 2.91,
+          "jerk_deg": 0.0285,
+          "cost": -1.713
+        },
+        "p8_300cm": {
+          "profile": 8,
+          "dist_m": 3.0,
+          "frames": 169,
+          "rms_deg": 1.269,
+          "overshoot_deg": 1.451,
+          "lock_pct": 100.0,
+          "flip_pct": 2.32,
+          "jerk_deg": 0.0163,
+          "cost": 21.226
+        },
+        "p7_300cm": {
+          "profile": 7,
+          "dist_m": 3.0,
+          "frames": 157,
+          "rms_deg": 2.214,
+          "overshoot_deg": 0.0,
+          "lock_pct": 45.22,
+          "flip_pct": 1.4,
+          "jerk_deg": 0.0308,
+          "cost": 6.402
+        },
+        "p2_300cm": {
+          "profile": 2,
+          "dist_m": 3.0,
+          "frames": 157,
+          "rms_deg": 1.859,
+          "overshoot_deg": 0.0,
+          "lock_pct": 58.6,
+          "flip_pct": 1.16,
+          "jerk_deg": 0.0271,
+          "cost": -11.142
+        }
+      }
+    },
+    {
+      "trial": 17,
+      "cost": 144.5892943371873,
+      "params": {
+        "in_flight_damping": 0.47147729641435693,
+        "reversal_damping": 0.6556565967858727,
+        "taper_pan_deg": 0.4814706899561889,
+        "taper_tilt_deg": 0.45920674227711217,
+        "rl_deadband_pan_deg": 0.8048568924039454,
+        "rl_deadband_tilt_deg": 0.5401995729050862,
+        "d_err_ema_alpha": 0.30704559060575976
+      },
+      "metrics": {
+        "p8_100cm": {
+          "profile": 8,
+          "dist_m": 1.0,
+          "frames": 95,
+          "rms_deg": 4.358,
+          "overshoot_deg": 4.282,
+          "lock_pct": 12.5,
+          "flip_pct": 3.85,
+          "jerk_deg": 0.0969,
+          "cost": 170.349
+        },
+        "p7_100cm": {
+          "profile": 7,
+          "dist_m": 1.0,
+          "frames": 104,
+          "rms_deg": 6.121,
+          "overshoot_deg": 0.0,
+          "lock_pct": 0.0,
+          "flip_pct": 2.02,
+          "jerk_deg": 0.0663,
+          "cost": 114.536
+        },
+        "p2_100cm": {
+          "profile": 2,
+          "dist_m": 1.0,
+          "frames": 48,
+          "rms_deg": 7.832,
+          "overshoot_deg": 0.0,
+          "lock_pct": 0.0,
+          "flip_pct": 3.41,
+          "jerk_deg": 0.1399,
+          "cost": 148.888
+        },
+        "p8_200cm": {
+          "profile": 8,
+          "dist_m": 2.0,
+          "frames": 200,
+          "rms_deg": 1.323,
+          "overshoot_deg": 1.695,
+          "lock_pct": 100.0,
+          "flip_pct": 2.07,
+          "jerk_deg": 0.0179,
+          "cost": 26.006
+        },
+        "p7_200cm": {
+          "profile": 7,
+          "dist_m": 2.0,
+          "frames": 188,
+          "rms_deg": 2.443,
+          "overshoot_deg": 0.0,
+          "lock_pct": 43.62,
+          "flip_pct": 1.34,
+          "jerk_deg": 0.0323,
+          "cost": 11.727
+        },
+        "p2_200cm": {
+          "profile": 2,
+          "dist_m": 2.0,
+          "frames": 157,
+          "rms_deg": 2.132,
+          "overshoot_deg": 0.0,
+          "lock_pct": 65.61,
+          "flip_pct": 2.86,
+          "jerk_deg": 0.0261,
+          "cost": -9.294
+        },
+        "p8_300cm": {
+          "profile": 8,
+          "dist_m": 3.0,
+          "frames": 169,
+          "rms_deg": 1.198,
+          "overshoot_deg": 1.33,
+          "lock_pct": 100.0,
+          "flip_pct": 2.33,
+          "jerk_deg": 0.0155,
+          "cost": 18.034
+        },
+        "p7_300cm": {
+          "profile": 7,
+          "dist_m": 3.0,
+          "frames": 157,
+          "rms_deg": 2.156,
+          "overshoot_deg": 0.0,
+          "lock_pct": 46.5,
+          "flip_pct": 1.35,
+          "jerk_deg": 0.0312,
+          "cost": 4.259
+        },
+        "p2_300cm": {
+          "profile": 2,
+          "dist_m": 3.0,
+          "frames": 157,
+          "rms_deg": 1.814,
+          "overshoot_deg": 0.0,
+          "lock_pct": 64.33,
+          "flip_pct": 1.15,
+          "jerk_deg": 0.027,
+          "cost": -16.553
+        }
+      }
+    },
+    {
+      "trial": 18,
+      "cost": 165.89752694267457,
+      "params": {
+        "in_flight_damping": 0.5351872813309165,
+        "reversal_damping": 0.7343611037638937,
+        "taper_pan_deg": 0.5047000163280657,
+        "taper_tilt_deg": 0.39496548055875463,
+        "rl_deadband_pan_deg": 0.8099090761459816,
+        "rl_deadband_tilt_deg": 0.62502131580155,
+        "d_err_ema_alpha": 0.21611953882351487
+      },
+      "metrics": {
+        "p8_100cm": {
+          "profile": 8,
+          "dist_m": 1.0,
+          "frames": 87,
+          "rms_deg": 5.372,
+          "overshoot_deg": 4.927,
+          "lock_pct": 0.0,
+          "flip_pct": 3.85,
+          "jerk_deg": 0.1266,
+          "cost": 202.732
+        },
+        "p7_100cm": {
+          "profile": 7,
+          "dist_m": 1.0,
+          "frames": 104,
+          "rms_deg": 6.145,
+          "overshoot_deg": 0.0,
+          "lock_pct": 0.0,
+          "flip_pct": 2.01,
+          "jerk_deg": 0.0673,
+          "cost": 114.976
+        },
+        "p2_100cm": {
+          "profile": 2,
+          "dist_m": 1.0,
+          "frames": 52,
+          "rms_deg": 7.934,
+          "overshoot_deg": 0.0,
+          "lock_pct": 0.0,
+          "flip_pct": 3.21,
+          "jerk_deg": 0.1081,
+          "cost": 149.806
+        },
+        "p8_200cm": {
+          "profile": 8,
+          "dist_m": 2.0,
+          "frames": 200,
+          "rms_deg": 1.353,
+          "overshoot_deg": 1.573,
+          "lock_pct": 100.0,
+          "flip_pct": 2.13,
+          "jerk_deg": 0.0188,
+          "cost": 24.039
+        },
+        "p7_200cm": {
+          "profile": 7,
+          "dist_m": 2.0,
+          "frames": 188,
+          "rms_deg": 2.499,
+          "overshoot_deg": 0.0,
+          "lock_pct": 40.96,
+          "flip_pct": 1.42,
+          "jerk_deg": 0.032,
+          "cost": 15.001
+        },
+        "p2_200cm": {
+          "profile": 2,
+          "dist_m": 2.0,
+          "frames": 157,
+          "rms_deg": 2.196,
+          "overshoot_deg": 0.0,
+          "lock_pct": 61.15,
+          "flip_pct": 3.02,
+          "jerk_deg": 0.0272,
+          "cost": -4.319
+        },
+        "p8_300cm": {
+          "profile": 8,
+          "dist_m": 3.0,
+          "frames": 169,
+          "rms_deg": 1.276,
+          "overshoot_deg": 1.289,
+          "lock_pct": 100.0,
+          "flip_pct": 2.17,
+          "jerk_deg": 0.0165,
+          "cost": 17.892
+        },
+        "p7_300cm": {
+          "profile": 7,
+          "dist_m": 3.0,
+          "frames": 157,
+          "rms_deg": 2.199,
+          "overshoot_deg": 0.0,
+          "lock_pct": 46.5,
+          "flip_pct": 1.42,
+          "jerk_deg": 0.0309,
+          "cost": 5.139
+        },
+        "p2_300cm": {
+          "profile": 2,
+          "dist_m": 3.0,
+          "frames": 157,
+          "rms_deg": 1.863,
+          "overshoot_deg": 0.0,
+          "lock_pct": 58.6,
+          "flip_pct": 1.2,
+          "jerk_deg": 0.0255,
+          "cost": -11.025
+        }
+      }
+    },
+    {
+      "trial": 19,
+      "cost": 153.76321235855767,
+      "params": {
+        "in_flight_damping": 0.4448303317979376,
+        "reversal_damping": 0.7998627045014444,
+        "taper_pan_deg": 0.790590855780275,
+        "taper_tilt_deg": 0.5308482657982169,
+        "rl_deadband_pan_deg": 0.8466471864396481,
+        "rl_deadband_tilt_deg": 0.6315784884684595,
+        "d_err_ema_alpha": 0.24969851326724354
+      },
+      "metrics": {
+        "p8_100cm": {
+          "profile": 8,
+          "dist_m": 1.0,
+          "frames": 95,
+          "rms_deg": 4.524,
+          "overshoot_deg": 4.363,
+          "lock_pct": 10.0,
+          "flip_pct": 5.0,
+          "jerk_deg": 0.0951,
+          "cost": 177.534
+        },
+        "p7_100cm": {
+          "profile": 7,
+          "dist_m": 1.0,
+          "frames": 105,
+          "rms_deg": 6.103,
+          "overshoot_deg": 0.0,
+          "lock_pct": 0.0,
+          "flip_pct": 2.01,
+          "jerk_deg": 0.0671,
+          "cost": 114.216
+        },
+        "p2_100cm": {
+          "profile": 2,
+          "dist_m": 1.0,
+          "frames": 55,
+          "rms_deg": 7.44,
+          "overshoot_deg": 0.0,
+          "lock_pct": 0.0,
+          "flip_pct": 3.06,
+          "jerk_deg": 0.1077,
+          "cost": 140.672
+        },
+        "p8_200cm": {
+          "profile": 8,
+          "dist_m": 2.0,
+          "frames": 200,
+          "rms_deg": 1.417,
+          "overshoot_deg": 1.735,
+          "lock_pct": 94.39,
+          "flip_pct": 1.85,
+          "jerk_deg": 0.0177,
+          "cost": 30.221
+        },
+        "p7_200cm": {
+          "profile": 7,
+          "dist_m": 2.0,
+          "frames": 188,
+          "rms_deg": 2.527,
+          "overshoot_deg": 0.0,
+          "lock_pct": 23.94,
+          "flip_pct": 1.43,
+          "jerk_deg": 0.0345,
+          "cost": 29.178
+        },
+        "p2_200cm": {
+          "profile": 2,
+          "dist_m": 2.0,
+          "frames": 157,
+          "rms_deg": 2.224,
+          "overshoot_deg": 0.0,
+          "lock_pct": 50.32,
+          "flip_pct": 2.71,
+          "jerk_deg": 0.0278,
+          "cost": 4.39
+        },
+        "p8_300cm": {
+          "profile": 8,
+          "dist_m": 3.0,
+          "frames": 169,
+          "rms_deg": 1.371,
+          "overshoot_deg": 1.451,
+          "lock_pct": 100.0,
+          "flip_pct": 2.1,
+          "jerk_deg": 0.0163,
+          "cost": 21.848
+        },
+        "p7_300cm": {
+          "profile": 7,
+          "dist_m": 3.0,
+          "frames": 157,
+          "rms_deg": 2.236,
+          "overshoot_deg": 0.0,
+          "lock_pct": 44.59,
+          "flip_pct": 1.43,
+          "jerk_deg": 0.0312,
+          "cost": 7.349
+        },
+        "p2_300cm": {
+          "profile": 2,
+          "dist_m": 3.0,
+          "frames": 157,
+          "rms_deg": 1.91,
+          "overshoot_deg": 0.0,
+          "lock_pct": 49.68,
+          "flip_pct": 1.14,
+          "jerk_deg": 0.0253,
+          "cost": -3.152
+        }
+      }
+    },
+    {
+      "trial": 20,
+      "cost": 156.54674939629672,
+      "params": {
+        "in_flight_damping": 0.4623290158616999,
+        "reversal_damping": 0.7111079912298917,
+        "taper_pan_deg": 0.6671832632034557,
+        "taper_tilt_deg": 0.46039743844963343,
+        "rl_deadband_pan_deg": 0.7095798920652628,
+        "rl_deadband_tilt_deg": 0.6682440598802536,
+        "d_err_ema_alpha": 0.22969460543548947
+      },
+      "metrics": {
+        "p8_100cm": {
+          "profile": 8,
+          "dist_m": 1.0,
+          "frames": 90,
+          "rms_deg": 4.913,
+          "overshoot_deg": 4.363,
+          "lock_pct": 0.0,
+          "flip_pct": 5.0,
+          "jerk_deg": 0.1123,
+          "cost": 188.064
+        },
+        "p7_100cm": {
+          "profile": 7,
+          "dist_m": 1.0,
+          "frames": 107,
+          "rms_deg": 5.92,
+          "overshoot_deg": 0.0,
+          "lock_pct": 0.0,
+          "flip_pct": 1.96,
+          "jerk_deg": 0.0658,
+          "cost": 110.812
+        },
+        "p2_100cm": {
+          "profile": 2,
+          "dist_m": 1.0,
+          "frames": 49,
+          "rms_deg": 8.091,
+          "overshoot_deg": 0.0,
+          "lock_pct": 0.0,
+          "flip_pct": 3.36,
+          "jerk_deg": 0.1314,
+          "cost": 153.301
+        },
+        "p8_200cm": {
+          "profile": 8,
+          "dist_m": 2.0,
+          "frames": 200,
+          "rms_deg": 1.341,
+          "overshoot_deg": 1.654,
+          "lock_pct": 100.0,
+          "flip_pct": 2.15,
+          "jerk_deg": 0.018,
+          "cost": 25.59
+        },
+        "p7_200cm": {
+          "profile": 7,
+          "dist_m": 2.0,
+          "frames": 188,
+          "rms_deg": 2.46,
+          "overshoot_deg": 0.0,
+          "lock_pct": 42.55,
+          "flip_pct": 1.42,
+          "jerk_deg": 0.0315,
+          "cost": 13.003
+        },
+        "p2_200cm": {
+          "profile": 2,
+          "dist_m": 2.0,
+          "frames": 157,
+          "rms_deg": 2.162,
+          "overshoot_deg": 0.0,
+          "lock_pct": 61.15,
+          "flip_pct": 1.51,
+          "jerk_deg": 0.0263,
+          "cost": -7.199
+        },
+        "p8_300cm": {
+          "profile": 8,
+          "dist_m": 3.0,
+          "frames": 169,
+          "rms_deg": 1.256,
+          "overshoot_deg": 1.451,
+          "lock_pct": 100.0,
+          "flip_pct": 2.25,
+          "jerk_deg": 0.0167,
+          "cost": 20.943
+        },
+        "p7_300cm": {
+          "profile": 7,
+          "dist_m": 3.0,
+          "frames": 157,
+          "rms_deg": 2.185,
+          "overshoot_deg": 0.0,
+          "lock_pct": 47.13,
+          "flip_pct": 1.39,
+          "jerk_deg": 0.0326,
+          "cost": 4.363
+        },
+        "p2_300cm": {
+          "profile": 2,
+          "dist_m": 3.0,
+          "frames": 157,
+          "rms_deg": 1.838,
+          "overshoot_deg": 0.0,
+          "lock_pct": 59.24,
+          "flip_pct": 1.18,
+          "jerk_deg": 0.0254,
+          "cost": -12.029
+        }
+      }
+    },
+    {
+      "trial": 21,
+      "cost": 158.08135396247008,
+      "params": {
+        "in_flight_damping": 0.4666522548388971,
+        "reversal_damping": 0.784080286765854,
+        "taper_pan_deg": 0.6303450570571129,
+        "taper_tilt_deg": 0.5475344323096342,
+        "rl_deadband_pan_deg": 0.8137258043056251,
+        "rl_deadband_tilt_deg": 0.5382501311171684,
+        "d_err_ema_alpha": 0.30003449790815495
+      },
+      "metrics": {
+        "p8_100cm": {
+          "profile": 8,
+          "dist_m": 1.0,
+          "frames": 89,
+          "rms_deg": 5.015,
+          "overshoot_deg": 4.524,
+          "lock_pct": 0.0,
+          "flip_pct": 3.85,
+          "jerk_deg": 0.1291,
+          "cost": 190.477
+        },
+        "p7_100cm": {
+          "profile": 7,
+          "dist_m": 1.0,
+          "frames": 104,
+          "rms_deg": 6.119,
+          "overshoot_deg": 0.0,
+          "lock_pct": 0.0,
+          "flip_pct": 2.03,
+          "jerk_deg": 0.0662,
+          "cost": 114.52
+        },
+        "p2_100cm": {
+          "profile": 2,
+          "dist_m": 1.0,
+          "frames": 48,
+          "rms_deg": 7.814,
+          "overshoot_deg": 0.0,
+          "lock_pct": 0.0,
+          "flip_pct": 3.41,
+          "jerk_deg": 0.1396,
+          "cost": 148.56
+        },
+        "p8_200cm": {
+          "profile": 8,
+          "dist_m": 2.0,
+          "frames": 200,
+          "rms_deg": 1.367,
+          "overshoot_deg": 1.695,
+          "lock_pct": 100.0,
+          "flip_pct": 1.9,
+          "jerk_deg": 0.0178,
+          "cost": 26.179
+        },
+        "p7_200cm": {
+          "profile": 7,
+          "dist_m": 2.0,
+          "frames": 188,
+          "rms_deg": 2.484,
+          "overshoot_deg": 0.0,
+          "lock_pct": 38.3,
+          "flip_pct": 1.34,
+          "jerk_deg": 0.0319,
+          "cost": 16.724
+        },
+        "p2_200cm": {
+          "profile": 2,
+          "dist_m": 2.0,
+          "frames": 157,
+          "rms_deg": 2.165,
+          "overshoot_deg": 0.0,
+          "lock_pct": 64.97,
+          "flip_pct": 2.78,
+          "jerk_deg": 0.027,
+          "cost": -8.28
+        },
+        "p8_300cm": {
+          "profile": 8,
+          "dist_m": 3.0,
+          "frames": 169,
+          "rms_deg": 1.279,
+          "overshoot_deg": 1.33,
+          "lock_pct": 100.0,
+          "flip_pct": 2.15,
+          "jerk_deg": 0.0152,
+          "cost": 18.505
+        },
+        "p7_300cm": {
+          "profile": 7,
+          "dist_m": 3.0,
+          "frames": 157,
+          "rms_deg": 2.192,
+          "overshoot_deg": 0.0,
+          "lock_pct": 47.13,
+          "flip_pct": 1.36,
+          "jerk_deg": 0.0308,
+          "cost": 4.401
+        },
+        "p2_300cm": {
+          "profile": 2,
+          "dist_m": 3.0,
+          "frames": 157,
+          "rms_deg": 1.855,
+          "overshoot_deg": 0.0,
+          "lock_pct": 59.87,
+          "flip_pct": 1.11,
+          "jerk_deg": 0.026,
+          "cost": -12.327
+        }
+      }
+    },
+    {
+      "trial": 22,
+      "cost": 147.47189281297142,
+      "params": {
+        "in_flight_damping": 0.4261879321423995,
+        "reversal_damping": 0.5911003214331428,
+        "taper_pan_deg": 0.4491585524442697,
+        "taper_tilt_deg": 0.4197497966821393,
+        "rl_deadband_pan_deg": 0.8079991168252999,
+        "rl_deadband_tilt_deg": 0.6004767373861651,
+        "d_err_ema_alpha": 0.30470098239718135
+      },
+      "metrics": {
+        "p8_100cm": {
+          "profile": 8,
+          "dist_m": 1.0,
+          "frames": 100,
+          "rms_deg": 4.297,
+          "overshoot_deg": 4.363,
+          "lock_pct": 0.0,
+          "flip_pct": 3.95,
+          "jerk_deg": 0.0872,
+          "cost": 176.965
+        },
+        "p7_100cm": {
+          "profile": 7,
+          "dist_m": 1.0,
+          "frames": 106,
+          "rms_deg": 6.009,
+          "overshoot_deg": 0.0,
+          "lock_pct": 0.0,
+          "flip_pct": 1.98,
+          "jerk_deg": 0.0665,
+          "cost": 112.455
+        },
+        "p2_100cm": {
+          "profile": 2,
+          "dist_m": 1.0,
+          "frames": 50,
+          "rms_deg": 7.956,
+          "overshoot_deg": 0.0,
+          "lock_pct": 0.0,
+          "flip_pct": 3.36,
+          "jerk_deg": 0.1501,
+          "cost": 151.256
+        },
+        "p8_200cm": {
+          "profile": 8,
+          "dist_m": 2.0,
+          "frames": 200,
+          "rms_deg": 1.315,
+          "overshoot_deg": 1.735,
+          "lock_pct": 100.0,
+          "flip_pct": 2.28,
+          "jerk_deg": 0.019,
+          "cost": 27.156
+        },
+        "p7_200cm": {
+          "profile": 7,
+          "dist_m": 2.0,
+          "frames": 188,
+          "rms_deg": 2.421,
+          "overshoot_deg": 0.0,
+          "lock_pct": 48.4,
+          "flip_pct": 1.43,
+          "jerk_deg": 0.0323,
+          "cost": 7.66
+        },
+        "p2_200cm": {
+          "profile": 2,
+          "dist_m": 2.0,
+          "frames": 157,
+          "rms_deg": 2.118,
+          "overshoot_deg": 0.0,
+          "lock_pct": 66.24,
+          "flip_pct": 2.87,
+          "jerk_deg": 0.0277,
+          "cost": -9.997
+        },
+        "p8_300cm": {
+          "profile": 8,
+          "dist_m": 3.0,
+          "frames": 169,
+          "rms_deg": 1.193,
+          "overshoot_deg": 1.451,
+          "lock_pct": 100.0,
+          "flip_pct": 2.51,
+          "jerk_deg": 0.0174,
+          "cost": 20.697
+        },
+        "p7_300cm": {
+          "profile": 7,
+          "dist_m": 3.0,
+          "frames": 157,
+          "rms_deg": 2.115,
+          "overshoot_deg": 0.0,
+          "lock_pct": 55.41,
+          "flip_pct": 1.43,
+          "jerk_deg": 0.0321,
+          "cost": -3.474
+        },
+        "p2_300cm": {
+          "profile": 2,
+          "dist_m": 3.0,
+          "frames": 157,
+          "rms_deg": 1.803,
+          "overshoot_deg": 0.0,
+          "lock_pct": 68.79,
+          "flip_pct": 1.11,
+          "jerk_deg": 0.0274,
+          "cost": -20.378
+        }
+      }
+    },
+    {
+      "trial": 23,
+      "cost": 198.92381185257003,
+      "params": {
+        "in_flight_damping": 0.5449904984576572,
+        "reversal_damping": 0.7355910626563231,
+        "taper_pan_deg": 0.6332086375877501,
+        "taper_tilt_deg": 0.5747818714402004,
+        "rl_deadband_pan_deg": 0.768557331414408,
+        "rl_deadband_tilt_deg": 0.6214107873289728,
+        "d_err_ema_alpha": 0.32828801008112185
+      },
+      "metrics": {
+        "p8_100cm": {
+          "profile": 8,
+          "dist_m": 1.0,
+          "frames": 68,
+          "rms_deg": 11.238,
+          "overshoot_deg": 4.323,
+          "lock_pct": 0.0,
+          "flip_pct": 4.55,
+          "jerk_deg": 0.0997,
+          "cost": 254.211
+        },
+        "p7_100cm": {
+          "profile": 7,
+          "dist_m": 1.0,
+          "frames": 105,
+          "rms_deg": 6.029,
+          "overshoot_deg": 0.0,
+          "lock_pct": 3.81,
+          "flip_pct": 2.01,
+          "jerk_deg": 0.0646,
+          "cost": 109.784
+        },
+        "p2_100cm": {
+          "profile": 2,
+          "dist_m": 1.0,
+          "frames": 50,
+          "rms_deg": 7.685,
+          "overshoot_deg": 0.0,
+          "lock_pct": 0.0,
+          "flip_pct": 3.31,
+          "jerk_deg": 0.1229,
+          "cost": 145.767
+        },
+        "p8_200cm": {
+          "profile": 8,
+          "dist_m": 2.0,
+          "frames": 200,
+          "rms_deg": 1.459,
+          "overshoot_deg": 1.614,
+          "lock_pct": 94.39,
+          "flip_pct": 1.61,
+          "jerk_deg": 0.0183,
+          "cost": 27.9
+        },
+        "p7_200cm": {
+          "profile": 7,
+          "dist_m": 2.0,
+          "frames": 188,
+          "rms_deg": 2.549,
+          "overshoot_deg": 0.0,
+          "lock_pct": 26.06,
+          "flip_pct": 1.37,
+          "jerk_deg": 0.0324,
+          "cost": 27.742
+        },
+        "p2_200cm": {
+          "profile": 2,
+          "dist_m": 2.0,
+          "frames": 157,
+          "rms_deg": 2.219,
+          "overshoot_deg": 0.0,
+          "lock_pct": 55.41,
+          "flip_pct": 1.51,
+          "jerk_deg": 0.0262,
+          "cost": -1.598
+        },
+        "p8_300cm": {
+          "profile": 8,
+          "dist_m": 3.0,
+          "frames": 169,
+          "rms_deg": 1.357,
+          "overshoot_deg": 1.208,
+          "lock_pct": 100.0,
+          "flip_pct": 1.87,
+          "jerk_deg": 0.0136,
+          "cost": 16.505
+        },
+        "p7_300cm": {
+          "profile": 7,
+          "dist_m": 3.0,
+          "frames": 157,
+          "rms_deg": 2.215,
+          "overshoot_deg": 0.0,
+          "lock_pct": 40.76,
+          "flip_pct": 1.42,
+          "jerk_deg": 0.0298,
+          "cost": 9.983
+        },
+        "p2_300cm": {
+          "profile": 2,
+          "dist_m": 3.0,
+          "frames": 157,
+          "rms_deg": 1.892,
+          "overshoot_deg": 0.0,
+          "lock_pct": 59.24,
+          "flip_pct": 1.15,
+          "jerk_deg": 0.0243,
+          "cost": -11.12
         }
       }
     }
