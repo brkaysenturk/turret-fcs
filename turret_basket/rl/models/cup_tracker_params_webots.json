@@ -1,9 +1,9 @@
 {
-    "deadband_pan_deg": 0.12654775061557585,
-    "deadband_tilt_deg": 0.12703588698059484,
-    "taper_pan_deg": 0.11130682222763452,
-    "taper_tilt_deg": 0.14506606615265288,
-    "in_flight_damping": 0.3749047803602669,
-    "reversal_damping": 0.3085396127095584,
-    "aim_mouth_ratio": 0.4486212527455788
+    "deadband_pan_deg": 0.16156898385336094,
+    "deadband_tilt_deg": 0.15157152185189127,
+    "taper_pan_deg": 0.11559053912944633,
+    "taper_tilt_deg": 0.1417353887666464,
+    "in_flight_damping": 0.21072977675119114,
+    "reversal_damping": 0.40853770159189334,
+    "aim_mouth_ratio": 0.4971017742336735
 }

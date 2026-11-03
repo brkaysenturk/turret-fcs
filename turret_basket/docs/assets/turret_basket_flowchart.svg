@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" style="background: #121212; background-color: #121212; color-scheme: dark;" width="1180" height="1860" viewBox="0 0 1180 1860" role="img">
+<defs>
+<marker id="arrow-38bdf8" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#38bdf8"/></marker>
+<marker id="arrow-a78bfa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#a78bfa"/></marker>
+<marker id="arrow-fbbf24" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#fbbf24"/></marker>
+<marker id="arrow-34d399" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#34d399"/></marker>
+<marker id="arrow-94a3b8" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8"/></marker>
+<marker id="arrow-f87171" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#f87171"/></marker>
+</defs>
+<rect width="1180" height="1860" fill="#121212"/>
+<text x="40" y="36" font-family="Segoe UI, Arial, sans-serif" font-size="21" fill="#f8fafc" font-weight="bold" text-anchor="start" opacity="1.0">Turret Basket Challenge - Calisma Akisi</text>
+<text x="40" y="58" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#94a3b8" font-weight="normal" text-anchor="start" opacity="1.0">2-Asamali hiyerarsik yapay zeka ile kupa tespiti, optik kilitlenme ve balistik basket sekansi</text>
+<rect x="370" y="84" width="440" height="52" rx="26" ry="26" fill="#062e24" stroke="#059669" stroke-width="1.6" opacity="1.0"/>
+<text x="590" y="116" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#6ee7b7" font-weight="bold" text-anchor="middle" opacity="1.0">BASLANGIC: sistem ve 2-asamali modeller yuklenir</text>
+<rect x="310" y="166" width="560" height="86" rx="12" ry="12" fill="#071e2c" stroke="#0284c7" stroke-width="1.6" opacity="1.0"/>
+<rect x="310" y="166" width="6" height="86" rx="3" ry="3" fill="#38bdf8" stroke="none" stroke-width="0" opacity="1.0"/>
+<text x="328" y="193" font-family="Segoe UI, Arial, sans-serif" font-size="14.5" fill="#f8fafc" font-weight="bold" text-anchor="start" opacity="1.0">1. Donanim ve model baslatma</text>
+<text x="328" y="218" font-family="Segoe UI, Arial, sans-serif" font-size="11.2" fill="#cbd5e1" font-weight="normal" text-anchor="start" opacity="1.0">- C270 kamera, STM32 UART (115200 Baud) ve TF-Luna LiDAR baslatilir</text>
+<text x="328" y="235" font-family="Segoe UI, Arial, sans-serif" font-size="11.2" fill="#cbd5e1" font-weight="normal" text-anchor="start" opacity="1.0">- YOLOv8 (yolov8n.pt), RLTracker ve RLBallistics agirliklari yuklenir</text>
+<rect x="310" y="282" width="560" height="74" rx="12" ry="12" fill="#071e2c" stroke="#0284c7" stroke-width="1.6" opacity="1.0"/>
+<rect x="310" y="282" width="6" height="74" rx="3" ry="3" fill="#38bdf8" stroke="none" stroke-width="0" opacity="1.0"/>
+<text x="328" y="309" font-family="Segoe UI, Arial, sans-serif" font-size="14.5" fill="#f8fafc" font-weight="bold" text-anchor="start" opacity="1.0">2. Kare yakalama (CameraThread)</text>
+<text x="328" y="334" font-family="Segoe UI, Arial, sans-serif" font-size="11.2" fill="#cbd5e1" font-weight="normal" text-anchor="start" opacity="1.0">- camera_thread en guncel 640x480 kareyi verir; dt ve FPS olculur</text>
+<rect x="310" y="386" width="560" height="84" rx="12" ry="12" fill="#181228" stroke="#8b5cf6" stroke-width="1.6" opacity="1.0"/>
+<rect x="310" y="386" width="6" height="84" rx="3" ry="3" fill="#a78bfa" stroke="none" stroke-width="0" opacity="1.0"/>
+<text x="328" y="413" font-family="Segoe UI, Arial, sans-serif" font-size="14.5" fill="#f8fafc" font-weight="bold" text-anchor="start" opacity="1.0">3. YOLOv8 Kupa Tespiti (CupDetector)</text>
+<text x="328" y="438" font-family="Segoe UI, Arial, sans-serif" font-size="11.2" fill="#cbd5e1" font-weight="normal" text-anchor="start" opacity="1.0">- Hedef sinif 41 ('cup') tespiti (conf &gt;= 0.25)</text>
+<text x="328" y="455" font-family="Segoe UI, Arial, sans-serif" font-size="11.2" fill="#cbd5e1" font-weight="normal" text-anchor="start" opacity="1.0">- Kutu titremesini onleyen EMA filtresi uygulanir (alpha = 0.80)</text>
+<polygon points="590,498.0 740.0,550 590,602.0 440.0,550" fill="#1c142c" stroke="#a78bfa" stroke-width="1.5"/>
+<text x="590" y="541" font-family="Segoe UI, Arial, sans-serif" font-size="11.5" fill="#f8fafc" font-weight="bold" text-anchor="middle"><tspan x="590" dy="0">4. Kupa</tspan><tspan x="590" dy="18">tespit edildi mi?</tspan></text>
+<path d="M 590 252 L 590 282" fill="none" stroke="#38bdf8" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-38bdf8)"/>
+<path d="M 590 356 L 590 386" fill="none" stroke="#38bdf8" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-38bdf8)"/>
+<path d="M 590 470 L 590 498" fill="none" stroke="#a78bfa" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-a78bfa)"/>
+<rect x="54" y="492" width="310" height="136" rx="12" ry="12" fill="#241606" stroke="#d97706" stroke-width="1.6" opacity="1.0"/>
+<rect x="54" y="492" width="6" height="136" rx="3" ry="3" fill="#fbbf24" stroke="none" stroke-width="0" opacity="1.0"/>
+<text x="72" y="519" font-family="Segoe UI, Arial, sans-serif" font-size="14.5" fill="#f8fafc" font-weight="bold" text-anchor="start" opacity="1.0">HAYIR: Hedef Arama</text>
+<text x="72" y="544" font-family="Segoe UI, Arial, sans-serif" font-size="11.2" fill="#cbd5e1" font-weight="normal" text-anchor="start" opacity="1.0">- RLTracker.on_target_lost() cagrilir</text>
+<text x="72" y="561" font-family="Segoe UI, Arial, sans-serif" font-size="11.2" fill="#cbd5e1" font-weight="normal" text-anchor="start" opacity="1.0">- STM32'ye sifir adim iletilir (0.0, 0.0)</text>
+<text x="72" y="578" font-family="Segoe UI, Arial, sans-serif" font-size="11.2" fill="#cbd5e1" font-weight="normal" text-anchor="start" opacity="1.0">- Kilit sayaci azaltilir (lock - 2)</text>
+<text x="72" y="595" font-family="Segoe UI, Arial, sans-serif" font-size="11.2" fill="#cbd5e1" font-weight="normal" text-anchor="start" opacity="1.0">- Yeni karede kupa aranir</text>
+<path d="M 440 550 L 364 550" fill="none" stroke="#fbbf24" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-fbbf24)"/>
+<rect x="379.25" y="526" width="45.5" height="20" rx="5" ry="5" fill="#111827" stroke="#fbbf24" stroke-width="1.1" opacity="1.0"/>
+<text x="402" y="539.6" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" fill="#fbbf24" font-weight="bold" text-anchor="middle" opacity="1.0">HAYIR</text>
+<path d="M 209 492 L 209 310 L 310 310" fill="none" stroke="#fbbf24" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6 5" marker-end="url(#arrow-fbbf24)"/>
+<rect x="186.25" y="390" width="45.5" height="20" rx="5" ry="5" fill="#111827" stroke="#fbbf24" stroke-width="1.1" opacity="1.0"/>
+<text x="209" y="403.6" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" fill="#fbbf24" font-weight="bold" text-anchor="middle" opacity="1.0">döngü</text>
+<rect x="310" y="630" width="560" height="84" rx="12" ry="12" fill="#07201c" stroke="#0d9488" stroke-width="1.6" opacity="1.0"/>
+<rect x="310" y="630" width="6" height="84" rx="3" ry="3" fill="#34d399" stroke="none" stroke-width="0" opacity="1.0"/>
+<text x="328" y="657" font-family="Segoe UI, Arial, sans-serif" font-size="14.5" fill="#f8fafc" font-weight="bold" text-anchor="start" opacity="1.0">5. Kupa agzi elips koordinati hesabi</text>
+<text x="328" y="682" font-family="Segoe UI, Arial, sans-serif" font-size="11.2" fill="#cbd5e1" font-weight="normal" text-anchor="start" opacity="1.0">- aim_x = x1 + (w / 2) | aim_y = y1 + (h * 0.12)</text>
+<text x="328" y="699" font-family="Segoe UI, Arial, sans-serif" font-size="11.2" fill="#cbd5e1" font-weight="normal" text-anchor="start" opacity="1.0">- Ekran merkezine gore nisan hatalari cikarilir (err_pan, err_tilt)</text>
+<rect x="310" y="744" width="560" height="84" rx="12" ry="12" fill="#07201c" stroke="#0d9488" stroke-width="1.6" opacity="1.0"/>
+<rect x="310" y="744" width="6" height="84" rx="3" ry="3" fill="#34d399" stroke="none" stroke-width="0" opacity="1.0"/>
+<text x="328" y="771" font-family="Segoe UI, Arial, sans-serif" font-size="14.5" fill="#f8fafc" font-weight="bold" text-anchor="start" opacity="1.0">6. LiDAR menzil kapilama (Range Gating)</text>
+<text x="328" y="796" font-family="Segoe UI, Arial, sans-serif" font-size="11.2" fill="#cbd5e1" font-weight="normal" text-anchor="start" opacity="1.0">- STM32 uzerinden 100 Hz UART ToF mesafe okunur</text>
+<text x="328" y="813" font-family="Segoe UI, Arial, sans-serif" font-size="11.2" fill="#cbd5e1" font-weight="normal" text-anchor="start" opacity="1.0">- 0.60 m &lt;= mesafe &lt;= 4.00 m araligindaysa guncellenir; aksi halde dondurulur</text>
+<rect x="310" y="858" width="560" height="86" rx="12" ry="12" fill="#07201c" stroke="#0d9488" stroke-width="1.6" opacity="1.0"/>
+<rect x="310" y="858" width="6" height="86" rx="3" ry="3" fill="#34d399" stroke="none" stroke-width="0" opacity="1.0"/>
+<text x="328" y="885" font-family="Segoe UI, Arial, sans-serif" font-size="14.5" fill="#f8fafc" font-weight="bold" text-anchor="start" opacity="1.0">7. 1. Model: Kupa kilitlenme motoru (RLTracker)</text>
+<text x="328" y="910" font-family="Segoe UI, Arial, sans-serif" font-size="11.2" fill="#cbd5e1" font-weight="normal" text-anchor="start" opacity="1.0">- PPO 9-64-64-2 NumPy MLP cikarimi (cup_tracker_policy.npz)</text>
+<text x="328" y="927" font-family="Segoe UI, Arial, sans-serif" font-size="11.2" fill="#cbd5e1" font-weight="normal" text-anchor="start" opacity="1.0">- Agiz merkezini ekran ortasina cekecek d_pan ve d_tilt adimlari uretilir</text>
+<path d="M 590 576 L 590 630" fill="none" stroke="#a78bfa" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-a78bfa)"/>
+<rect x="598.0" y="596" width="44" height="20" rx="5" ry="5" fill="#111827" stroke="#a78bfa" stroke-width="1.1" opacity="1.0"/>
+<text x="620" y="609.6" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" fill="#a78bfa" font-weight="bold" text-anchor="middle" opacity="1.0">EVET</text>
+<path d="M 590 714 L 590 744" fill="none" stroke="#34d399" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-34d399)"/>
+<path d="M 590 828 L 590 858" fill="none" stroke="#34d399" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-34d399)"/>
+<polygon points="590,974.0 750.0,1026 590,1078.0 430.0,1026" fill="#251708" stroke="#fbbf24" stroke-width="1.5"/>
+<text x="590" y="1017" font-family="Segoe UI, Arial, sans-serif" font-size="11.5" fill="#f8fafc" font-weight="bold" text-anchor="middle"><tspan x="590" dy="0">8. Kilit kriteri</tspan><tspan x="590" dy="18">saglandi mi?</tspan></text>
+<path d="M 590 944 L 590 974" fill="none" stroke="#34d399" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-34d399)"/>
+<path d="M 430 1026 L 355 1026" fill="none" stroke="#fbbf24" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-fbbf24)"/>
+<rect x="369.25" y="1002" width="45.5" height="20" rx="5" ry="5" fill="#111827" stroke="#fbbf24" stroke-width="1.1" opacity="1.0"/>
+<text x="392" y="1015.6" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" fill="#fbbf24" font-weight="bold" text-anchor="middle" opacity="1.0">HAYIR</text>
+<rect x="44" y="978" width="310" height="106" rx="12" ry="12" fill="#141c28" stroke="#475569" stroke-width="1.6" opacity="1.0"/>
+<rect x="44" y="978" width="6" height="106" rx="3" ry="3" fill="#94a3b8" stroke="none" stroke-width="0" opacity="1.0"/>
+<text x="62" y="1005" font-family="Segoe UI, Arial, sans-serif" font-size="14.5" fill="#f8fafc" font-weight="bold" text-anchor="start" opacity="1.0">Takibe devam (Yaklasma)</text>
+<text x="62" y="1030" font-family="Segoe UI, Arial, sans-serif" font-size="11.2" fill="#cbd5e1" font-weight="normal" text-anchor="start" opacity="1.0">- Kilit sayaci azaltilir (lock_counter - 1)</text>
+<text x="62" y="1047" font-family="Segoe UI, Arial, sans-serif" font-size="11.2" fill="#cbd5e1" font-weight="normal" text-anchor="start" opacity="1.0">- STM32'ye takip adimi iletilir (STATE_TRACKING)</text>
+<text x="62" y="1064" font-family="Segoe UI, Arial, sans-serif" font-size="11.2" fill="#cbd5e1" font-weight="normal" text-anchor="start" opacity="1.0">- Yeni karede kilit aranir</text>
+<path d="M 199 978 L 199 325 L 310 325" fill="none" stroke="#94a3b8" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6 5" marker-end="url(#arrow-94a3b8)"/>
+<rect x="176.25" y="730" width="45.5" height="20" rx="5" ry="5" fill="#111827" stroke="#94a3b8" stroke-width="1.1" opacity="1.0"/>
+<text x="199" y="743.6" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" fill="#94a3b8" font-weight="bold" text-anchor="middle" opacity="1.0">döngü</text>
+<rect x="310" y="1104" width="560" height="84" rx="12" ry="12" fill="#241606" stroke="#d97706" stroke-width="1.6" opacity="1.0"/>
+<rect x="310" y="1104" width="6" height="84" rx="3" ry="3" fill="#fbbf24" stroke="none" stroke-width="0" opacity="1.0"/>
+<text x="328" y="1131" font-family="Segoe UI, Arial, sans-serif" font-size="14.5" fill="#f8fafc" font-weight="bold" text-anchor="start" opacity="1.0">9. Kilit kararliligi ve sayaci (15 Kare)</text>
+<text x="328" y="1156" font-family="Segoe UI, Arial, sans-serif" font-size="11.2" fill="#cbd5e1" font-weight="normal" text-anchor="start" opacity="1.0">- |err_pan| &lt; 1.20 deg ve |err_tilt| &lt; 1.20 deg kosulu</text>
+<text x="328" y="1173" font-family="Segoe UI, Arial, sans-serif" font-size="11.2" fill="#cbd5e1" font-weight="normal" text-anchor="start" opacity="1.0">- 15 araliksiz kare (%100 Lock) onaylandiginda STATE_LOCKED verilir</text>
+<rect x="310" y="1218" width="560" height="86" rx="12" ry="12" fill="#181228" stroke="#8b5cf6" stroke-width="1.6" opacity="1.0"/>
+<rect x="310" y="1218" width="6" height="86" rx="3" ry="3" fill="#a78bfa" stroke="none" stroke-width="0" opacity="1.0"/>
+<text x="328" y="1245" font-family="Segoe UI, Arial, sans-serif" font-size="14.5" fill="#f8fafc" font-weight="bold" text-anchor="start" opacity="1.0">10. 2. Model: Balistik AI cikarimi (RLBallistics)</text>
+<text x="328" y="1270" font-family="Segoe UI, Arial, sans-serif" font-size="11.2" fill="#cbd5e1" font-weight="normal" text-anchor="start" opacity="1.0">- ToF LiDAR menziline gore 10.000 yorungeli fizik gudumlu model calisir</text>
+<text x="328" y="1287" font-family="Segoe UI, Arial, sans-serif" font-size="11.2" fill="#cbd5e1" font-weight="normal" text-anchor="start" opacity="1.0">- Mesafeye gore gereken super-elevasyon ve dinamik volan devri hesaplanir</text>
+<polygon points="590,1334.0 740.0,1386 590,1438.0 440.0,1386" fill="#251708" stroke="#fbbf24" stroke-width="1.5"/>
+<text x="590" y="1377" font-family="Segoe UI, Arial, sans-serif" font-size="11.5" fill="#f8fafc" font-weight="bold" text-anchor="middle"><tspan x="590" dy="0">11. SPACE / [Y]</tspan><tspan x="590" dy="18">atis onayi?</tspan></text>
+<path d="M 590 1078 L 590 1104" fill="none" stroke="#fbbf24" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-fbbf24)"/>
+<rect x="598.0" y="1082" width="44" height="20" rx="5" ry="5" fill="#111827" stroke="#fbbf24" stroke-width="1.1" opacity="1.0"/>
+<text x="620" y="1095.6" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" fill="#fbbf24" font-weight="bold" text-anchor="middle" opacity="1.0">EVET</text>
+<path d="M 590 1188 L 590 1218" fill="none" stroke="#a78bfa" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-a78bfa)"/>
+<path d="M 590 1304 L 590 1334" fill="none" stroke="#fbbf24" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-fbbf24)"/>
+<path d="M 440 1386 L 360 1386" fill="none" stroke="#94a3b8" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-94a3b8)"/>
+<rect x="377.25" y="1362" width="45.5" height="20" rx="5" ry="5" fill="#111827" stroke="#94a3b8" stroke-width="1.1" opacity="1.0"/>
+<text x="400" y="1375.6" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" fill="#94a3b8" font-weight="bold" text-anchor="middle" opacity="1.0">HAYIR</text>
+<rect x="48" y="1338" width="300" height="96" rx="12" ry="12" fill="#141c28" stroke="#475569" stroke-width="1.6" opacity="1.0"/>
+<rect x="48" y="1338" width="6" height="96" rx="3" ry="3" fill="#94a3b8" stroke="none" stroke-width="0" opacity="1.0"/>
+<text x="66" y="1365" font-family="Segoe UI, Arial, sans-serif" font-size="14.5" fill="#f8fafc" font-weight="bold" text-anchor="start" opacity="1.0">Kilitli beklemede kal</text>
+<text x="66" y="1390" font-family="Segoe UI, Arial, sans-serif" font-size="11.2" fill="#cbd5e1" font-weight="normal" text-anchor="start" opacity="1.0">- Atis baslatilmaz</text>
+<text x="66" y="1407" font-family="Segoe UI, Arial, sans-serif" font-size="11.2" fill="#cbd5e1" font-weight="normal" text-anchor="start" opacity="1.0">- Optik kilit ve telemetri canli tutulur</text>
+<rect x="310" y="1468" width="560" height="120" rx="12" ry="12" fill="#260c12" stroke="#ef4444" stroke-width="1.6" opacity="1.0"/>
+<rect x="310" y="1468" width="6" height="120" rx="3" ry="3" fill="#f87171" stroke="none" stroke-width="0" opacity="1.0"/>
+<text x="328" y="1495" font-family="Segoe UI, Arial, sans-serif" font-size="14.5" fill="#f8fafc" font-weight="bold" text-anchor="start" opacity="1.0">12. Kademeli firlatma sekansi (BasketEngagement)</text>
+<text x="328" y="1520" font-family="Segoe UI, Arial, sans-serif" font-size="11.2" fill="#cbd5e1" font-weight="normal" text-anchor="start" opacity="1.0">- 1. Asama: SPINUP_ELEVATE 0.60 s (kestirilen super-elevasyona kalkis + volan devirlenme)</text>
+<text x="328" y="1537" font-family="Segoe UI, Arial, sans-serif" font-size="11.2" fill="#cbd5e1" font-weight="normal" text-anchor="start" opacity="1.0">- 2. Asama: FIRING 80 ms (solenoid kenar tetiklemeli 12 V darbe, STATE_FIRING)</text>
+<text x="328" y="1554" font-family="Segoe UI, Arial, sans-serif" font-size="11.2" fill="#cbd5e1" font-weight="normal" text-anchor="start" opacity="1.0">- 3. Asama: RECOVER 0.90 s (solenoid geri cekilir, taret optik kilit acisina iner)</text>
+<text x="328" y="1571" font-family="Segoe UI, Arial, sans-serif" font-size="11.2" fill="#cbd5e1" font-weight="normal" text-anchor="start" opacity="1.0">- Toplam sekans 1.58 s; basarili basket sonrasi sistem yeni atisa hazirlanir</text>
+<path d="M 590 1438 L 590 1468" fill="none" stroke="#fbbf24" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-fbbf24)"/>
+<rect x="598.0" y="1442" width="44" height="20" rx="5" ry="5" fill="#111827" stroke="#fbbf24" stroke-width="1.1" opacity="1.0"/>
+<text x="620" y="1455.6" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" fill="#fbbf24" font-weight="bold" text-anchor="middle" opacity="1.0">EVET</text>
+<path d="M 590 1588 L 590 1628" fill="none" stroke="#f87171" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-f87171)"/>
+<rect x="330" y="1628" width="520" height="64" rx="16" ry="16" fill="#151e2e" stroke="#475569" stroke-width="1.4" opacity="1.0"/>
+<text x="590" y="1656" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#f8fafc" font-weight="bold" text-anchor="middle" opacity="1.0">Basket atisi tamamlandi / Yeni cevrim: 2. adima don</text>
+<text x="590" y="1676" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#f87171" font-weight="bold" text-anchor="middle" opacity="1.0">[E] E-STOP her asamada en yuksek onceliklidir (motorlari aninda keser)</text>
+<path d="M 330 1660 L 260 1660 L 260 340 L 310 340" fill="none" stroke="#94a3b8" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6 5" marker-end="url(#arrow-94a3b8)"/>
+<rect x="237.25" y="1520" width="45.5" height="20" rx="5" ry="5" fill="#111827" stroke="#94a3b8" stroke-width="1.1" opacity="1.0"/>
+<text x="260" y="1533.6" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" fill="#94a3b8" font-weight="bold" text-anchor="middle" opacity="1.0">döngü</text>
+<text x="40" y="1818" font-family="Segoe UI, Arial, sans-serif" font-size="10.5" fill="#94a3b8" font-weight="normal" text-anchor="start" opacity="1.0">Kilit olcutu: 15 araliksiz kare (%100 Lock Ratio) + |err_pan| &lt; 1.20 deg + |err_tilt| &lt; 1.20 deg. Atis yalnizca kilit onaylandiginda ve angajman FSM bosken tetiklenir.</text>
+</svg>

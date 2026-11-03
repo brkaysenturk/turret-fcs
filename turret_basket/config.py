@@ -50,7 +50,7 @@ class HardwareConfig:
     pan_center_deg: float = 90.0
 
     tilt_min_deg: float = 65.0
-    tilt_max_deg: float = 115.0
+    tilt_max_deg: float = 135.0  # Kupaya asirtma super-elevasyon tavani (+45 derece)
     tilt_center_deg: float = 90.0
 
     # Adim limitleri (kare basina max servo hareketi)
@@ -69,16 +69,19 @@ class CupTargetConfig:
     confidence_threshold: float = 0.25
     ema_alpha: float = 0.80      # Sabit bardak kutu titremesini onleyen EMA
 
-    # Bardagin Fiziksel Boyutlari (metre)
-    mouth_diameter_m: float = 0.090   # 9.0 cm agiz capi
-    height_m: float = 0.106           # 10.6 cm yukseklik
+    # Bardagin Fiziksel Boyutlari (metre - 16 oz Starbucks Grande Bardağı)
+    mouth_diameter_m: float = 0.090   # 9.0 cm ağız dış çapı (3.5 inç)
+    inner_mouth_diameter_m: float = 0.086 # 8.6 cm karton/plastik iç ağız açıklığı
+    height_m: float = 0.140           # 14.0 cm yükseklik (5.5 inç)
+    base_diameter_m: float = 0.060     # 6.0 cm konik taban çapı
     target_distance_min_m: float = 1.0
     target_distance_max_m: float = 3.0
 
     # Lidar menzil kapilama ve kilit parametreleri
-    lidar_range_min_m: float = 0.60
-    lidar_range_max_m: float = 4.0
-    nominal_distance_m: float = 1.45
+    lidar_range_min_m: float = 0.50
+    lidar_range_max_m: float = 3.50
+    cup_center_offset_m: float = 0.10  # 5.5 cm sensor on cikintisi + 4.5 cm kupa yaricapi
+    nominal_distance_m: float = 1.50
     lock_threshold_frames: int = 15
     lock_tolerance_pan_deg: float = 1.20
     lock_tolerance_tilt_deg: float = 1.20
@@ -87,9 +90,9 @@ class CupTargetConfig:
 @dataclass(frozen=True)
 class BallisticsConfig:
     """Sunger dart firlatma ve dinamik volan hizi parametreleri (FF-180 6V 23500 RPM)."""
-    default_speed_mps: float = 10.0      # Nominal cikis hizi
-    min_speed_mps: float = 5.5           # FF-180 dusuk PWM devri (yumusak asirtma: 5.5 m/s)
-    max_speed_mps: float = 16.5          # FF-180 23500 RPM tam devir (guclu firlatma: 16.5 m/s)
+    default_speed_mps: float = 4.4       # Nominal cikis hizi
+    min_speed_mps: float = 3.0           # FF-180 dusuk PWM devri (yumusak asirtma: 3.0 m/s)
+    max_speed_mps: float = 12.0          # FF-180 tam devir (guclu firlatma: 12.0 m/s)
     projectile_mass_kg: float = 0.012     # 12 gram sunger dart
     drag_coefficient: float = 0.60       # Silindirik govde surukleme katsayisi
     cross_area_m2: float = 0.000132      # 13 mm cap kesit alani
@@ -98,7 +101,7 @@ class BallisticsConfig:
     firing_pulse_s: float = 0.080        # 80 ms solenoid itme darbesi
     spinup_time_s: float = 0.60          # 600 ms devirlenme ve super-elevasyona cikis
     recovery_time_s: float = 0.90        # 900 ms geri toplama ve optik kilide inis
-    parallax_pitch_margin_deg: float = 0.80  # Dikey kamera-namlu paralaks payi
+    parallax_pitch_margin_deg: float = 0.00  # Model 2 dogrudan mutlak atis acisini cozer (paralaks eklenmez)
 
 
 @dataclass(frozen=True)
@@ -107,10 +110,11 @@ class RLConfig:
     obs_dim: int = 2        # [norm_distance, norm_height_offset]
     act_dim: int = 2        # [tilt_offset_deg, flywheel_speed_mps]
 
-    # Atis Karar Limitleri (Gercekci Parabolik Asirtma ve Motor Devri)
+    # Atis Karar Limitleri (Ultra-Genişletilmiş Parabolik Aşırtma ve Motor Devri)
+    # [1.0m .. 3.1m] mesafe ve [-0.85m .. +0.35m] kupa kot farkı
     tilt_offset_min_deg: float = 5.0     # Min ek yukselis acisi
-    tilt_offset_max_deg: float = 24.5    # Max ek yukselis acisi (Taret mekanik limiti 25.0°)
-    speed_min_mps: float = 3.0           # Min dart hizi (Yumusak asirtmali lob: 3.0 m/s)
+    tilt_offset_max_deg: float = 30.0    # Max ek yukselis acisi (+35cm yuksek hedefler icin)
+    speed_min_mps: float = 2.0           # Min dart hizi (Yerdeki yakin hedefler icin lob: 2.0 m/s)
     speed_max_mps: float = 12.0          # Max dart hizi (Uzak mesafe firlatma: 12.0 m/s)
 
     basket_reward: float = 100.0

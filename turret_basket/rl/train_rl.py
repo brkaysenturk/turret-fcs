@@ -14,8 +14,6 @@ Bu betik; taret bardağa kilitlendiğinde LiDAR mesafesine göre en uygun:
 
 öğrenen 2. Aşama Balistik RL Ajanını eğitmek üzere hazırlanmıştır.
 
-
-
 KULLANIM:
 
   .\venv\Scripts\python.exe basket/train_rl.py [adim_sayisi]
@@ -26,13 +24,9 @@ KULLANIM:
 
 """
 
-
-
 import sys
 
 from pathlib import Path
-
-
 
 # Proje kokunu sys.path'e ekle
 
@@ -42,30 +36,19 @@ if str(project_root) not in sys.path:
 
     sys.path.insert(0, str(project_root))
 
-
-
-
 from stable_baselines3.common.callbacks import BaseCallback
 
 from turret_basket.rl.cup_env import BallisticBasketEnv
 
-
-
-
-
 class BallisticEvaluationCallback(BaseCallback):
 
     """Egitim sirasinda basket basari oranini izleyen geri arama sinifi."""
-
-
 
     def __init__(self, check_freq: int = 10000, verbose: int = 1):
 
         super().__init__(verbose)
 
         self.check_freq = check_freq
-
-
 
     def _on_step(self) -> bool:
 
@@ -74,10 +57,6 @@ class BallisticEvaluationCallback(BaseCallback):
             print(f"[TRAIN] Adim {self.n_calls} / Balistik Karar Ajanı eğitiliyor...")
 
         return True
-
-
-
-
 
 def train_ballistic_agent(total_timesteps: int = 50000, model_save_name: str = "cup_ballistic_policy"):
 
@@ -88,8 +67,6 @@ def train_ballistic_agent(total_timesteps: int = 50000, model_save_name: str = "
     save_path = output_dir / f"{model_save_name}.zip"
 
     npz_path = output_dir / f"{model_save_name}.npz"
-
-
 
     print("=" * 65)
 
@@ -103,8 +80,6 @@ def train_ballistic_agent(total_timesteps: int = 50000, model_save_name: str = "
 
     print("=" * 65)
 
-
-
     import numpy as np
 
     import torch
@@ -115,101 +90,55 @@ def train_ballistic_agent(total_timesteps: int = 50000, model_save_name: str = "
 
     import math
 
-
-
     # Webots katı cisim ODE diferansiyel denklemini çözen uzman fiziksel yörünge üretimi
 
     b = 0.05
 
     g = 9.80665
 
-    barrel_z = 1.0387  # CAD v10 namlu dunya yuksekligi
-
-    target_z = 0.8100  # Bardak agiz cemberinin tam ici
-
-
+    # CAD v10 nominal: namlu yuksekligi 1.0387m, kupa ici 0.8100m -> nominal delta_z = -0.2287m
 
     X_data = []
 
     Y_data = []
 
-
-
     np.random.seed(42)
 
     torch.manual_seed(42)
 
+    for _ in range(60000):
+        dist_m = float(np.random.uniform(1.0, 3.1))
+        delta_z = float(np.random.uniform(-0.85, 0.35))
 
-
-    for _ in range(10000):
-
-        dist_m = float(np.random.uniform(1.0, 3.0))
-
-        h_m = float(np.random.uniform(-0.05, 0.05))
-
-        t_z = target_z + h_m
-
-
-
-        th_deg = float(np.clip(22.5 - (dist_m - 1.0) * 2.0, 18.0, 23.0))
-
+        th_deg = float(np.clip(22.5 - (dist_m - 1.0) * 1.8 + (delta_z - (-0.2287)) * 4.5, 17.5, 28.0))
         th = math.radians(th_deg)
 
-
-
-        best_v = 4.4
-
+        best_v = 4.0
         best_err = 999.0
-
-        for v_step in range(150, 450):
-
-            v0 = v_step * 0.02
-
+        for v_int in range(200, 950):
+            v0 = v_int * 0.01
             vx0 = v0 * math.cos(th)
-
             vz0 = v0 * math.sin(th)
-
             if b * dist_m / vx0 >= 1.0:
-
                 continue
-
             T = - (1.0 / b) * math.log(1.0 - b * dist_m / vx0)
-
-            zT = barrel_z + ((vz0 + g/b) / b) * (1.0 - math.exp(-b * T)) - (g / b) * T
-
-            err = abs(zT - t_z)
-
+            zT = ((vz0 + g/b) / b) * (1.0 - math.exp(-b * T)) - (g / b) * T
+            err = abs(zT - delta_z)
             if err < best_err:
-
                 best_err = err
-
                 best_v = v0
 
-
-
-        # Normalizasyon [-1.0 .. 1.0]
-
-        norm_dist = (dist_m - 2.0) / 1.0
-
-        norm_h = h_m / 0.10
-
-        norm_th = (th_deg - 5.0) / (24.5 - 5.0) * 2.0 - 1.0
-
-        norm_v = (best_v - 3.0) / (12.0 - 3.0) * 2.0 - 1.0
-
-
+        norm_dist = (dist_m - 2.05) / 1.05
+        norm_h = (delta_z - (-0.25)) / 0.60
+        norm_th = (th_deg - 17.5) / 12.5
+        norm_v = (best_v - 7.0) / 5.0
 
         X_data.append([norm_dist, norm_h])
-
         Y_data.append([norm_th, norm_v])
-
-
 
     X_train = torch.tensor(X_data, dtype=torch.float32)
 
     Y_train = torch.tensor(Y_data, dtype=torch.float32)
-
-
 
     # 2 Girdi -> 64 -> 64 -> 2 Cikti Politika Agi
 
@@ -233,21 +162,15 @@ def train_ballistic_agent(total_timesteps: int = 50000, model_save_name: str = "
 
             )
 
-
-
         def forward(self, x):
 
             return torch.clamp(self.net(x), -1.0, 1.0)
-
-
 
     net = PolicyNet()
 
     optimizer = optim.Adam(net.parameters(), lr=1e-3)
 
     criterion = nn.MSELoss()
-
-
 
     print("[TRAIN] Fizik Güdümlü Sinir Ağı Politika Eğitimi başladı...")
 
@@ -267,8 +190,6 @@ def train_ballistic_agent(total_timesteps: int = 50000, model_save_name: str = "
 
             print(f"  Epoch {epoch}/400 - MSE Loss: {loss.item():.6f}")
 
-
-
     # Agirliklari .npz Olarak Cikar
 
     w1 = net.net[0].weight.detach().cpu().numpy()
@@ -283,13 +204,9 @@ def train_ballistic_agent(total_timesteps: int = 50000, model_save_name: str = "
 
     b3 = net.net[4].bias.detach().cpu().numpy()
 
-
-
     np.savez(str(npz_path), w1=w1, b1=b1, w2=w2, b2=b2, w3=w3, b3=b3)
 
     print(f"\n[OK] Hizli NumPy MLP Agirliklari basariyla kaydedildi: {npz_path}")
-
-
 
     # Egitim Sonrasi Dogrulama Testi (50 Farkli Mesafeden Kupa Atisi)
 
@@ -299,15 +216,11 @@ def train_ballistic_agent(total_timesteps: int = 50000, model_save_name: str = "
 
     print("=" * 65)
 
-
-
     test_env = BallisticBasketEnv(domain_randomization=True)
 
     baskets = 0
 
     total_shots = 50
-
-
 
     for ep in range(total_shots):
 
@@ -321,13 +234,9 @@ def train_ballistic_agent(total_timesteps: int = 50000, model_save_name: str = "
 
         _, reward, _, _, step_info = test_env.step(action)
 
-
-
         if step_info.get("basket"):
 
             baskets += 1
-
-
 
     success_rate = (baskets / total_shots) * 100.0
 
@@ -336,10 +245,6 @@ def train_ballistic_agent(total_timesteps: int = 50000, model_save_name: str = "
     print(f"BASKET BASARI ORANI: %{success_rate:.1f}")
 
     print("=" * 65)
-
-
-
-
 
 if __name__ == "__main__":
 

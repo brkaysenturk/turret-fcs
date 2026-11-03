@@ -13,7 +13,7 @@ from typing import Optional, Tuple, Callable
 import numpy as np
 
 from turret_basket.config import CONFIG
-from turret_basket.protocol import STATE_TRACKING, STATE_LOCKED, STATE_ESTOP
+from turret_basket.protocol import STATE_TRACKING, STATE_LOCKED, STATE_FIRING, STATE_ESTOP
 from turret_basket.yolo.cup_detector import CupDetector, CupDetection
 from turret_basket.rl_tracker import RLTracker
 from turret_basket.rl_ballistics import RLBallistics
@@ -67,8 +67,15 @@ class BasketManager:
 
         self.last_valid_dist_m = CONFIG.cup.nominal_distance_m
         self.dist_m = CONFIG.cup.nominal_distance_m
+        self.locked_dist_m: Optional[float] = None
         self.target_speed_mps = 4.4
         self.target_tilt_offset = 21.8
+
+    def compute_flywheel_pwm(self, speed_mps: float) -> float:
+        """FF-180 + TB6612FNG firlatma hizi (m/s) -> 20 kHz PWM duty (80 - 255) eslemesi."""
+        b = CONFIG.ballistics
+        clipped_spd = float(np.clip(speed_mps, b.min_speed_mps, b.max_speed_mps))
+        return float(np.interp(clipped_spd, [b.min_speed_mps, b.max_speed_mps], [80.0, 255.0]))
 
     def trigger_throw(
         self,
@@ -138,6 +145,7 @@ class BasketManager:
         self.lock_counter = 0
         self.is_locked = False
         self.lock_ratio = 0.0
+        self.locked_dist_m = None
         self.abort_throw()
         if log_cb:
             log_cb("[TRACKER] SYSTEM FILTERS FLUSHED", (255, 215, 0))
@@ -158,10 +166,14 @@ class BasketManager:
         det: CupDetection = self.detector.detect(frame)
 
         # 2. Telemetri Oku ve Lidar Menzil Kapilama
+        # LiDAR taret merkezinden 5.5cm onde, kupa on yuzu ise merkezinden 4.5cm ondedir.
+        # Kupa merkez mesafesi = raw_dist_m + 0.10m
+        cup_offset = CONFIG.cup.cup_center_offset_m
         if self.comm:
             raw_dist_m = (self.comm.distance / 100.0) if self.comm.distance > 0 else 0.0
-            if CONFIG.cup.lidar_range_min_m <= raw_dist_m <= CONFIG.cup.lidar_range_max_m:
-                self.dist_m = raw_dist_m
+            compensated_dist = raw_dist_m + cup_offset if raw_dist_m > 0 else 0.0
+            if CONFIG.cup.lidar_range_min_m <= compensated_dist <= CONFIG.cup.lidar_range_max_m:
+                self.dist_m = compensated_dist
                 self.last_valid_dist_m = self.dist_m
             else:
                 self.dist_m = self.last_valid_dist_m
@@ -185,9 +197,24 @@ class BasketManager:
         self.is_locked = (self.lock_counter >= self.MAX_LOCK_FRAMES)
         self.lock_ratio = float(self.lock_counter) / float(self.MAX_LOCK_FRAMES)
 
+        # Kilit anindaki mesafeyi dondur (Menzil Kilit Mandal / Range Latch)
+        if self.is_locked:
+            if self.locked_dist_m is None:
+                self.locked_dist_m = self.dist_m
+            self.dist_m = self.locked_dist_m
+        elif not self.engagement.is_active:
+            self.locked_dist_m = None
+
         # 4. Model 2 (RLBallistics) Balistik Cikarim
+        # delta_z: Namlu ekseni ile kupa agzi arasindaki gercek dikey kot farki (trigonometrik)
+        # Kamera Z=1.102m, namlu Z=1.039m seviyesindedir (kamera namludan 0.0634m yukaridadir).
+        # Taret kupaya kilitlendiginde kamera gorus hattindan (LOS) namlu kot farki hesaplanir:
         if not self.engagement.is_active:
-            launch_params = self.ballistics.compute_launch_parameters(self.dist_m)
+            import math
+            tilt_rad = math.radians(current_tilt)
+            delta_z_camera = self.dist_m * math.sin(tilt_rad)
+            delta_z_m = delta_z_camera - 0.0634
+            launch_params = self.ballistics.compute_launch_parameters(self.dist_m, delta_z_m=delta_z_m)
             self.target_tilt_offset = launch_params.tilt_offset_deg
             self.target_speed_mps = launch_params.speed_mps
 
@@ -214,7 +241,9 @@ class BasketManager:
                     on_event_cb("[SYS] RECOVERED - READY FOR NEXT THROW", (255, 215, 0))
 
             if self.comm:
-                self.comm.send_command(0.0, step.step_tilt, state=step.cmd_state)
+                active_spd = step.active_fire_speed
+                spd_pwm = self.compute_flywheel_pwm(active_spd) if step.cmd_state in (STATE_LOCKED, STATE_FIRING) else 0.0
+                self.comm.send_command(0.0, step.step_tilt, speed_pwm=spd_pwm, state=step.cmd_state)
 
         else:
             # Normal Takip Modu
@@ -231,17 +260,22 @@ class BasketManager:
                     dt=float(dt)
                 )
                 cmd_state = STATE_LOCKED if self.is_locked else STATE_TRACKING
+                spd_pwm = self.compute_flywheel_pwm(self.target_speed_mps) if self.is_locked else 0.0
                 eff_pan = -d_pan if CONFIG.hardware.pan_invert else d_pan
                 eff_tilt = -d_tilt if CONFIG.hardware.tilt_invert else d_tilt
                 if self.comm:
-                    self.comm.send_command(eff_pan, eff_tilt, state=cmd_state)
+                    self.comm.send_command(eff_pan, eff_tilt, speed_pwm=spd_pwm, state=cmd_state)
             else:
                 self.tracker.on_target_lost()
                 if self.comm:
-                    self.comm.send_command(0.0, 0.0, state=STATE_TRACKING)
+                    self.comm.send_command(0.0, 0.0, speed_pwm=0.0, state=STATE_TRACKING)
 
         disp_speed = self.engagement.active_fire_speed if self.engagement.is_active else self.target_speed_mps
-        disp_tilt = self.engagement.active_fire_tilt if self.engagement.is_active else self.target_tilt_offset
+        disp_tilt = (
+            self.engagement.applied_super_elevation
+            if self.engagement.is_active
+            else self.ballistics.compute_super_elevation(self.target_tilt_offset)
+        )
 
         return BasketStatus(
             cup_detected=det.detected,

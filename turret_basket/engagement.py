@@ -100,8 +100,9 @@ class BasketEngagement:
         t_total = self.total_seq_time_s
 
         # 1. Asama: Super-elevasyon acisina yuksel ve spin-up yap (0 - 0.60s)
+        # Model 2 mutlak atis acisini (active_fire_tilt ~21-23 deg) hesaplar
         if elapsed < t_spinup:
-            target_elevated_tilt = self.tilt_at_lock + self.applied_super_elevation
+            target_elevated_tilt = self.active_fire_tilt
             tilt_error = target_elevated_tilt - current_tilt
             step_tilt = float(np.clip(tilt_error * 0.40, -1.50, 1.50))
             return EngagementStep(
@@ -138,7 +139,7 @@ class BasketEngagement:
         # 3. Asama: Geri toplama ve kilit acisina yumusak inis (0.70 - 1.60s)
         elif elapsed < t_total:
             rec_progress = (elapsed - t_fire_end) / max(1e-4, t_total - t_fire_end)
-            target_tilt = self.tilt_at_lock + self.applied_super_elevation * (1.0 - rec_progress)
+            target_tilt = self.active_fire_tilt + (self.tilt_at_lock - self.active_fire_tilt) * rec_progress
             tilt_error = target_tilt - current_tilt
             step_tilt = float(np.clip(tilt_error * 0.40, -1.50, 1.50))
             return EngagementStep(

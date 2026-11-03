@@ -6,13 +6,14 @@
  * yerde toplar. Python tarafindaki karsiligi turret_basket/protocol.py'dir;
  * iki dosya birlikte guncellenmelidir.
  *
- * Komut cercevesi (PC -> STM32, 7 bayt):
- *   [PC_TO_STM_HEADER][pan i16][tilt i16][state u8][checksum u8]
+ * Komut cercevesi (PC -> STM32, 8 bayt):
+ *   [PC_TO_STM_HEADER][pan i16][tilt i16][speed u8][state u8][checksum u8]
  * Telemetri cercevesi (STM32 -> PC, 10 bayt):
  *   [STM_TO_PC_HEADER][mesafe u16][sinyal u16][pan i16][tilt i16][checksum u8]
  *
  * Aci birimi: 0.1 derece (deger = aci * 10). Telemetrideki servo acilari
  * 0..180 derece araligindadir; PC tarafi 90 derece merkez offsetini cikarir.
+ * Speed: 0..255 (TB6612FNG PWM devri).
  * ==============================================================================
  */
 #ifndef __BASKET_PROTOCOL_H
@@ -27,7 +28,7 @@
 #define PROTO_LUNA_HEADER        0x59u
 
 /* Cerceve uzunluklari (bayt) */
-#define PROTO_CMD_FRAME_LEN      7u
+#define PROTO_CMD_FRAME_LEN      8u
 #define PROTO_TLM_FRAME_LEN      10u
 #define PROTO_LUNA_FRAME_LEN     9u
 

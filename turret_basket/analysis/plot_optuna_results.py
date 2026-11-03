@@ -16,8 +16,8 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DATA_FILE = PROJECT_ROOT / "basket" / "analysis" / "webots_cup_tracker_trials.json"
-OUTPUT_PNG = PROJECT_ROOT / "basket" / "analysis" / "cup_tracker_trial_comparison.png"
+DATA_FILE = PROJECT_ROOT / "turret_basket" / "analysis" / "webots_cup_tracker_trials.json"
+OUTPUT_PNG = PROJECT_ROOT / "turret_basket" / "analysis" / "cup_tracker_trial_comparison.png"
 
 
 def main():

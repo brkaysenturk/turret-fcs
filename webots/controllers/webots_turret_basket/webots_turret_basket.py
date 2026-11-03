@@ -181,8 +181,10 @@ def main():
     active_fire_tilt = 4.0
     applied_tilt_deg = 0.0
     last_valid_dist_m = 1.50
+    locked_dist_m = None
     target_tilt_offset = 4.0
     target_speed_mps = 10.0
+    is_locked = False
 
     lock_counter = 0
     LOCK_THRESHOLD_FRAMES = 12
@@ -321,20 +323,29 @@ def main():
         if tilt_sensor:
             _ = math.degrees(tilt_sensor.getValue())
 
-        # Ground Truth Mesafe & Range Gating (LiDAR laser ışını kupayı ıskalarsa veya namlu kalktığında odaya fırlarsa)
+        # Ground Truth Mesafe (Taret ekseninden kupa merkezine olan gercek yatay mesafe)
         gt_dist = 1.50
         if cup_node and kafa_node:
             cp = cup_node.getPosition()
             hp = kafa_node.getPosition()
-            gt_dist = float(math.hypot(cp[0] - hp[0], cp[1] - hp[1], cp[2] - hp[2]))
+            gt_dist = float(math.hypot(cp[0] - hp[0], cp[1] - hp[1]))
 
-        lidar_val = lidar.getValue() if lidar else gt_dist
-        if 0.5 <= lidar_val <= 3.2 and abs(lidar_val - gt_dist) <= 0.35:
-            last_valid_dist_m = lidar_val
-            dist_m = lidar_val
+        # TF-Luna kafa merkezinden 0.055m onde, kupa on ceperi ise kupa merkezinden 0.045m ondedir.
+        # LiDAR kupanin on yuzeyini olctugunden kupa merkezine olan gercek mesafe: raw_lidar + 0.10m
+        CUP_CENTER_OFFSET_M = 0.10
+        raw_lidar = lidar.getValue() if lidar else (gt_dist - CUP_CENTER_OFFSET_M)
+        lidar_center_dist = raw_lidar + CUP_CENTER_OFFSET_M
+
+        if 0.5 <= lidar_center_dist <= 3.2 and abs(lidar_center_dist - gt_dist) <= 0.25:
+            last_valid_dist_m = lidar_center_dist
+            dist_m = lidar_center_dist
         else:
-            # Lidar ışını kupayı kaçırdı (arkadaki duvar veya boşluk) -> Doğru mesafeyi koru
+            # Lidar ışını kupayı kaçırdı (arkadaki duvar veya boşluk) -> Doğru merkez mesafesini koru
             dist_m = gt_dist if gt_dist > 0.5 else last_valid_dist_m
+
+        # Kilitli veya atis halinde mesafeyi kilit anindaki degerde dondur (Menzil Kilit Mandal / Range Latch)
+        if (is_locked or shot_in_progress) and locked_dist_m is not None:
+            dist_m = locked_dist_m
 
         # Kameradan Goruntu Al
         frame_bgr = None
@@ -381,14 +392,24 @@ def main():
                     lock_counter = max(0, lock_counter - 1)
 
                 is_locked = (lock_counter >= LOCK_THRESHOLD_FRAMES)
-                if is_locked and not prev_locked:
-                    hud.log_event(f"[AIM] CUP ALIGNED (+{target_tilt_offset:.1f} deg)", (0, 255, 128))
+                if is_locked:
+                    if locked_dist_m is None:
+                        # Kilit anindaki mesafeyi dondur (LiDAR zemin/oda sapmalarini onler)
+                        locked_dist_m = dist_m
+                        hud.log_event(f"[LOCK] RANGE FROZEN: {locked_dist_m:.2f}m", (0, 255, 200))
+                    dist_m = locked_dist_m
+                    if not prev_locked:
+                        hud.log_event(f"[AIM] CUP ALIGNED (+{target_tilt_offset:.1f} deg)", (0, 255, 128))
+                elif not shot_in_progress:
+                    locked_dist_m = None
+
                 prev_locked = is_locked
             elif not detection.detected and not shot_in_progress:
                 target_lost_counter += 1
                 lock_counter = max(0, lock_counter - 1)
                 is_locked = False
                 prev_locked = False
+                locked_dist_m = None
 
                 # Yalnizca hedef en az 10 kare (320 ms) boyunca gercekten kayipsa merkeze don
                 # 1-2 karelik anlik tespit kayiplarinda tareti geri cekmeyi onler!
@@ -409,6 +430,7 @@ def main():
             # E-Stop aninda tareti dondurme
             lock_counter = 0
             is_locked = False
+            locked_dist_m = None
             pan_cmd_deg = 0.0
             tilt_cmd_deg = 0.0
 
@@ -426,18 +448,25 @@ def main():
         # 2. ASAMA: Dinamik Balistik Parametreleri (2. Model: PPO RL Balistik Ajan Cikarimi)
         # Sadece atış sekansı devam etmiyorken hesapla (atış esnasında LiDAR duvara çarpabilir)
         if not shot_in_progress:
+            # delta_z: Taret namlu seviyesinden kupa agzina olan dikey kot farki
+            # Kamera Z=1.102m, namlu Z=1.039m seviyesindedir (kamera namludan 0.0634m yukaridatadir)
+            # Taret kupaya kilitlendiginde kamera gorus hattindan (LOS) namlu kot farki hesaplanir:
+            tilt_sensor_deg = math.degrees(tilt_sensor.getValue()) if tilt_sensor else tilt_cmd_deg
+            delta_z_camera = dist_m * math.sin(math.radians(tilt_sensor_deg))
+            delta_z_m = delta_z_camera - 0.0634  # Namlu eksenine gore gercek dikey kot farki
             if model2 is not None:
                 # 2. Model PPO RL Girdisi: [norm_dist, norm_height]
-                norm_dist = np.clip((dist_m - 2.0) / 1.0, -1.0, 1.0)
-                norm_h = 0.0
+                # Ultra-genisletilmis calisma zarfi: [1.0m .. 3.1m] ve [-0.85m .. +0.35m]
+                norm_dist = np.clip((dist_m - 2.05) / 1.05, -1.0, 1.0)
+                norm_h = np.clip((delta_z_m - (-0.25)) / 0.60, -1.0, 1.0)
                 obs = np.array([norm_dist, norm_h], dtype=np.float32)
                 act = model2(obs)
                 tilt_min = CONFIG.rl.tilt_offset_min_deg
                 tilt_max = CONFIG.rl.tilt_offset_max_deg
                 speed_min = CONFIG.rl.speed_min_mps
                 speed_max = CONFIG.rl.speed_max_mps
-                target_tilt_offset = float(tilt_min + (act[0] + 1.0) * 0.5 * (tilt_max - tilt_min))
-                target_speed_mps = float(speed_min + (act[1] + 1.0) * 0.5 * (speed_max - speed_min))
+                target_tilt_offset = float(np.clip(17.5 + act[0] * 12.5, tilt_min, tilt_max))
+                target_speed_mps = float(np.clip(7.0 + act[1] * 5.0, speed_min, speed_max))
             else:
                 target_tilt_offset, target_speed_mps = get_firing_parameters(dist_m)
 
@@ -460,6 +489,7 @@ def main():
             if time_since_trigger > 2.2:
                 shot_in_progress = False
                 dart_spawned = False
+                locked_dist_m = None
                 if is_spinning and flywheel_left and flywheel_right:
                     flywheel_left.setVelocity(0.0)
                     flywheel_right.setVelocity(0.0)
@@ -478,8 +508,9 @@ def main():
                     dz = dart_pos[2] - cup_pos[2]
                     dist_to_cup = math.hypot(dx, dy)
 
-                    # Katı geometrik denetim: İç boşluk yarıçapı 3.8 cm ve taban-ağız arası kot (0.015m .. 0.115m)
-                    is_inside_cup = (dist_to_cup <= 0.038) and (0.015 <= dz <= 0.115)
+                    # Katı geometrik denetim (16 oz Starbucks Grande):
+                    # İç boşluk yarıçapı 4.3 cm (8.6 cm iç ağız) ve taban-ağız arası kot (0.015m .. 0.145m)
+                    is_inside_cup = (dist_to_cup <= 0.043) and (0.015 <= dz <= 0.145)
                     if is_inside_cup:
                         hud.record_shot(is_basket=True)
                         hud.log_event("[SCORE] BASKET SCORED! (+100 PTS)", (0, 255, 128))
@@ -489,7 +520,7 @@ def main():
                     elif (sim_t - spawn_t) > 2.0:
                         hud.record_shot(is_basket=False)
                         hud.log_event("[RESULT] SHOT MISSED CUP", (0, 60, 255))
-                        if dist_to_cup < 0.060 and dz < 0.13:
+                        if dist_to_cup < 0.060 and dz < 0.155:
                             print(f"[MISS] Dart hit cup exterior wall/lip (dist: {dist_to_cup*100:.1f} cm, dz: {dz*100:.1f} cm)")
                         else:
                             print(f"[MISS] Dart missed cup. Remaining distance: {dist_to_cup*100:.1f} cm")
@@ -505,28 +536,27 @@ def main():
             except Exception:
                 pass
 
-        # Modern Bilgilendirici HUD Render
-        lock_ratio = float(lock_counter / LOCK_THRESHOLD_FRAMES)
-        disp_speed = active_fire_speed if shot_in_progress else target_speed_mps
-        disp_tilt = active_fire_tilt if shot_in_progress else target_tilt_offset
-        rendered = hud.render(
-            frame=frame_bgr,
-            cup_detected=detection.detected,
-            bbox=detection.bbox,
-            confidence=detection.confidence,
-            distance_m=dist_m,
-            err_pan_deg=detection.err_pan_deg,
-            err_tilt_deg=detection.err_tilt_deg,
-            fps=30.0,
-            is_locked=is_locked,
-            firing=shot_in_progress,
-            is_estop=is_estop,
-            lock_ratio=lock_ratio,
-            speed_mps=disp_speed,
-            tilt_offset_deg=disp_tilt
-        )
-
+        # Modern Bilgilendirici HUD Render (Headless modda render/imshow yukunu atla)
         if not headless:
+            lock_ratio = float(lock_counter / LOCK_THRESHOLD_FRAMES)
+            disp_speed = active_fire_speed if shot_in_progress else target_speed_mps
+            disp_tilt = active_fire_tilt if shot_in_progress else target_tilt_offset
+            rendered = hud.render(
+                frame=frame_bgr,
+                cup_detected=detection.detected,
+                bbox=detection.bbox,
+                confidence=detection.confidence,
+                distance_m=dist_m,
+                err_pan_deg=detection.err_pan_deg,
+                err_tilt_deg=detection.err_tilt_deg,
+                fps=30.0,
+                is_locked=is_locked,
+                firing=shot_in_progress,
+                is_estop=is_estop,
+                lock_ratio=lock_ratio,
+                speed_mps=disp_speed,
+                tilt_offset_deg=disp_tilt
+            )
             cv2.imshow(WINDOW_NAME, rendered)
             cv_k = cv2.waitKey(1) & 0xFF
         else:
@@ -567,10 +597,10 @@ def main():
                         # Kilitlenen balistik hiz ve aciyi dondur (Trigger Latch)
                         active_fire_speed = target_speed_mps
                         active_fire_tilt = target_tilt_offset
-                        # CAD v10: Kamera namludan 57 mm asagidadir; kamera hedefe baktiginda namlu zaten dogal olarak agiz hizasindadir
-                        PARALLAX_PITCH_MARGIN_DEG = 0.0
-                        applied_tilt_deg = float(np.clip(active_fire_tilt + PARALLAX_PITCH_MARGIN_DEG, -25.0, 25.0))
-                        print(f"[INPUT] FIRE command received (Key: Y)! Range: {dist_m:.2f}m -> Speed: {active_fire_speed:.1f} m/s, Elevating to +{applied_tilt_deg:.1f} deg & spin-up...")
+                        # Model 2 ve get_firing_parameters dogrudan namlu yuksekliginden (barrel_z=1.0387m)
+                        # cozdugu icin target_tilt_offset zaten tam mutlak atis acisidir.
+                        applied_tilt_deg = float(np.clip(active_fire_tilt, -25.0, 25.0))
+                        print(f"[INPUT] FIRE command received (Key: Y)! Range: {dist_m:.2f}m (LOCKED) -> Speed: {active_fire_speed:.1f} m/s, Elevating to +{applied_tilt_deg:.1f} deg & spin-up...")
                         shot_in_progress = True
                         dart_spawned = False
                         shot_time = sim_t
@@ -591,16 +621,33 @@ def main():
 
             elif k in (ord('N'), ord('n')):  # N: Kilidi Birak / Abort Lock
                 lock_counter = 0
+                locked_dist_m = None
 
             elif k in (ord('R'), ord('r')):  # R: Kupayi Yeni Konuma Tasi / Relocate
                 if cup_node:
-                    rand_y = float(np.random.uniform(1.25, 1.75))
-                    rand_x = float(np.random.uniform(-0.30, 0.30))
+                    # Mesafe: 1.20m - 2.40m, Yatay Sapma: -0.35m ile +0.35m
+                    rand_y = float(np.random.uniform(1.20, 2.40))
+                    rand_x = float(np.random.uniform(-0.35, 0.35))
+                    # Masa ve Kupa Yuksekligi: Masa tablasini -0.30m (alçak sehpa) ile +0.20m (yüksek masa) arasi rastgele tasi
+                    # Standart masa z=0.0m iken tabla 0.71m'dir.
+                    rand_table_dz = float(np.random.uniform(-0.30, 0.20))
+                    desk_z = rand_table_dz
+                    cup_z = 0.71 + rand_table_dz
+
+                    if desk_node:
+                        trans_desk = desk_node.getField("translation")
+                        if trans_desk:
+                            trans_desk.setSFVec3f([0.0, rand_y, desk_z])
+
                     trans_field = cup_node.getField("translation")
-                    trans_field.setSFVec3f([rand_x, rand_y, 0.71])
+                    if trans_field:
+                        trans_field.setSFVec3f([rand_x, rand_y, cup_z])
+
                     lock_counter = 0
-                    print(f"[WORLD] Cup relocated: Range={rand_y:.2f}m, X={rand_x:.2f}m")
-                    hud.log_event(f"[CUP] CUP REPOSITIONED ({rand_y:.2f}m)", (200, 210, 220))
+                    locked_dist_m = None
+                    delta_z_display = cup_z + 0.14 - 1.0387  # Namluya gore kupa agzi kot farki
+                    print(f"[WORLD] Cup relocated: Range={rand_y:.2f}m, X={rand_x:.2f}m, Table_Z={cup_z:.2f}m (Delta_Z={delta_z_display:+.2f}m)")
+                    hud.log_event(f"[CUP] REPOSITIONED ({rand_y:.2f}m | dZ:{delta_z_display:+.2f}m)", (200, 210, 220))
 
             elif k in (ord('Q'), ord('q'), 27):  # Q veya ESC: Cikis
                 should_break = True

@@ -101,8 +101,14 @@ class FCSCommunicator:
     def is_connected(self):
         return bool(self.ser and self.ser.is_open and (time.time() - self.last_rx_time < self.stale_timeout))
 
-    def send_command(self, delta_pan_deg: float, delta_tilt_deg: float, state: int = STATE_TRACKING):
-        """STM32'ye 0.1 derece cozunurlukte goreli hareket ve ates komutu yollar."""
+    def send_command(
+        self,
+        delta_pan_deg: float,
+        delta_tilt_deg: float,
+        speed_pwm: float = 0.0,
+        state: int = STATE_TRACKING,
+    ):
+        """STM32'ye 0.1 derece cozunurlukte goreli hareket, TB6612FNG PWM devri ve ates komutu yollar."""
         if not self.ser or not self.ser.is_open:
             return False
 
@@ -116,8 +122,10 @@ class FCSCommunicator:
         self._accum_pan -= (pan_ticks / ANGLE_SCALE)
         self._accum_tilt -= (tilt_ticks / ANGLE_SCALE)
 
-        # 7 baytlik komut paketi
-        payload = struct.pack(CMD_FORMAT, PC_TO_STM_HEADER, pan_ticks, tilt_ticks, int(state) & 0xFF)
+        spd_byte = int(max(0, min(255, round(speed_pwm)))) & 0xFF
+
+        # 8 baytlik komut paketi
+        payload = struct.pack(CMD_FORMAT, PC_TO_STM_HEADER, pan_ticks, tilt_ticks, spd_byte, int(state) & 0xFF)
         checksum = sum(payload) & 0xFF
         packet = payload + bytes([checksum])
 

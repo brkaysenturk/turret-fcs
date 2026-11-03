@@ -271,15 +271,10 @@ class BallisticBasketEnv(gym.Env):
 
 
     def _get_obs(self) -> np.ndarray:
-
-        # Mesafe [1.0m .. 3.0m] -> [-1.0 .. 1.0]
-
-        norm_dist = np.clip((self.cup_distance_m - 2.0) / 1.0, -1.0, 1.0)
-
-        # Yukseklik farki [-0.10m .. +0.10m] -> [-1.0 .. 1.0]
-
-        norm_height = np.clip(self.cup_height_offset_m / 0.10, -1.0, 1.0)
-
+        # Ultra-genisletilmis zarf: [1.0m .. 3.1m] ve [-0.85m .. +0.35m]
+        norm_dist = np.clip((self.cup_distance_m - 2.05) / 1.05, -1.0, 1.0)
+        delta_z = -0.2287 + self.cup_height_offset_m
+        norm_height = np.clip((delta_z - (-0.25)) / 0.60, -1.0, 1.0)
         return np.array([norm_dist, norm_height], dtype=np.float32)
 
 

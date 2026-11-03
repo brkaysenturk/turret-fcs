@@ -50,7 +50,7 @@ def test_basket_config_ssot():
     assert ballistics.firing_pulse_s == 0.080
     assert ballistics.spinup_time_s == 0.60
     assert ballistics.recovery_time_s == 0.90
-    assert ballistics.parallax_pitch_margin_deg == 0.80
+    assert ballistics.parallax_pitch_margin_deg == 0.00  # Model 2 dogrudan cozer (paralaks 0)
 
     # Alt bilesenlerin CONFIG SSOT varsayilanlarini dogrulama
     eng = BasketEngagement()
@@ -75,7 +75,7 @@ def test_basket_protocol_constants():
     assert STM_TO_PC_HEADER == 0x55
     assert LUNA_HEADER == 0x59
 
-    assert CMD_FRAME_LEN == 7
+    assert CMD_FRAME_LEN == 8
     assert TLM_FRAME_LEN == 10
     assert LUNA_FRAME_LEN == 9
 
@@ -92,17 +92,19 @@ def test_basket_comm_packet_serialization_and_checksum():
     """STM32 ile 100 Hz ikili haberlesme paket formatini ve checksum algoritmasini dogrular."""
     comm = FCSCommunicator(port=None)
 
-    # 1. 7 Baytlik Komut paketi olusturma (0xAA + 2B pan + 2B tilt + 1B state + 1B csum)
+    # 1. 8 Baytlik Komut paketi olusturma (0xAA + 2B pan + 2B tilt + 1B speed + 1B state + 1B csum)
     pan_ticks = 25  # 2.5 derece
     tilt_ticks = -15  # -1.5 derece
-    payload = struct.pack(CMD_FORMAT, PC_TO_STM_HEADER, pan_ticks, tilt_ticks, STATE_LOCKED)
+    speed_pwm = 190  # TB6612FNG PWM devri
+    payload = struct.pack(CMD_FORMAT, PC_TO_STM_HEADER, pan_ticks, tilt_ticks, speed_pwm, STATE_LOCKED)
     csum = sum(payload) & 0xFF
     pkt = payload + bytes([csum])
 
     assert len(pkt) == CMD_FRAME_LEN
     assert pkt[0] == PC_TO_STM_HEADER
-    assert pkt[5] == STATE_LOCKED
-    assert (sum(pkt[:6]) & 0xFF) == pkt[6]
+    assert pkt[5] == speed_pwm
+    assert pkt[6] == STATE_LOCKED
+    assert (sum(pkt[:7]) & 0xFF) == pkt[7]
 
     # 2. 10 Baytlik Telemetri cozme (0x55 + dist + strength + pan + tilt + csum)
     tlm_payload = struct.pack(TLM_FORMAT, 180, 80, 0, 0)
@@ -245,8 +247,50 @@ def test_basket_manager_lifecycle():
 
     # Reset
     manager.lock_counter = 10
+    manager.locked_dist_m = 1.65
     manager.reset()
     assert manager.lock_counter == 0
+    assert manager.locked_dist_m is None
+
+
+def test_basket_manager_range_latch_on_lock():
+    """Kilit aninda hedefin mesafesinin donduruldugunu ve gurultuden etkilenmedigini dogrular."""
+    manager = BasketManager(comm=None)
+    dummy_frame = np.zeros((480, 640, 3), dtype=np.uint8)
+
+    # Mock detection: hedefin tam merkezde tespit edildigi sahte tespit
+    from turret_basket.yolo.cup_detector import CupDetection
+    mock_det = CupDetection(
+        detected=True,
+        bbox=(300, 220, 340, 260),
+        center_px=(320, 240),
+        confidence=0.92,
+        err_pan_deg=0.1,
+        err_tilt_deg=0.1,
+    )
+    manager.detector.detect = lambda f: mock_det
+
+    # Hedef mesafesini 1.56m olarak baslat
+    manager.dist_m = 1.56
+    manager.last_valid_dist_m = 1.56
+
+    # Kilit sayacini esik degerine kadar ilerlet (15 kare)
+    for _ in range(CONFIG.cup.lock_threshold_frames):
+        manager.step(dummy_frame, dt=0.033, now=1.0)
+
+    assert manager.is_locked is True
+    assert manager.locked_dist_m == 1.56
+
+    # Kilitliyken disaridan mesafe degisse bile dondurulan mesafe korunmali
+    manager.last_valid_dist_m = 1.35  # Lidar masaya carpmis gibi
+    manager.step(dummy_frame, dt=0.033, now=1.033)
+    assert manager.dist_m == 1.56
+    assert manager.locked_dist_m == 1.56
+
+    # Hedef kayboldugunda veya resetlendiginde mandal kalkmali
+    manager.reset()
+    assert manager.is_locked is False
+    assert manager.locked_dist_m is None
 
 
 def test_basket_ballistics_rk4_trajectory():

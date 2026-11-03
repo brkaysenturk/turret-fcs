@@ -1408,7 +1408,7 @@ DEF CUP Robot {
 
         height 0.01
 
-        radius 0.040
+        radius 0.042
 
       }
 
@@ -1448,23 +1448,23 @@ DEF CUP Robot {
 
       }
 
-      # 8 Parcali Ici Bos Silindir Duvarlar
+      # 8 Parcali Ici Bos Silindir Duvarlar (16 oz Starbucks Grande: 14cm yukseklik)
 
-      Pose { translation 0.048 0 0.06 children [ Box { size 0.008 0.040 0.12 } ] }
+      Pose { translation 0.046 0 0.07 children [ Box { size 0.004 0.040 0.14 } ] }
 
-      Pose { translation -0.048 0 0.06 children [ Box { size 0.008 0.040 0.12 } ] }
+      Pose { translation -0.046 0 0.07 children [ Box { size 0.004 0.040 0.14 } ] }
 
-      Pose { translation 0 0.048 0.06 children [ Box { size 0.040 0.008 0.12 } ] }
+      Pose { translation 0 0.046 0.07 children [ Box { size 0.040 0.004 0.14 } ] }
 
-      Pose { translation 0 -0.048 0.06 children [ Box { size 0.040 0.008 0.12 } ] }
+      Pose { translation 0 -0.046 0.07 children [ Box { size 0.040 0.004 0.14 } ] }
 
-      Pose { translation 0.034 0.034 0.06 rotation 0 0 1 0.7854 children [ Box { size 0.008 0.040 0.12 } ] }
+      Pose { translation 0.0325 0.0325 0.07 rotation 0 0 1 0.7854 children [ Box { size 0.004 0.040 0.14 } ] }
 
-      Pose { translation -0.034 0.034 0.06 rotation 0 0 1 -0.7854 children [ Box { size 0.008 0.040 0.12 } ] }
+      Pose { translation -0.0325 0.0325 0.07 rotation 0 0 1 -0.7854 children [ Box { size 0.004 0.040 0.14 } ] }
 
-      Pose { translation -0.034 -0.034 0.06 rotation 0 0 1 0.7854 children [ Box { size 0.008 0.040 0.12 } ] }
+      Pose { translation -0.0325 -0.0325 0.07 rotation 0 0 1 0.7854 children [ Box { size 0.004 0.040 0.14 } ] }
 
-      Pose { translation 0.034 -0.034 0.06 rotation 0 0 1 -0.7854 children [ Box { size 0.008 0.040 0.12 } ] }
+      Pose { translation 0.0325 -0.0325 0.07 rotation 0 0 1 -0.7854 children [ Box { size 0.004 0.040 0.14 } ] }
 
     ]
 

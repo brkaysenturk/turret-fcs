@@ -607,7 +607,7 @@ def main():
 
     # Analiz sonuclarini kaydet
 
-    analysis_dir = PROJECT_ROOT / "basket" / "analysis"
+    analysis_dir = PROJECT_ROOT / "turret_basket" / "analysis"
 
     analysis_dir.mkdir(parents=True, exist_ok=True)
 
