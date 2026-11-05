@@ -6,8 +6,8 @@ Bu modul, PC (Python) ile gomulu sistem (STM32 mikrodenetleyici) arasindaki
 tam cift yonlu (Full-Duplex), asenkron ve binary paketli iletisim katmanidir.
 
 PROTOKOL VE PAKET YAPISI (115200 Baud, sabitler: turret_fcs/protocol.py):
-1. Komut Paketi (PC -> STM32) [7 Bayt]:
-   [PC_TO_STM_HEADER] [Pan Delta * 10: int16 (2B, 0.1 deg)] [Tilt Delta * 10: int16 (2B, 0.1 deg)] [State/Fire: uint8 (1B)] [Checksum: uint8 (1B)]
+1. Komut Paketi (PC -> STM32) [8 Bayt]:
+   [PC_TO_STM_HEADER] [Pan Delta * 10: int16 (2B, 0.1 deg)] [Tilt Delta * 10: int16 (2B, 0.1 deg)] [Speed: uint8 (1B)] [State/Fire: uint8 (1B)] [Checksum: uint8 (1B)]
 2. Telemetri Paketi (STM32 -> PC) [10 Bayt]:
    [STM_TO_PC_HEADER] [TF-Luna Mesafe: uint16 (2B)] [Sinyal Gucu: uint16 (2B)] [Pan Acisi * 10: int16 (2B, 0.1 deg)] [Tilt Acisi * 10: int16 (2B, 0.1 deg)] [Checksum: uint8 (1B)]
 
@@ -52,8 +52,8 @@ class FCSCommunicator:
     STM32 mikrodenetleyicisi ile tek bir seri port uzerinden Full-Duplex
     ve Saf Binary (ikili) paket protokolu ile calisan iletisim sinifi:
 
-      1. PC -> STM32 komut cercevesi (7 bayt):
-         [PC_TO_STM_HEADER] [Pan: int16] [Tilt: int16] [State: uint8] [Checksum: uint8]
+      1. PC -> STM32 komut cercevesi (8 bayt):
+         [PC_TO_STM_HEADER] [Pan: int16] [Tilt: int16] [Speed: uint8] [State: uint8] [Checksum: uint8]
 
       2. STM32 -> PC telemetri cercevesi (10 bayt):
          [STM_TO_PC_HEADER] [Mesafe: uint16] [Sinyal: uint16] [Pan*10: int16] [Tilt*10: int16] [Checksum: uint8]
@@ -180,8 +180,15 @@ class FCSCommunicator:
                 finally:
                     self.ser = None
 
-    def send(self, pan_angle: float, tilt_angle: float, fcs_state: int):
-        """Taret hedef acilarini ve durumunu binary paket olarak gonderir."""
+    def send(self, pan_angle: float, tilt_angle: float, fcs_state: int, speed_pwm: int = 0):
+        """Taret hedef acilarini, motor hizini ve durumunu binary paket olarak gonderir.
+        
+        Args:
+            pan_angle: Pan acisal duzeltme (derece).
+            tilt_angle: Tilt acisal duzeltme (derece).
+            fcs_state: Sistem durumu (TRACKING, LOCKED, FIRING, ESTOP).
+            speed_pwm: TB6612FNG PWM duty yuzdesi (0..100). 0 ise STM32 varsayilani (%85) kullanilir.
+        """
         now = time.time()
         if not self.is_connected:
             if (now - self.last_reconnect_attempt) > self.reconnect_interval:
@@ -208,9 +215,10 @@ class FCSCommunicator:
             self.residue_tilt = total_t - t_step
             t = max(-_INT16_STEP_LIMIT, min(_INT16_STEP_LIMIT, t_step))
 
+        spd = max(0, min(255, int(speed_pwm)))
         state = int(fcs_state) & 0xFF
         try:
-            payload = struct.pack(CMD_FORMAT, PC_TO_STM_HEADER, p, t, state)
+            payload = struct.pack(CMD_FORMAT, PC_TO_STM_HEADER, p, t, spd, state)
             checksum = sum(payload) & 0xFF
             with self._lock:
                 if self.ser and self.ser.is_open:

@@ -190,8 +190,9 @@ int main(void)
     // 3. PC'den yeni aci duzeltme komutu geldiginde motorlari sur (Atomik okuma ile veri yarisi onlendi)
     float d_pan = 0.0f;
     float d_tilt = 0.0f;
+    uint8_t speed_pwm = 0u;
     uint8_t state = 0;
-    if (!b1_estop_latched && FCS_Comm_GetCommand(&d_pan, &d_tilt, &state))
+    if (!b1_estop_latched && FCS_Comm_GetCommand(&d_pan, &d_tilt, &speed_pwm, &state))
     {
       last_pc_cmd_time = HAL_GetTick();
       if (state == PROTO_STATE_ESTOP)
@@ -229,12 +230,15 @@ int main(void)
         /*
          * Flywheel pre-spin (bosta donme):
          * LOCKED (1) veya FIRING (2) durumunda volanlari enerjilendir.
-         * PC, ates oncesi slew/settle boyunca state=1 gonderir; FIRING kenarinda
-         * volanlar zaten hazir olur.
+         * PC'den gelen dinamik speed_pwm (%0-100 duty): 0 ise varsayilan %85 uygulanir.
          * TRACKING (0) veya ESTOP (3) durumunda volanlari kapat.
          */
         if (state == PROTO_STATE_LOCKED || state == PROTO_STATE_FIRING)
         {
+          uint8_t target_duty = (speed_pwm > 0u) ? speed_pwm : FLYWHEEL_DEFAULT_DUTY_PCT;
+          if (target_duty > 100u) target_duty = 100u;
+          Launcher_Flywheel_SetDuty(target_duty);
+
           if (!Launcher_IsFlywheelActive())
           {
             Launcher_Flywheel_Enable(true);

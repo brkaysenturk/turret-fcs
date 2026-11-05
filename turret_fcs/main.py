@@ -201,11 +201,12 @@ def main():
             target_detected = best_box is not None
 
             # 3. Motor komutlarini belirle ve STM32'ye ilet
+            flywheel_speed = CONFIG.flywheel.duty_pct
             if is_estop:
                 fcs_state = FCSState.ESTOP
                 active_pan_cmd = 0.0
                 active_tilt_cmd = 0.0
-                stm.send(0.0, 0.0, FCSState.ESTOP)
+                stm.send(0.0, 0.0, FCSState.ESTOP, speed_pwm=0)
                 if hw_pan is not None and hw_tilt is not None:
                     fcs.sync_turret_pose(eff_hw_pan, eff_hw_tilt, force=True)
             elif target_detected:
@@ -213,19 +214,19 @@ def main():
                 fcs_state = eng_state.fcs_fire_cmd_state
                 active_pan_cmd = -pan_cmd if PAN_INVERT else pan_cmd
                 active_tilt_cmd = -tilt_cmd if TILT_INVERT else tilt_cmd
-                stm.send(active_pan_cmd, active_tilt_cmd, fcs_state)
+                stm.send(active_pan_cmd, active_tilt_cmd, fcs_state, speed_pwm=flywheel_speed)
             elif fcs.patrol_enabled:
                 fcs_state = FCSState.TRACKING
                 active_pan_cmd = -pan_cmd if PAN_INVERT else pan_cmd
                 active_tilt_cmd = -tilt_cmd if TILT_INVERT else tilt_cmd
-                stm.send(active_pan_cmd, active_tilt_cmd, fcs_state)
+                stm.send(active_pan_cmd, active_tilt_cmd, fcs_state, speed_pwm=0)
                 prev_target_detected = False
             else:
                 fcs_state = FCSState.TRACKING
                 active_pan_cmd = 0.0
                 active_tilt_cmd = 0.0
                 if prev_target_detected:
-                    stm.send(0.0, 0.0, FCSState.TRACKING)
+                    stm.send(0.0, 0.0, FCSState.TRACKING, speed_pwm=0)
                     if fcs.frames_since_lost >= fcs.max_lost_frames:
                         prev_target_detected = False
 

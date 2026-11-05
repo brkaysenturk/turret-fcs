@@ -21,6 +21,6 @@ void FCS_Comm_HandleError(void);
 
 void FCS_Comm_SendTelemetry(uint16_t distance_cm, uint16_t signal_strength, float pan_deg, float tilt_deg);
 
-bool FCS_Comm_GetCommand(float *pan, float *tilt, uint8_t *state);
+bool FCS_Comm_GetCommand(float *pan, float *tilt, uint8_t *speed, uint8_t *state);
 
 #endif /* __FCS_COMM_H */

@@ -114,27 +114,36 @@ def test_uart_communication_rx_and_tx():
     assert comm.servo_tilt_deg == pytest.approx(2.0)
     assert comm.has_servo_telemetry is True
 
-    # 2. TX eksen basina kalinti akumulasyonu
+    # 2. TX eksen basina kalinti akumulasyonu ve 8 bayt paket yapisi
     comm.reconnect_interval = 999.0
     comm.last_reconnect_attempt = 0.0
     comm.residue_pan = 0.0
     comm.residue_tilt = 0.0
 
+    sent_payloads = []
+
     class _Serial:
         is_open = True
         def write(self, payload):
-            pass
+            sent_payloads.append(payload)
 
     comm.ser = _Serial()
     comm._lock = threading.Lock()
 
-    # 0.05 derece gonderilince 0.5 kalinti birikmeli
-    comm.send(0.05, 0.0, 0)
+    # 0.05 derece gonderilince 0.5 kalinti birikmeli, 8 bayt paket gitmeli
+    comm.send(0.05, 0.0, 0, speed_pwm=75)
     assert comm.residue_pan == pytest.approx(0.5)
     assert comm.residue_tilt == 0.0
+    assert len(sent_payloads) == 1
+    assert len(sent_payloads[0]) == 8
+    # [header, pan_l, pan_h, tilt_l, tilt_h, speed, state, checksum]
+    assert sent_payloads[0][0] == 0xAA
+    assert sent_payloads[0][5] == 75
+    assert sent_payloads[0][6] == 0
+    assert (sum(sent_payloads[0][:7]) & 0xFF) == sent_payloads[0][7]
 
     # Tekrar 0.05 gonderilince 1 tam birim tamamlanip kalinti sifirlanmali
-    comm.send(0.05, 0.0, 0)
+    comm.send(0.05, 0.0, 0, speed_pwm=75)
     assert comm.residue_pan == pytest.approx(0.0)
     assert comm.residue_tilt == 0.0
 
